@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:ddue="http://ddue.schemas.microsoft.com/authoring/2003/5"
+            xmlns:sd="http://schemas.xsddoc.codeplex.com/schemaDoc/2009/3"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            elementFormDefault="qualified">
+
+    <xsd:complexType name="baseType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <sd:schemaDoc>
+                    <ddue:summary><ddue:para>Base of everything.</ddue:para></ddue:summary>
+                </sd:schemaDoc>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="uID" type="xsd:string"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="wingType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <sd:schemaDoc>
+                    <ddue:summary><ddue:para>A wing.</ddue:para></ddue:summary>
+                    <ddue:remarks>
+                        <ddue:content>
+                            <ddue:mediaLink><ddue:image xlink:href="wingFigure"/></ddue:mediaLink>
+                        </ddue:content>
+                    </ddue:remarks>
+                </sd:schemaDoc>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:complexContent>
+            <xsd:extension base="baseType">
+                <xsd:sequence>
+                    <xsd:element name="span" type="xsd:double">
+                        <xsd:annotation>
+                            <xsd:documentation>Wing span.</xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:element>
+                </xsd:sequence>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="undocumentedType">
+        <xsd:sequence>
+            <xsd:element name="value" type="xsd:string"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="outlierType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <sd:schemaDoc>
+                    <ddue:content><ddue:para>Body in the wrong wrapper.</ddue:para></ddue:content>
+                </sd:schemaDoc>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="dummy" type="xsd:string"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:element name="cpacs">
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="wings" minOccurs="0">
+                    <xsd:complexType>
+                        <xsd:sequence>
+                            <xsd:element name="wing" type="wingType" maxOccurs="unbounded"/>
+                        </xsd:sequence>
+                    </xsd:complexType>
+                </xsd:element>
+                <xsd:choice>
+                    <xsd:sequence>
+                        <xsd:element name="shared" type="undocumentedType" minOccurs="0"/>
+                    </xsd:sequence>
+                    <xsd:sequence>
+                        <xsd:element name="shared" type="undocumentedType"/>
+                    </xsd:sequence>
+                </xsd:choice>
+                <xsd:element name="odd" type="outlierType" minOccurs="0"/>
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+</xsd:schema>
