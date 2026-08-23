@@ -76,6 +76,19 @@
     }
   }
 
+  // "sequence" and "all" are schema words for a distinction that matters to
+  // anyone writing an instance: whether the children have to appear in the
+  // given order. Spelling it out is worth more than the vocabulary term.
+  var COMPOSITOR_LABEL = {
+    sequence: "children in fixed order",
+    all: "children in any order",
+    choice: "one of the children"
+  };
+
+  function compositorLabel(name) {
+    return COMPOSITOR_LABEL[name] || name;
+  }
+
   function cardinality(decl) {
     var min = decl.minOccurs === undefined ? 1 : decl.minOccurs;
     var max = decl.maxOccurs === undefined ? 1 : decl.maxOccurs;
@@ -187,8 +200,6 @@
 
     var meta = element("p", "cd-kind");
     meta.appendChild(element("span", null, "occurs " + cardinality(decl)));
-    if (decl.compositor) meta.appendChild(element("span", null, " \u00B7 " + decl.compositor));
-    if (decl.line) meta.appendChild(element("span", null, " \u00B7 schema line " + decl.line));
     panel.appendChild(meta);
 
     if (decl.documentation && decl.documentation.text) {
@@ -204,21 +215,93 @@
       panel.appendChild(line);
 
       var type = state.model.types[decl.type];
-      if (type && type.documentation) {
-        // The fragments were rendered once, by the generator. Inserting them
-        // here keeps one implementation of the ddue vocabulary.
-        if (type.documentation.summaryHtml) {
-          var summary = element("div", "cd-summary");
-          summary.innerHTML = withRoot(type.documentation.summaryHtml);
-          panel.appendChild(summary);
+      if (type) {
+        if (type.documentation) {
+          // The fragments were rendered once, by the generator. Inserting them
+          // here keeps one implementation of the ddue vocabulary.
+          if (type.documentation.summaryHtml) {
+            var summary = element("div", "cd-summary");
+            summary.innerHTML = withRoot(type.documentation.summaryHtml);
+            panel.appendChild(summary);
+          }
+          if (type.documentation.remarksHtml) {
+            var remarks = element("div", "cd-remarks");
+            remarks.innerHTML = withRoot(type.documentation.remarksHtml);
+            panel.appendChild(remarks);
+          }
         }
-        if (type.documentation.remarksHtml) {
-          var remarks = element("div", "cd-remarks");
-          remarks.innerHTML = withRoot(type.documentation.remarksHtml);
-          panel.appendChild(remarks);
-        }
+        // The detail panel carries the same tables as the static type page.
+        // Attributes appear nowhere else in the viewer, and repeating the
+        // children costs little next to having to read them off the tree.
+        appendTable(panel, "Attributes", type.attributes, [
+          { head: "Name", cell: function (a) { return text("@" + a.name, "code"); } },
+          { head: "Type", cell: function (a) { return typeCell(a.type); } },
+          { head: "Use", cell: function (a) { return text(a.use || ""); } },
+          { head: "Default", cell: function (a) { return text(a["default"] || a.fixed || ""); } },
+          { head: "Description", cell: function (a) { return text(documentationText(a)); } },
+          { head: "Inherited from", cell: function (a) {
+              return text(a.inherited ? a.declaredIn : "", null, "cd-inherited"); } }
+        ]);
+        appendTable(panel, "Child elements", type.children, [
+          { head: "Name", cell: function (c) { return childCell(c); } },
+          { head: "Type", cell: function (c) { return typeCell(c.type); } },
+          { head: "Occurrence", cell: function (c) { return text(cardinality(c)); } },
+          { head: "Order", cell: function (c) { return text(compositorLabel(c.compositor || "")); } },
+          { head: "Description", cell: function (c) { return text(documentationText(c)); } }
+        ]);
+        appendTable(panel, "Allowed values", type.enumeration, [
+          { head: "Value", cell: function (v) { return text(v.value, "code"); } },
+          { head: "Description", cell: function (v) { return text(documentationText(v)); } }
+        ]);
       }
     }
+  }
+
+  function documentationText(entry) {
+    return (entry.documentation && entry.documentation.text) || "";
+  }
+
+  function text(value, tag, className) {
+    return element(tag || "span", className || null, value);
+  }
+
+  function typeCell(typeName) {
+    if (!typeName || typeName.indexOf("xsd:") === 0) {
+      return element("code", null, typeName || "");
+    }
+    var link = element("a", null);
+    link.href = typeHref(typeName);
+    link.appendChild(element("code", null, typeName));
+    return link;
+  }
+
+  function childCell(child) {
+    // A child leads back into the tree; a type leads out to its page.
+    var button = element("button", "cd-crumb");
+    button.appendChild(element("code", null, child.name));
+    button.addEventListener("click", function () { select(state.path.concat(child.name)); });
+    return button;
+  }
+
+  function appendTable(panel, heading, rows, columns) {
+    if (!rows || !rows.length) return;
+    panel.appendChild(element("h2", null, heading));
+    var table = element("table");
+    var head = element("tr");
+    for (var c = 0; c < columns.length; c++) {
+      head.appendChild(element("th", null, columns[c].head));
+    }
+    table.appendChild(head);
+    for (var r = 0; r < rows.length; r++) {
+      var row = element("tr");
+      for (var i = 0; i < columns.length; i++) {
+        var cell = element("td");
+        cell.appendChild(columns[i].cell(rows[r]));
+        row.appendChild(cell);
+      }
+      table.appendChild(row);
+    }
+    panel.appendChild(table);
   }
 
   function renderBreadcrumb() {

@@ -31,6 +31,14 @@ ASSET_DIRECTORY = "assets"
 
 STYLESHEET = "styles.css"
 
+# "sequence" and "all" are schema words for a distinction that matters to anyone
+# writing an instance: whether the children must appear in the given order.
+COMPOSITOR_LABEL = {
+    "sequence": "children in fixed order",
+    "all": "children in any order",
+    "choice": "one of the children",
+}
+
 # Substituted for the path back to the output root in rendered fragments.
 ROOT_TOKEN = "%ROOT%"
 
@@ -158,7 +166,7 @@ def _kind_line(entry) -> str:
         bits.append(f"{escape(derivation)} {target}")
     compositor = entry.get("compositor")
     if compositor:
-        bits.append(escape(compositor))
+        bits.append(escape(COMPOSITOR_LABEL.get(compositor, compositor)))
     return f'<p class="cd-kind">{" · ".join(bits)}</p>'
 
 
@@ -212,13 +220,13 @@ def _child_table(children) -> str:
             f'<td><code>{escape(child["name"])}</code></td>'
             f'<td>{_type_link(child.get("type"))}</td>'
             f"<td>{escape(_cardinality(child))}</td>"
-            f'<td>{escape(child.get("compositor", "") or "")}</td>'
+            f'<td>{escape(COMPOSITOR_LABEL.get(child.get("compositor"), child.get("compositor") or ""))}</td>'
             f'<td>{escape(child.get("documentation", {}).get("text", ""))}</td>'
             "</tr>"
         )
     return (
         '<section class="cd-children"><h2>Child elements</h2><table>'
-        "<tr><th>Name</th><th>Type</th><th>Occurrence</th><th>Compositor</th><th>Description</th></tr>"
+        "<tr><th>Name</th><th>Type</th><th>Occurrence</th><th>Order</th><th>Description</th></tr>"
         + "".join(rows)
         + "</table></section>"
     )
@@ -247,10 +255,10 @@ def _enumeration_list(values) -> str:
 
 
 def _source_line(entry) -> str:
-    line = entry.get("line")
-    if not line:
-        return ""
-    return f'<p class="cd-source">Schema line {line}</p>'
+    # The bare line number was noise: it is not a link, and nobody reads the
+    # schema by line. A real link into the schema repository would be worth
+    # having; a number on its own is not.
+    return ""
 
 
 def _resolve_cross_references(html: str, types: dict) -> str:

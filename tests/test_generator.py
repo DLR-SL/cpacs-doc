@@ -95,6 +95,21 @@ def test_cross_references_resolve_to_links_and_unknown_targets_stay_text(model, 
     assert "cd-xref" not in html
 
 
+def test_compositor_is_spelled_out(model, tmp_path):
+    """`sequence` and `all` name a distinction that matters when writing an
+    instance; the schema word alone does not convey it."""
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert "children in fixed order" in html
+    assert ">sequence<" not in html
+
+
+def test_bare_schema_line_is_not_shown(model, tmp_path):
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert "Schema line" not in html
+
+
 def test_unbounded_cardinality_is_shown(model, tmp_path):
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
