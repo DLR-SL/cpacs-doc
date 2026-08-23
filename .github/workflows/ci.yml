@@ -1,0 +1,84 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  # The schema job checks a repository this one does not control. A weekly run
+  # surfaces a change there before it collides with unrelated work here.
+  schedule:
+    - cron: "0 5 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    # Both platforms, not just the runner's own: a path defect that only shows
+    # on a case-sensitive file system and one that only shows on Windows have
+    # both occurred here, and each is invisible on the other platform.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --locked
+        env:
+          UV_PYTHON: ${{ matrix.python }}
+
+      - name: Test
+        run: uv run pytest -q
+
+  schema:
+    # The extractor is only as useful as its verdict on a real schema. This job
+    # fails on findings of severity error — in the schema, not in the code.
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out the CPACS schema
+        uses: actions/checkout@v4
+        with:
+          repository: DLR-SL/CPACS
+          ref: develop
+          path: cpacs
+          # Only the two directories the extractor reads; the full repository is
+          # over 100 MB, most of it documentation binaries.
+          sparse-checkout: |
+            schema
+            documentation
+          sparse-checkout-cone-mode: false
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --locked
+
+      - name: Report
+        run: uv run cpacs-doc report cpacs/schema/cpacs_schema.xsd --limit 0
+
+      - name: Build the model
+        run: uv run cpacs-doc build cpacs/schema/cpacs_schema.xsd -o build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cpacs-doc-model
+          path: build/cpacs-doc-model.json
+          retention-days: 14
