@@ -206,6 +206,28 @@ def render_all(catalogue, media_catalogue, source: str) -> tuple[dict[str, Rende
     return rendered, context.findings
 
 
+def _first_paths(tree) -> dict[str, str]:
+    """First instance path at which each type appears.
+
+    Lets a static type page offer a way back into the tree. 1,100 of the 1,206
+    catalogue entries are reachable this way; the rest are anonymous inline
+    types that never appear as an element's type, and they simply get no entry
+    rather than a fabricated one.
+    """
+    paths: dict[str, str] = {}
+    if not tree.root:
+        return paths
+    stack = [(tree.root, [])]
+    while stack:
+        node, prefix = stack.pop()
+        path = prefix + [node.name]
+        if node.type_name and node.type_name not in paths:
+            paths[node.type_name] = "/".join(path)
+        for child in reversed(node.children):
+            stack.append((child, path))
+    return paths
+
+
 def build(
     catalogue,
     tree,
@@ -247,6 +269,7 @@ def build(
             for name, info in sorted(catalogue.types.items())
         },
         "declarations": declarations,
+        "firstPaths": _first_paths(tree),
         "tree": _node_entry(tree.root) if tree.root else None,
         "media": {
             image_id: {"file": entry.file, "alt": entry.alt}

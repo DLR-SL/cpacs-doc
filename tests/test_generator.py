@@ -95,6 +95,23 @@ def test_cross_references_resolve_to_links_and_unknown_targets_stay_text(model, 
     assert "cd-xref" not in html
 
 
+def test_a_type_page_links_back_into_the_tree(model, tmp_path):
+    """Someone arriving from a cited URL otherwise has no route into the
+    structure."""
+    model["firstPaths"] = {"wingType": "cpacs/wings/wing"}
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert 'href="../../tree/cpacs/wings/wing/"' in html
+    assert "Show in tree" in html
+
+
+def test_a_type_with_no_tree_occurrence_gets_no_such_link(model, tmp_path):
+    """106 anonymous inline types never appear as an element's type."""
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "type" / "nacaType--code" / "index.html").read_text(encoding="utf-8")
+    assert "Show in tree" not in html
+
+
 def test_compositor_is_spelled_out(model, tmp_path):
     """`sequence` and `all` name a distinction that matters when writing an
     instance; the schema word alone does not convey it."""

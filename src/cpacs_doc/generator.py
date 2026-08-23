@@ -69,7 +69,7 @@ def generate(model: dict, output: Path, *, media_root: Path | None = None) -> Ge
 
     types = model.get("types", {})
     for name, entry in sorted(types.items()):
-        html = _type_page(name, entry, types)
+        html = _type_page(name, entry, types, model.get("firstPaths", {}))
         target = output / TYPES_DIRECTORY / slug(name) / "index.html"
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(html, encoding="utf-8")
@@ -128,10 +128,10 @@ def _document(title: str, depth: int, body: str) -> str:
     )
 
 
-def _type_page(name: str, entry: dict, types: dict) -> str:
+def _type_page(name: str, entry: dict, types: dict, first_paths: dict) -> str:
     documentation = entry.get("documentation", {})
     parts = [
-        '<nav class="cd-breadcrumb"><a href="../../index.html">Types</a></nav>',
+        _page_nav(name, first_paths),
         f"<h1>{escape(name)}</h1>",
         _kind_line(entry),
     ]
@@ -155,6 +155,21 @@ def _type_page(name: str, entry: dict, types: dict) -> str:
 def _substitute_root(html: str, depth: int) -> str:
     """Resolve the renderer's root placeholder against this page's depth."""
     return html.replace(ROOT_TOKEN, ("../" * depth).rstrip("/") or ".")
+
+
+def _page_nav(name: str, first_paths: dict) -> str:
+    """Index link, plus a way into the tree where the type appears in one.
+
+    Someone arriving from a cited URL sees the documentation but has no route
+    into the structure. 106 of the 1,206 types are anonymous inline types that
+    never appear as an element's type; those get no link rather than one that
+    leads nowhere.
+    """
+    parts = ['<a href="../../index.html">Types</a>']
+    path = first_paths.get(name)
+    if path:
+        parts.append(f'<a href="../../tree/{escape(path)}/">Show in tree</a>')
+    return f'<nav class="cd-breadcrumb">{" · ".join(parts)}</nav>'
 
 
 def _kind_line(entry) -> str:

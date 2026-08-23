@@ -24,7 +24,8 @@
     model: null,
     path: [],          // selected instance path, without the root element
     expanded: null,    // Set of expanded paths
-    nodeByPath: null   // path -> model node
+    nodeByPath: null,  // path -> model node
+    shownType: null    // type displayed in place of the selected node's detail
   };
 
   function parseLocation() {
@@ -163,6 +164,7 @@
   }
 
   function select(path) {
+    state.shownType = null;
     state.path = path;
     expandAncestors(path);
     var url = state.root + TREE_SEGMENT + path.join("/") + (path.length ? "/" : "");
@@ -182,6 +184,11 @@
   function renderDetail() {
     var panel = document.getElementById("cd-detail");
     panel.textContent = "";
+
+    if (state.shownType) {
+      renderTypeDetail(panel, state.shownType);
+      return;
+    }
 
     var key = state.path.join("/");
     var node = state.nodeByPath.get(key);
@@ -207,14 +214,16 @@
     }
 
     if (decl.type) {
-      var link = element("a", "cd-typelink", decl.type);
-      link.href = typeHref(decl.type);
       var line = element("p", "cd-kind");
       line.appendChild(document.createTextNode("Type: "));
-      line.appendChild(link);
+      line.appendChild(typeCell(decl.type));
       panel.appendChild(line);
 
-      var type = state.model.types[decl.type];
+      appendTypeBody(panel, state.model.types[decl.type]);
+    }
+  }
+
+  function appendTypeBody(panel, type) {
       if (type) {
         if (type.documentation) {
           // The fragments were rendered once, by the generator. Inserting them
@@ -254,7 +263,6 @@
           { head: "Description", cell: function (v) { return text(documentationText(v)); } }
         ]);
       }
-    }
   }
 
   function documentationText(entry) {
@@ -269,10 +277,24 @@
     if (!typeName || typeName.indexOf("xsd:") === 0) {
       return element("code", null, typeName || "");
     }
-    var link = element("a", null);
-    link.href = typeHref(typeName);
-    link.appendChild(element("code", null, typeName));
-    return link;
+    if (!state.model.types[typeName]) {
+      // Not in this schema: leave the name as text rather than link nowhere.
+      return element("code", null, typeName);
+    }
+    // Switching the panel rather than following a link keeps the tree, and its
+    // selection, in place. Where a type is worth citing, the panel offers the
+    // static page explicitly.
+    var button = element("button", "cd-crumb");
+    button.appendChild(element("code", null, typeName));
+    button.addEventListener("click", function () { showType(typeName); });
+    return button;
+  }
+
+  function showType(typeName) {
+    state.shownType = typeName;
+    renderDetail();
+    var panel = document.getElementById("cd-detail");
+    if (panel && panel.scrollTo) panel.scrollTo(0, 0);
   }
 
   function childCell(child) {
@@ -302,6 +324,39 @@
       table.appendChild(row);
     }
     panel.appendChild(table);
+  }
+
+  function renderTypeDetail(panel, typeName) {
+    var type = state.model.types[typeName] || {};
+
+    var nav = element("nav", "cd-breadcrumb");
+    var back = element("button", "cd-crumb", "\u2190 back to " + (state.path.length
+      ? state.path[state.path.length - 1]
+      : declaration(state.model.tree).name));
+    // Always back to the selected node, never through the chain of type jumps:
+    // the tree node is where the reader was, the types are a detour.
+    back.addEventListener("click", function () { select(state.path); });
+    nav.appendChild(back);
+    panel.appendChild(nav);
+
+    panel.appendChild(element("h1", null, typeName));
+
+    var meta = element("p", "cd-kind");
+    meta.appendChild(element("span", null, type.kind || "type"));
+    if (type.base) {
+      meta.appendChild(document.createTextNode(" \u00B7 " + (type.derivation || "derives from") + " "));
+      meta.appendChild(typeCell(type.base));
+    }
+    if (type.compositor) {
+      meta.appendChild(document.createTextNode(" \u00B7 " + compositorLabel(type.compositor)));
+    }
+    meta.appendChild(document.createTextNode(" \u00B7 "));
+    var page = element("a", null, "citable page");
+    page.href = typeHref(typeName);
+    meta.appendChild(page);
+    panel.appendChild(meta);
+
+    appendTypeBody(panel, type);
   }
 
   function renderBreadcrumb() {

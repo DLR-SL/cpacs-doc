@@ -31,6 +31,14 @@ def test_empty_documentation_fields_are_omitted(parse, tmp_path):
         assert entry.get("documentation") != {}
 
 
+def test_first_paths_are_recorded_for_types_that_occur(parse, tmp_path):
+    built = build_model(parse, tmp_path)
+    assert built["firstPaths"]["wingType"] == "cpacs/wings/wing"
+    # A type never used as an element's type gets no entry rather than a
+    # fabricated one.
+    assert "undocumentedType" not in built["firstPaths"] or built["firstPaths"]["undocumentedType"]
+
+
 def test_written_model_round_trips(parse, tmp_path):
     built = build_model(parse, tmp_path)
     path = model.write(built, tmp_path / "out" / "model.json")
