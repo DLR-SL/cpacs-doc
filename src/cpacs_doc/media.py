@@ -153,21 +153,28 @@ def _read_entry(image_id, raw, where, findings) -> MediaEntry | None:
     return MediaEntry(image_id=image_id, file=file, alt=alt.strip())
 
 
-def _case_insensitive_match(target: Path) -> str | None:
-    """Name of an existing sibling differing from `target` only in case.
+def actual_path(base: Path, relative: str) -> str | None:
+    """The path as the file system actually spells it, or None if absent.
 
-    The distinction matters: a build on a case-insensitive development machine
-    succeeds while the same build on a Linux runner (G4) does not, so this is a
-    different defect from a genuinely missing file and needs a different fix.
+    Compared against directory listings segment by segment rather than through
+    `Path.exists()`: that call is case-insensitive on Windows and macOS, so a
+    name differing only in case would be reported as present on the machine the
+    catalogue is edited on and as missing on the Linux runner that publishes it.
+    Directories are checked too, not just the file name.
     """
-    directory = target.parent
-    if not directory.is_dir():
-        return None
-    wanted = target.name.lower()
-    for candidate in directory.iterdir():
-        if candidate.name.lower() == wanted and candidate.name != target.name:
-            return candidate.name
-    return None
+    current = base
+    parts: list[str] = []
+    for wanted in PurePosixPath(relative).parts:
+        if not current.is_dir():
+            return None
+        matches = [c.name for c in current.iterdir() if c.name == wanted]
+        if not matches:
+            matches = [c.name for c in current.iterdir() if c.name.lower() == wanted.lower()]
+            if len(matches) != 1:
+                return None
+        parts.append(matches[0])
+        current = current / matches[0]
+    return "/".join(parts)
 
 
 def validate(catalogue: MediaCatalogue, referenced_ids: set[str]) -> list[Finding]:
@@ -197,28 +204,26 @@ def validate(catalogue: MediaCatalogue, referenced_ids: set[str]) -> list[Findin
 
     seen: dict[str, str] = {}
     for image_id, entry in sorted(catalogue.entries.items()):
-        target = catalogue.file_path(entry)
-        if not target.exists():
-            actual = _case_insensitive_match(target)
-            if actual is not None:
-                findings.append(
-                    Finding(
-                        "error",
-                        "MEDIA_FILE_CASE_MISMATCH",
-                        f"{image_id}: catalogue says {entry.file!r}, on disk it is {actual!r} — "
-                        f"resolves on case-insensitive file systems only",
-                        where,
-                    )
+        actual = actual_path(catalogue.base_dir, entry.file)
+        if actual is None:
+            findings.append(
+                Finding(
+                    "error" if image_id in referenced_ids else "warning",
+                    "MEDIA_FILE_ABSENT",
+                    f"{image_id}: file not found: {entry.file}",
+                    where,
                 )
-            else:
-                findings.append(
-                    Finding(
-                        "error" if image_id in referenced_ids else "warning",
-                        "MEDIA_FILE_ABSENT",
-                        f"{image_id}: file not found: {entry.file}",
-                        where,
-                    )
+            )
+        elif actual != entry.file:
+            findings.append(
+                Finding(
+                    "error",
+                    "MEDIA_FILE_CASE_MISMATCH",
+                    f"{image_id}: catalogue says {entry.file!r}, on disk it is {actual!r} — "
+                    f"resolves on case-insensitive file systems only",
+                    where,
                 )
+            )
         # Two ids pointing at one file is legitimate; two entries differing only
         # in case are not, because deployment targets are case-sensitive while
         # some development file systems are not.

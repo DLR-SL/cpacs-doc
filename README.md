@@ -29,13 +29,28 @@ suppresses that.
 
 ## Installing
 
+With [uv](https://docs.astral.sh/uv/):
+
 ```
-pip install -e ".[dev]"
+uv sync
+uv run pytest
+uv run cpacs-doc report schema/cpacs_schema.xsd
+```
+
+`uv sync` creates the environment, installs the package in editable mode and
+pulls the test tooling from the `dev` dependency group. `uv.lock` pins the exact
+versions and is committed, so CI and every checkout resolve identically.
+
+Without uv, any Python 3.10 environment works:
+
+```
+pip install -e . pytest
 pytest
 ```
 
-Requires Python 3.10 and `lxml`. The extractor deliberately does not depend on
-`cpacs-schema-tool` or on the viewer.
+The only runtime dependency is `lxml`, which ships as a wheel on all three
+platforms — no compiler and no conda-style environment needed. The extractor
+deliberately does not depend on `cpacs-schema-tool` or on the viewer.
 
 ## Reporting rather than repairing
 

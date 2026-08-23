@@ -34,21 +34,21 @@ CATALOGUE_VERSION = 1
 def actual_case(base: Path, relative: str) -> str | None:
     """The path as it exists on disk, or None if nothing matches.
 
-    Compared segment by segment, because a directory may differ in case just as
-    a file may.
+    Compared against directory listings rather than through `Path.exists()`,
+    which is case-insensitive on Windows and macOS and would therefore accept
+    the very spellings this conversion exists to correct. Segment by segment,
+    because a directory may differ in case just as a file may.
     """
     current = base
     parts = []
     for wanted in Path(relative).parts:
-        if (current / wanted).exists():
-            parts.append(wanted)
-            current = current / wanted
-            continue
         if not current.is_dir():
             return None
-        matches = [c.name for c in current.iterdir() if c.name.lower() == wanted.lower()]
-        if len(matches) != 1:
-            return None
+        matches = [c.name for c in current.iterdir() if c.name == wanted]
+        if not matches:
+            matches = [c.name for c in current.iterdir() if c.name.lower() == wanted.lower()]
+            if len(matches) != 1:
+                return None
         parts.append(matches[0])
         current = current / matches[0]
     return "/".join(parts)

@@ -34,11 +34,28 @@ def test_unsupported_version_stops_reading(tmp_path):
 
 
 def test_case_mismatch_is_distinguished_from_absence(tmp_path):
+    """Must hold on case-insensitive file systems too: there `Path.exists()`
+    accepts the wrong spelling, which is exactly where the defect hides."""
     (tmp_path / "Figure.png").write_bytes(b"")
     path = write(tmp_path, {"a": {"file": "figure.png", "alt": "A"}, "b": {"file": "gone.png", "alt": "B"}})
     catalogue = media.load(path)
-    codes = {f.code for f in media.validate(catalogue, {"a", "b"})}
-    assert codes == {"MEDIA_FILE_CASE_MISMATCH", "MEDIA_FILE_ABSENT"}
+    findings = {f.code: f.message for f in media.validate(catalogue, {"a", "b"})}
+    assert set(findings) == {"MEDIA_FILE_CASE_MISMATCH", "MEDIA_FILE_ABSENT"}
+    assert "Figure.png" in findings["MEDIA_FILE_CASE_MISMATCH"]
+
+
+def test_directory_case_is_checked_as_well(tmp_path):
+    (tmp_path / "Figures").mkdir()
+    (tmp_path / "Figures" / "a.png").write_bytes(b"")
+    path = write(tmp_path, {"a": {"file": "figures/a.png", "alt": "A"}})
+    findings = {f.code for f in media.validate(media.load(path), {"a"})}
+    assert findings == {"MEDIA_FILE_CASE_MISMATCH"}
+
+
+def test_exact_match_yields_no_finding(tmp_path):
+    (tmp_path / "a.png").write_bytes(b"")
+    path = write(tmp_path, {"a": {"file": "a.png", "alt": "A"}})
+    assert media.validate(media.load(path), {"a"}) == []
 
 
 def test_unresolved_and_unreferenced_are_separated(tmp_path):

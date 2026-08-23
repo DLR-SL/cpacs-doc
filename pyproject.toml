@@ -13,7 +13,9 @@ requires-python = ">=3.10"
 # without cpacs-schema-tool (N16).
 dependencies = ["lxml>=4.9"]
 
-[project.optional-dependencies]
+# PEP 735 group rather than an optional-dependency extra: the test tooling is
+# not a feature of the distribution, and `uv sync` installs it without a flag.
+[dependency-groups]
 dev = ["pytest>=7"]
 
 [project.scripts]
