@@ -109,7 +109,7 @@
     var isSelected = key === state.path.join("/");
 
     var item = element("div", "cd-node" + (isSelected ? " cd-selected" : ""));
-    item.style.paddingLeft = depth * 14 + "px";
+    item.style.paddingLeft = depth * 16 + "px";
 
     var toggle = element("button", "cd-toggle", children.length ? (isExpanded ? "\u2212" : "+") : "\u00B7");
     toggle.disabled = children.length === 0;

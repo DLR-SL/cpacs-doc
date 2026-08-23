@@ -317,9 +317,9 @@ def _write_router(output: Path) -> None:
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         "<title>CPACS schema</title>\n"
         f"<style>\n{_asset('styles.css')}</style>\n"
-        '<body>\n<div id="cd-app" class="cd-app">\n'
+        '<body class="cd-viewer">\n<div id="cd-app" class="cd-app">\n'
         '<div id="cd-tree" class="cd-pane"></div>\n'
-        '<div id="cd-detail" class="cd-pane"></div>\n'
+        '<div id="cd-detail" class="cd-pane cd-pane-detail"></div>\n'
         "</div>\n"
         f"<script>\n{_asset('viewer.js')}</script>\n"
         "</body>\n</html>\n"

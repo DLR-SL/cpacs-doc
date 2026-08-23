@@ -17,15 +17,27 @@ th { font-weight: 600; }
 .cd-missing-image::before { content: "[missing figure]"; color: #b00; font-size: 0.85rem; }
 
 /* viewer */
-.cd-app { display: grid; grid-template-columns: minmax(16rem, 26rem) 1fr; gap: 1.5rem; align-items: start; }
-.cd-pane { max-height: calc(100vh - 4rem); overflow: auto; }
-.cd-node { display: flex; align-items: baseline; gap: 0.4rem; white-space: nowrap; }
+/* The reading-width limit on body suits running text on a type page. The viewer
+   is two panes side by side and needs the window. */
+body.cd-viewer { max-width: none; padding: 1rem 1.25rem; }
+.cd-app { display: grid; grid-template-columns: minmax(20rem, 34rem) 1fr; gap: 1.75rem;
+          align-items: start; }
+.cd-pane { max-height: calc(100vh - 3rem); overflow: auto; }
+/* Detail text keeps a readable measure even though the pane is wide. */
+.cd-pane-detail > * { max-width: 46rem; }
+.cd-pane-detail table, .cd-pane-detail img, .cd-pane-detail pre { max-width: 100%; }
+/* min-width keeps the row at its natural width so the toggle cannot be
+   squeezed; without it a long row shifts its own indentation to the left. */
+.cd-node { display: flex; align-items: baseline; gap: 0.4rem; white-space: nowrap;
+           min-width: max-content; }
 .cd-node.cd-selected { background: rgba(127,127,127,0.16); }
-.cd-toggle { width: 1.4rem; border: 0; background: none; cursor: pointer; color: var(--muted);
-             font: inherit; padding: 0; }
+.cd-toggle { flex: 0 0 1.4rem; border: 0; background: none; cursor: pointer; color: var(--muted);
+             font: inherit; padding: 0; text-align: center; }
 .cd-toggle:disabled { cursor: default; opacity: 0.35; }
 .cd-label { border: 0; background: none; cursor: pointer; font: inherit; padding: 0.05rem 0;
-            text-align: left; display: flex; gap: 0.5rem; align-items: baseline; }
+            text-align: left; display: flex; gap: 0.5rem; align-items: baseline;
+            flex: 0 0 auto; color: inherit; }
+.cd-label:hover .cd-name { text-decoration: underline; }
 .cd-name { font-family: ui-monospace, monospace; font-size: 0.9rem; }
 .cd-cardinality, .cd-typename { color: var(--muted); font-size: 0.78rem; }
 .cd-typename { font-family: ui-monospace, monospace; }
