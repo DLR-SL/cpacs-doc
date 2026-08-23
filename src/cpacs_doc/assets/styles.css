@@ -1,0 +1,37 @@
+:root { color-scheme: light dark; --border: #d0d0d0; --muted: #666; }
+body { font: 16px/1.6 system-ui, sans-serif; margin: 0 auto; max-width: 60rem; padding: 2rem 1rem; }
+h1 { font-size: 1.6rem; margin-bottom: 0.2rem; }
+h2 { font-size: 1.15rem; margin-top: 2rem; }
+code { font-family: ui-monospace, monospace; font-size: 0.9em; }
+table { border-collapse: collapse; width: 100%; margin-top: 0.5rem; }
+th, td { border-bottom: 1px solid var(--border); padding: 0.35rem 0.6rem; text-align: left;
+         vertical-align: top; font-size: 0.92rem; }
+th { font-weight: 600; }
+.cd-kind, .cd-source, .cd-inherited { color: var(--muted); font-size: 0.9rem; }
+.cd-breadcrumb { font-size: 0.9rem; margin-bottom: 1rem; }
+.cd-summary { font-size: 1.05rem; }
+.cd-code, pre { background: rgba(127,127,127,0.12); padding: 0.6rem 0.8rem; overflow-x: auto; }
+.cd-image { max-width: 100%; height: auto; }
+.cd-table td { border-bottom: 1px solid var(--border); }
+.cd-type-index { columns: 3; list-style: none; padding: 0; font-size: 0.9rem; }
+.cd-missing-image::before { content: "[missing figure]"; color: #b00; font-size: 0.85rem; }
+
+/* viewer */
+.cd-app { display: grid; grid-template-columns: minmax(16rem, 26rem) 1fr; gap: 1.5rem; align-items: start; }
+.cd-pane { max-height: calc(100vh - 4rem); overflow: auto; }
+.cd-node { display: flex; align-items: baseline; gap: 0.4rem; white-space: nowrap; }
+.cd-node.cd-selected { background: rgba(127,127,127,0.16); }
+.cd-toggle { width: 1.4rem; border: 0; background: none; cursor: pointer; color: var(--muted);
+             font: inherit; padding: 0; }
+.cd-toggle:disabled { cursor: default; opacity: 0.35; }
+.cd-label { border: 0; background: none; cursor: pointer; font: inherit; padding: 0.05rem 0;
+            text-align: left; display: flex; gap: 0.5rem; align-items: baseline; }
+.cd-name { font-family: ui-monospace, monospace; font-size: 0.9rem; }
+.cd-cardinality, .cd-typename { color: var(--muted); font-size: 0.78rem; }
+.cd-typename { font-family: ui-monospace, monospace; }
+.cd-crumb { border: 0; background: none; cursor: pointer; font: inherit; padding: 0;
+            color: inherit; text-decoration: underline; }
+.cd-elementdoc { font-size: 1.02rem; }
+.cd-error { padding: 2rem 0; }
+.cd-empty { color: var(--muted); }
+@media (max-width: 48rem) { .cd-app { grid-template-columns: 1fr; } .cd-pane { max-height: none; } }

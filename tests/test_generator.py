@@ -122,3 +122,27 @@ def test_media_files_are_copied(model, tmp_path):
     result = generator.generate(model, out, media_root=tmp_path / "src")
     assert result.assets == 1
     assert (out / "media" / "figures" / "a.png").exists()
+
+
+def test_router_is_written_with_stylesheet_and_script_inlined(model, tmp_path):
+    """404.html is served from arbitrary depth and cannot resolve a relative
+    URL, nor does it know its root before the script has run."""
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "404.html").read_text(encoding="utf-8")
+    assert "<style>" in html and "<script>" in html
+    assert 'href="' not in html.split("<script>")[0].split("<style>")[0]
+    assert 'id="cd-tree"' in html and 'id="cd-detail"' in html
+
+
+def test_assets_are_written_as_files_for_the_static_pages(model, tmp_path):
+    generator.generate(model, tmp_path)
+    assert (tmp_path / "assets" / "styles.css").exists()
+    assert (tmp_path / "assets" / "viewer.js").exists()
+
+
+def test_router_keeps_the_root_placeholder_for_run_time_substitution(model, tmp_path):
+    """Unlike a static page, the router resolves the placeholder in the browser,
+    once it has derived its own root from the requested path."""
+    generator.generate(model, tmp_path)
+    script = (tmp_path / "assets" / "viewer.js").read_text(encoding="utf-8")
+    assert generator.ROOT_TOKEN in script

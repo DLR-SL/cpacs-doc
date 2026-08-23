@@ -13,6 +13,7 @@ version.
 from __future__ import annotations
 
 import shutil
+from importlib import resources
 from dataclasses import dataclass, field
 from html import escape
 from pathlib import Path
@@ -55,7 +56,8 @@ def generate(model: dict, output: Path, *, media_root: Path | None = None) -> Ge
     output = Path(output)
     (output / TYPES_DIRECTORY).mkdir(parents=True, exist_ok=True)
 
-    _write_stylesheet(output / ASSET_DIRECTORY)
+    _write_assets(output / ASSET_DIRECTORY)
+    _write_router(output)
 
     types = model.get("types", {})
     for name, entry in sorted(types.items()):
@@ -288,27 +290,38 @@ def _write_index(output: Path, types: dict, statistics: dict, meta: dict) -> Non
     (output / "index.html").write_text(_substitute_root(_document(heading, 0, body), depth=0), encoding="utf-8")
 
 
-def _write_stylesheet(directory: Path) -> None:
+ASSET_FILES = ("styles.css", "viewer.js")
+
+
+def _asset(name: str) -> str:
+    return resources.files(__package__).joinpath("assets", name).read_text(encoding="utf-8")
+
+
+def _write_assets(directory: Path) -> None:
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / STYLESHEET).write_text(_STYLESHEET, encoding="utf-8")
+    for name in ASSET_FILES:
+        (directory / name).write_text(_asset(name), encoding="utf-8")
 
 
-_STYLESHEET = """\
-:root { color-scheme: light dark; --border: #d0d0d0; --muted: #666; }
-body { font: 16px/1.6 system-ui, sans-serif; margin: 0 auto; max-width: 60rem; padding: 2rem 1rem; }
-h1 { font-size: 1.6rem; margin-bottom: 0.2rem; }
-h2 { font-size: 1.15rem; margin-top: 2rem; }
-code { font-family: ui-monospace, monospace; font-size: 0.9em; }
-table { border-collapse: collapse; width: 100%; margin-top: 0.5rem; }
-th, td { border-bottom: 1px solid var(--border); padding: 0.35rem 0.6rem; text-align: left;
-         vertical-align: top; font-size: 0.92rem; }
-th { font-weight: 600; }
-.cd-kind, .cd-source, .cd-inherited { color: var(--muted); font-size: 0.9rem; }
-.cd-breadcrumb { font-size: 0.9rem; margin-bottom: 1rem; }
-.cd-summary { font-size: 1.05rem; }
-.cd-code, pre { background: rgba(127,127,127,0.12); padding: 0.6rem 0.8rem; overflow-x: auto; }
-.cd-image { max-width: 100%; height: auto; }
-.cd-table td { border-bottom: 1px solid var(--border); }
-.cd-type-index { columns: 3; list-style: none; padding: 0; font-size: 0.9rem; }
-.cd-missing-image::before { content: "[missing figure]"; color: #b00; font-size: 0.85rem; }
-"""
+def _write_router(output: Path) -> None:
+    """The single not-found document that serves every tree path.
+
+    Its stylesheet is inlined rather than linked: the page is served from
+    arbitrary depth and cannot resolve a relative URL, and it does not know its
+    own root until the script has run. The script is inlined for the same
+    reason — loading it by absolute URL would need the root first.
+    """
+    html = (
+        "<!doctype html>\n"
+        '<html lang="en">\n<meta charset="utf-8">\n'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        "<title>CPACS schema</title>\n"
+        f"<style>\n{_asset('styles.css')}</style>\n"
+        '<body>\n<div id="cd-app" class="cd-app">\n'
+        '<div id="cd-tree" class="cd-pane"></div>\n'
+        '<div id="cd-detail" class="cd-pane"></div>\n'
+        "</div>\n"
+        f"<script>\n{_asset('viewer.js')}</script>\n"
+        "</body>\n</html>\n"
+    )
+    (output / "404.html").write_text(html, encoding="utf-8")
