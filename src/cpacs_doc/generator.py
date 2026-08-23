@@ -319,6 +319,8 @@ def _write_router(output: Path) -> None:
         f"<style>\n{_asset('styles.css')}</style>\n"
         '<body class="cd-viewer">\n<div id="cd-app" class="cd-app">\n'
         '<div id="cd-tree" class="cd-pane"></div>\n'
+        '<div id="cd-splitter" class="cd-splitter" role="separator" aria-orientation="vertical"'
+        ' tabindex="0" aria-label="Resize the tree pane"></div>\n'
         '<div id="cd-detail" class="cd-pane cd-pane-detail"></div>\n'
         "</div>\n"
         f"<script>\n{_asset('viewer.js')}</script>\n"

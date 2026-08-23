@@ -108,7 +108,13 @@
     var isExpanded = state.expanded.has(key);
     var isSelected = key === state.path.join("/");
 
-    var item = element("div", "cd-node" + (isSelected ? " cd-selected" : ""));
+    var min = decl.minOccurs === undefined ? 1 : decl.minOccurs;
+    var max = decl.maxOccurs === undefined ? 1 : decl.maxOccurs;
+    var classes = ["cd-node", min === 0 ? "cd-optional" : "cd-required"];
+    if (max === null || max > 1) classes.push("cd-repeatable");
+    if (isSelected) classes.push("cd-selected");
+
+    var item = element("div", classes.join(" "));
     item.style.paddingLeft = depth * 16 + "px";
 
     var toggle = element("button", "cd-toggle", children.length ? (isExpanded ? "\u2212" : "+") : "\u00B7");
@@ -126,9 +132,8 @@
     if (depth > 0) {
       label.appendChild(element("span", "cd-cardinality", cardinality(decl)));
     }
-    if (decl.type) {
-      label.appendChild(element("span", "cd-typename", decl.type));
-    }
+    // The type name is not repeated here: for most nodes it merely echoes the
+    // element name, and the detail panel states it precisely.
     label.addEventListener("click", function () { select(path); });
     item.appendChild(label);
 
@@ -235,6 +240,46 @@
     return nav;
   }
 
+  var TREE_WIDTH_KEY = "cpacs-doc.treeWidth";
+  var MIN_TREE_WIDTH = 200;
+
+  function setupSplitter() {
+    var splitter = document.getElementById("cd-splitter");
+    var app = document.getElementById("cd-app");
+    if (!splitter || !app) return;
+
+    var stored = null;
+    try { stored = window.localStorage.getItem(TREE_WIDTH_KEY); } catch (e) { stored = null; }
+    if (stored) app.style.setProperty("--tree-width", stored + "px");
+
+    function apply(px) {
+      var limit = Math.max(MIN_TREE_WIDTH, Math.min(px, window.innerWidth - MIN_TREE_WIDTH));
+      app.style.setProperty("--tree-width", limit + "px");
+      try { window.localStorage.setItem(TREE_WIDTH_KEY, String(limit)); } catch (e) { /* private mode */ }
+    }
+
+    splitter.addEventListener("pointerdown", function (event) {
+      event.preventDefault();
+      splitter.setPointerCapture(event.pointerId);
+      var origin = app.getBoundingClientRect().left;
+      function move(e) { apply(e.clientX - origin); }
+      function stop() {
+        splitter.removeEventListener("pointermove", move);
+        splitter.removeEventListener("pointerup", stop);
+      }
+      splitter.addEventListener("pointermove", move);
+      splitter.addEventListener("pointerup", stop);
+    });
+
+    // Keyboard equivalent, so the splitter is not a mouse-only control.
+    splitter.addEventListener("keydown", function (event) {
+      var step = event.shiftKey ? 64 : 16;
+      var current = document.getElementById("cd-tree").getBoundingClientRect().width;
+      if (event.key === "ArrowLeft") { apply(current - step); event.preventDefault(); }
+      if (event.key === "ArrowRight") { apply(current + step); event.preventDefault(); }
+    });
+  }
+
   function fail(message) {
     document.getElementById("cd-app").textContent = "";
     var panel = element("div", "cd-error");
@@ -253,6 +298,7 @@
       return;
     }
     state.root = location.root;
+    setupSplitter();
 
     fetch(state.root + MODEL_FILE)
       .then(function (response) {
