@@ -264,8 +264,10 @@ def write(model: dict, path: str | Path) -> Path:
     # Written via a temporary file so an interrupted run cannot leave a
     # half-written model that a later stage would happily parse.
     temporary = path.with_suffix(path.suffix + ".tmp")
+    # Written compact: it is a generated artefact that is parsed, not read, and
+    # indentation costs a factor of about four in transfer size.
     temporary.write_text(
-        json.dumps(model, indent=2, ensure_ascii=False, sort_keys=False) + "\n",
+        json.dumps(model, ensure_ascii=False, separators=(",", ":"), sort_keys=False) + "\n",
         encoding="utf-8",
     )
     temporary.replace(path)

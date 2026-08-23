@@ -50,7 +50,11 @@ class RenderContext:
     # image id -> {"file", "alt"}. None means no catalogue was supplied, which
     # is a deliberate choice by the caller rather than a broken reference.
     media: dict[str, dict] | None = None
-    asset_prefix: str = ""                 # deployment prefix, see N18
+    # Placeholder for the path back to the output root. The renderer cannot know
+    # how deep the page consuming this fragment sits, and the same fragment is
+    # used by pages at different depths and by the viewer. Whoever writes the
+    # page substitutes it — see generator.ROOT_TOKEN.
+    asset_prefix: str = "%ROOT%"
     source: str = ""
     owner: str = ""
     findings: list[Finding] = field(default_factory=list)

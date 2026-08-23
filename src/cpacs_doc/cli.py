@@ -21,6 +21,7 @@ from lxml import etree
 
 from . import catalogue as catalogue_module
 from . import content as content_module
+from . import generator as generator_module
 from . import media as media_module
 from . import model as model_module
 from . import tree as tree_module
@@ -131,6 +132,11 @@ def main(argv: list[str] | None = None) -> int:
     common(build_command)
     build_command.add_argument("-o", "--output", type=Path, default=Path("build"),
                                help="output directory (default: build)")
+    build_command.add_argument("--site", action="store_true",
+                               help="also write the static type pages")
+    build_command.add_argument("--media-root", type=Path,
+                               help="directory the media catalogue paths are relative to "
+                                    "(default: the catalogue's own directory)")
 
     args = parser.parse_args(argv)
 
@@ -173,6 +179,14 @@ def main(argv: list[str] | None = None) -> int:
         )
         written = model_module.write(model, args.output / DEFAULT_MODEL_NAME)
         print(f"model: {written} ({written.stat().st_size / 1e6:.1f} MB)")
+
+        if args.site:
+            media_root = args.media_root
+            if media_root is None and media_catalogue is not None:
+                media_root = media_catalogue.base_dir
+            site = generator_module.generate(model, args.output, media_root=media_root)
+            report.extend(site.findings)
+            print(f"site: {args.output} ({site.pages} pages, {site.assets} figures)")
 
     _write_statistics(catalogue, tree, media_catalogue)
     report.write(sys.stdout, limit=None if args.limit == 0 else args.limit)
