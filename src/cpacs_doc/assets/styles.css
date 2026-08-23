@@ -45,10 +45,11 @@ body.cd-viewer { max-width: none; padding: 1rem 1.25rem; }
             flex: 0 0 auto; color: inherit; }
 .cd-label:hover .cd-name { text-decoration: underline; }
 .cd-name { font-family: ui-monospace, monospace; font-size: 0.9rem; }
-/* Optional elements are set in italics. The cardinality is spelled out next to
-   every node anyway, so the slant only reinforces what the text already says. */
-.cd-optional .cd-name { font-style: italic; }
-.cd-required .cd-name { font-style: normal; }
+/* Mandatory elements carry slightly more weight, optional ones a muted colour.
+   The cardinality is spelled out next to every node anyway, so this only
+   reinforces what the text already says. */
+.cd-required .cd-name { font-weight: 650; }
+.cd-optional .cd-name { color: var(--muted); }
 .cd-cardinality, .cd-typename { color: var(--muted); font-size: 0.78rem; }
 .cd-typename { font-family: ui-monospace, monospace; }
 .cd-crumb { border: 0; background: none; cursor: pointer; font: inherit; padding: 0;
