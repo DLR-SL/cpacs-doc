@@ -201,7 +201,9 @@ def _child_elements(definition, catalogue):
     instance carries it: 1,051 of the 1,101 global types extend
     `complexBaseType`, so omitting the base would drop uID from every node.
     """
-    for holder in _content_holders(definition, catalogue):
+    # Base content first: an instance carries the base type's elements before
+    # the extension's, and the tree mirrors the instance.
+    for holder in reversed(list(_content_holders(definition, catalogue))):
         for compositor_name in COMPOSITORS:
             compositor = holder.find(q(XSD, compositor_name))
             if compositor is None:
