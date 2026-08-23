@@ -20,6 +20,7 @@ from pathlib import Path
 from lxml import etree
 
 from . import catalogue as catalogue_module
+from . import content as content_module
 from . import media as media_module
 from . import model as model_module
 from . import tree as tree_module
@@ -49,6 +50,13 @@ def run(schema_path: Path, media_path: Path | None, report: Report, *, media_exp
     catalogue = catalogue_module.build(root, source)
     report.extend(catalogue.findings)
 
+    content_by_type = {}
+    for name, info in catalogue.types.items():
+        entry = content_module.read(info, catalogue, source)
+        report.extend(entry.findings)
+        if not entry.is_empty:
+            content_by_type[name] = entry
+
     tree = tree_module.build(root, catalogue, source)
     report.extend(tree.findings)
 
@@ -70,7 +78,26 @@ def run(schema_path: Path, media_path: Path | None, report: Report, *, media_exp
             str(schema_path),
         )
 
-    return catalogue, tree, media_catalogue
+    return catalogue, tree, media_catalogue, content_by_type
+
+
+def root_version(schema_path: Path, report: Report) -> str | None:
+    """`version` on `xsd:schema`, where the schema carries one.
+
+    Its absence is reported, not worked around: deriving a version from a
+    documentation body or from the file name would be a guess, and generating
+    is version-free by design.
+    """
+    root = etree.parse(str(schema_path), PARSER).getroot()
+    version = root.get("version")
+    if not version:
+        report.info(
+            "SCHEMA_WITHOUT_VERSION",
+            "xsd:schema carries no version attribute; the model records none",
+            str(schema_path),
+        )
+        return None
+    return version
 
 
 def default_media_path(schema_path: Path) -> Path | None:
@@ -122,7 +149,7 @@ def main(argv: list[str] | None = None) -> int:
     report = Report()
 
     try:
-        catalogue, tree, media_catalogue = run(
+        catalogue, tree, media_catalogue, content_by_type = run(
             args.schema, media_path, report, media_expected=not args.no_media
         )
     except etree.XMLSyntaxError as err:
@@ -130,13 +157,19 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     if args.command == "build":
+        rendered, render_findings = model_module.render_all(
+            catalogue, media_catalogue, args.schema.name
+        )
+        report.extend(render_findings)
         model = model_module.build(
             catalogue,
             tree,
             media_catalogue,
             report,
             schema_path=str(args.schema),
-            schema_version=None,
+            schema_version=root_version(args.schema, report),
+            content_by_type=content_by_type,
+            rendered=rendered,
         )
         written = model_module.write(model, args.output / DEFAULT_MODEL_NAME)
         print(f"model: {written} ({written.stat().st_size / 1e6:.1f} MB)")

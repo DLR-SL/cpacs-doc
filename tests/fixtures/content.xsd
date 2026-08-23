@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+
+    <xsd:complexType name="baseType">
+        <xsd:sequence>
+            <xsd:element name="baseField" type="xsd:string"/>
+        </xsd:sequence>
+        <xsd:attribute name="externalFileName" type="xsd:string"/>
+        <xsd:attribute name="externalDataDirectory" type="xsd:string"/>
+    </xsd:complexType>
+
+    <xsd:simpleType name="symmetryType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="none">
+                <xsd:annotation><xsd:documentation>no symmetry</xsd:documentation></xsd:annotation>
+            </xsd:enumeration>
+            <xsd:enumeration value="x-y-plane"/>
+            <xsd:enumeration value="x-z-plane"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:complexType name="wingType">
+        <xsd:complexContent>
+            <xsd:extension base="baseType">
+                <xsd:sequence>
+                    <xsd:element name="span" type="xsd:double"/>
+                    <xsd:element name="mode" minOccurs="0">
+                        <xsd:simpleType>
+                            <xsd:restriction base="xsd:string">
+                                <xsd:enumeration value="inline-only"/>
+                            </xsd:restriction>
+                        </xsd:simpleType>
+                    </xsd:element>
+                    <xsd:element name="segment" type="xsd:string" maxOccurs="unbounded"/>
+                </xsd:sequence>
+                <xsd:attribute name="uID" type="xsd:ID" use="required"/>
+                <xsd:attribute name="symmetry" type="symmetryType" default="none"/>
+                <xsd:attribute name="externalDataDirectory" type="xsd:string" use="required"/>
+            </xsd:extension>
+        </xsd:complexContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="emptyType"/>
+
+    <xsd:element name="cpacs" type="wingType"/>
+</xsd:schema>

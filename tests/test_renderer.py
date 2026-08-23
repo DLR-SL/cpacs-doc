@@ -139,3 +139,10 @@ def test_sandcastle_cross_reference_becomes_a_marked_span():
     html = renderer.render(etree.fromstring(fragment), context)
     assert 'class="cd-xref" data-type="wingType"' in html
     assert context.findings == []
+
+
+def test_unresolved_image_is_a_warning_when_no_catalogue_was_supplied():
+    """`--no-media` is a deliberate choice; only a supplied catalogue that
+    lacks the entry is an error."""
+    _, findings = render('<ddue:mediaLink><ddue:image xlink:href="gone"/></ddue:mediaLink>')
+    assert [(f.severity, f.code) for f in findings] == [("warning", "RENDER_IMAGE_UNRESOLVED")]

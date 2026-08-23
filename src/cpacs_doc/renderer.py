@@ -47,7 +47,9 @@ LIST_CLASSES = {"bullet": "ul", "ordered": "ol"}
 
 @dataclass
 class RenderContext:
-    media: dict[str, dict] | None = None   # image id -> {"file", "alt"}
+    # image id -> {"file", "alt"}. None means no catalogue was supplied, which
+    # is a deliberate choice by the caller rather than a broken reference.
+    media: dict[str, dict] | None = None
     asset_prefix: str = ""                 # deployment prefix, see N18
     source: str = ""
     owner: str = ""
@@ -68,7 +70,9 @@ def render(node: etree._Element | None, context: RenderContext) -> str:
     """Render one `ddue` subtree. Returns an empty string for `None`."""
     if node is None:
         return ""
-    return "".join(_children(node, context))
+    # Stripped: the schema indents its documentation bodies, so the first and
+    # last text nodes are almost always whitespace.
+    return "".join(_children(node, context)).strip()
 
 
 def _children(node, context) -> list[str]:
@@ -165,7 +169,8 @@ def _image(node, context):
         return ""
     entry = (context.media or {}).get(image_id)
     if entry is None:
-        context.report("error", "RENDER_IMAGE_UNRESOLVED", f"no media entry for {image_id!r}", node)
+        severity = "warning" if context.media is None else "error"
+        context.report(severity, "RENDER_IMAGE_UNRESOLVED", f"no media entry for {image_id!r}", node)
         return f'<span class="{CLASS_PREFIX}missing-image" data-image-id="{escape(image_id)}"></span>'
 
     source = f"{context.asset_prefix}/media/{entry['file']}"
