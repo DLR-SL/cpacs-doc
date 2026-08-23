@@ -1,5 +1,5 @@
-:root { color-scheme: light dark; --border: #d0d0d0; --muted: #666; --accent: #0a6ebd; }
-@media (prefers-color-scheme: dark) { :root { --border: #3a3a3a; --muted: #9a9a9a; --accent: #6ab7ff; } }
+:root { color-scheme: light dark; --border: #d0d0d0; --muted: #666; }
+@media (prefers-color-scheme: dark) { :root { --border: #3a3a3a; --muted: #9a9a9a; } }
 body { font: 16px/1.6 system-ui, sans-serif; margin: 0 auto; max-width: 60rem; padding: 2rem 1rem; }
 h1 { font-size: 1.6rem; margin-bottom: 0.2rem; }
 h2 { font-size: 1.15rem; margin-top: 2rem; }
@@ -45,11 +45,10 @@ body.cd-viewer { max-width: none; padding: 1rem 1.25rem; }
             flex: 0 0 auto; color: inherit; }
 .cd-label:hover .cd-name { text-decoration: underline; }
 .cd-name { font-family: ui-monospace, monospace; font-size: 0.9rem; }
-/* Cardinality is shown as text; colour and weight only reinforce it, so the
-   distinction survives for readers who cannot see the difference. */
-.cd-required .cd-name { font-weight: 650; }
-.cd-optional .cd-name { color: var(--muted); }
-.cd-repeatable .cd-cardinality { color: var(--accent); font-weight: 650; }
+/* Optional elements are set in italics. The cardinality is spelled out next to
+   every node anyway, so the slant only reinforces what the text already says. */
+.cd-optional .cd-name { font-style: italic; }
+.cd-required .cd-name { font-style: normal; }
 .cd-cardinality, .cd-typename { color: var(--muted); font-size: 0.78rem; }
 .cd-typename { font-family: ui-monospace, monospace; }
 .cd-crumb { border: 0; background: none; cursor: pointer; font: inherit; padding: 0;
