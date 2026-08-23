@@ -50,9 +50,26 @@ class ChildInfo:
     type_name: str | None
     min_occurs: int
     max_occurs: int | None
-    compositor: str | None
     doc: Documentation
     line: int | None
+
+
+@dataclass
+class ChildGroup:
+    """A compositor and what it contains.
+
+    Children form a tree, not a list: 84 `choice` groups in the schema decide
+    between alternatives, 48 of them between groups of elements rather than
+    single ones, and 14 are optional as a whole. Flattening that into one
+    attribute per child cannot express which children belong to the same
+    decision, and ten types contain more than one.
+    """
+
+    compositor: str
+    min_occurs: int
+    max_occurs: int | None
+    members: list["ChildInfo | ChildGroup"] = field(default_factory=list)
+    line: int | None = None
 
 
 @dataclass
@@ -230,49 +247,56 @@ def _children(info, catalogue, source, content) -> None:
     # show an order no instance ever has.
     for holder, _, _ in reversed(list(_holders(info.node, catalogue))):
         for compositor_name in COMPOSITORS:
-            compositor = holder.find(q(XSD, compositor_name))
-            if compositor is None:
+            node = holder.find(q(XSD, compositor_name))
+            if node is None:
                 continue
-            for node, name in _elements_in(compositor, compositor_name):
-                declared = node.get("name") or node.get("ref")
-                if not declared:
-                    content.findings.append(
-                        Finding(
-                            "error",
-                            "CHILD_WITHOUT_NAME",
-                            f"{info.name}: xsd:element without @name or @ref",
-                            location_of(node, source),
-                        )
-                    )
-                    continue
-                doc, problems = ann.read(
-                    node.find(q(XSD, "annotation")), source, f"element {info.name}/{declared}"
-                )
-                content.findings.extend(problems)
-                content.children.append(
-                    ChildInfo(
-                        name=declared,
-                        type_name=node.get("type"),
-                        min_occurs=_occurs(node.get("minOccurs"), 1),
-                        max_occurs=_occurs(node.get("maxOccurs"), 1),
-                        compositor=name,
-                        doc=doc,
-                        line=getattr(node, "sourceline", None),
-                    )
-                )
+            content.children.append(_read_group(node, compositor_name, info, source, content))
 
 
-def _elements_in(compositor, compositor_name):
-    """Elements inside a compositor. Descent stops at `xsd:element`, whose own
-    children belong to it rather than to this level."""
-    for child in compositor:
+def _read_group(node, compositor_name, info, source, content) -> ChildGroup:
+    group = ChildGroup(
+        compositor=compositor_name,
+        min_occurs=_occurs(node.get("minOccurs"), 1),
+        max_occurs=_occurs(node.get("maxOccurs"), 1),
+        line=getattr(node, "sourceline", None),
+    )
+    for child in node:
         if not isinstance(child.tag, str):
             continue
         name = local(child.tag)
-        if name == "element":
-            yield child, compositor_name
-        elif name in COMPOSITORS:
-            yield from _elements_in(child, name)
+        if name in COMPOSITORS:
+            group.members.append(_read_group(child, name, info, source, content))
+        elif name == "element":
+            member = _read_child(child, info, source, content)
+            if member is not None:
+                group.members.append(member)
+    return group
+
+
+def _read_child(node, info, source, content) -> ChildInfo | None:
+    declared = node.get("name") or node.get("ref")
+    if not declared:
+        content.findings.append(
+            Finding(
+                "error",
+                "CHILD_WITHOUT_NAME",
+                f"{info.name}: xsd:element without @name or @ref",
+                location_of(node, source),
+            )
+        )
+        return None
+    doc, problems = ann.read(
+        node.find(q(XSD, "annotation")), source, f"element {info.name}/{declared}"
+    )
+    content.findings.extend(problems)
+    return ChildInfo(
+        name=declared,
+        type_name=node.get("type"),
+        min_occurs=_occurs(node.get("minOccurs"), 1),
+        max_occurs=_occurs(node.get("maxOccurs"), 1),
+        doc=doc,
+        line=getattr(node, "sourceline", None),
+    )
 
 
 def _occurs(value, default):

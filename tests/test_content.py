@@ -51,17 +51,49 @@ def test_enumeration_documentation_is_read(parse):
     assert "no symmetry" in values["none"].doc.text
 
 
+def flatten(members):
+    """Element members in document order, groups walked through."""
+    out = []
+    for member in members:
+        if hasattr(member, "compositor"):
+            out.extend(flatten(member.members))
+        else:
+            out.append(member)
+    return out
+
+
 def test_children_include_inherited_content(parse):
-    names = [c.name for c in read(parse, "wingType").children]
+    """1,080 of 1,101 CPACS types derive, and the base type's content comes
+    first in an instance."""
+    names = [c.name for c in flatten(read(parse, "wingType").children)]
     assert "uID" not in names
     assert names[:2] == ["baseField", "span"]
 
 
-def test_child_cardinality_and_compositor(parse):
-    children = {c.name: c for c in read(parse, "wingType").children}
+def test_children_are_grouped_by_compositor(parse):
+    """A compositor governs a set of children; 84 choice groups in the schema
+    decide between alternatives, and ten types contain more than one."""
+    groups = read(parse, "wingType").children
+    assert [g.compositor for g in groups] == ["sequence", "sequence"]
+
+
+def test_child_cardinality_is_read(parse):
+    children = {c.name: c for c in flatten(read(parse, "wingType").children)}
     assert children["span"].min_occurs == 1
     assert children["segment"].max_occurs is None
-    assert children["segment"].compositor == "sequence"
+
+
+def test_nested_groups_are_preserved(parse):
+    """48 of the 84 choice groups decide between groups of elements rather
+    than between single ones."""
+    outer = read(parse, "choiceType").children[0]
+    assert outer.compositor == "sequence"
+    inner = [m for m in outer.members if hasattr(m, "compositor")]
+    assert [g.compositor for g in inner] == ["choice"]
+    assert inner[0].min_occurs == 0
+    alternatives = inner[0].members
+    assert alternatives[0].name == "either"
+    assert [m.name for m in alternatives[1].members] == ["bothA", "bothB"]
 
 
 def test_type_without_content_is_empty(parse):

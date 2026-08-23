@@ -81,9 +81,9 @@
   // anyone writing an instance: whether the children have to appear in the
   // given order. Spelling it out is worth more than the vocabulary term.
   var COMPOSITOR_LABEL = {
-    sequence: "children in fixed order",
-    all: "children in any order",
-    choice: "one of the children"
+    sequence: "in this order",
+    all: "in any order",
+    choice: "one of"
   };
 
   function compositorLabel(name) {
@@ -251,13 +251,7 @@
           { head: "Inherited from", cell: function (a) {
               return text(a.inherited ? a.declaredIn : "", null, "cd-inherited"); } }
         ]);
-        appendTable(panel, "Child elements", type.children, [
-          { head: "Name", cell: function (c) { return childCell(c); } },
-          { head: "Type", cell: function (c) { return typeCell(c.type); } },
-          { head: "Occurrence", cell: function (c) { return text(cardinality(c)); } },
-          { head: "Order", cell: function (c) { return text(compositorLabel(c.compositor || "")); } },
-          { head: "Description", cell: function (c) { return text(documentationText(c)); } }
-        ]);
+        appendChildTable(panel, type.children);
         appendTable(panel, "Allowed values", type.enumeration, [
           { head: "Value", cell: function (v) { return text(v.value, "code"); } },
           { head: "Description", cell: function (v) { return text(documentationText(v)); } }
@@ -303,6 +297,59 @@
     button.appendChild(element("code", null, child.name));
     button.addEventListener("click", function () { select(state.path.concat(child.name)); });
     return button;
+  }
+
+  function appendChildTable(panel, members) {
+    if (!members || !members.length) return;
+    panel.appendChild(element("h2", null, "Child elements"));
+    var table = element("table");
+    var head = element("tr");
+    var headings = ["Name", "Type", "Occurrence", "Description"];
+    for (var h = 0; h < headings.length; h++) head.appendChild(element("th", null, headings[h]));
+    table.appendChild(head);
+    appendChildRows(table, members, 0);
+    panel.appendChild(table);
+  }
+
+  // A compositor governs a set of children, not each child on its own, so it
+  // heads them as a row of its own instead of repeating in a column.
+  function appendChildRows(table, members, depth) {
+    for (var i = 0; i < members.length; i++) {
+      var member = members[i];
+      if (member.kind === "group") {
+        var groupRow = element("tr", "cd-group");
+        var groupCell = element("td");
+        groupCell.setAttribute("colspan", "3");
+        indent(groupCell, depth);
+        groupCell.appendChild(element("span", "cd-group-label", groupLabel(member)));
+        groupRow.appendChild(groupCell);
+        groupRow.appendChild(element("td"));
+        table.appendChild(groupRow);
+        appendChildRows(table, member.members || [], depth + 1);
+        continue;
+      }
+      var row = element("tr");
+      var nameCell = element("td");
+      indent(nameCell, depth);
+      nameCell.appendChild(childCell(member));
+      row.appendChild(nameCell);
+      var typeCellNode = element("td");
+      typeCellNode.appendChild(typeCell(member.type));
+      row.appendChild(typeCellNode);
+      row.appendChild(text(cardinality(member), "td"));
+      row.appendChild(text(documentationText(member), "td"));
+      table.appendChild(row);
+    }
+  }
+
+  function indent(cell, depth) {
+    if (depth) cell.style.paddingLeft = (depth * 1.4).toFixed(1) + "rem";
+  }
+
+  function groupLabel(group) {
+    var label = compositorLabel(group.compositor);
+    var occurrence = cardinality(group);
+    return occurrence === "1" ? label : label + " \u00B7 " + occurrence;
   }
 
   function appendTable(panel, heading, rows, columns) {

@@ -114,16 +114,29 @@ def _enumeration_entry(value) -> dict:
     return entry
 
 
-def _child_entry(child) -> dict:
+def _child_entry(member) -> dict:
+    """One row of the child table: an element, or a compositor with members.
+
+    `kind` distinguishes them so a consumer does not have to guess from the
+    presence of a key.
+    """
+    if hasattr(member, "compositor"):
+        return {
+            "kind": "group",
+            "compositor": member.compositor,
+            "minOccurs": member.min_occurs,
+            "maxOccurs": member.max_occurs,
+            "members": [_child_entry(m) for m in member.members],
+        }
     entry = {
-        "name": child.name,
-        "type": child.type_name,
-        "minOccurs": child.min_occurs,
-        "maxOccurs": child.max_occurs,
-        "compositor": child.compositor,
-        "line": child.line,
+        "kind": "element",
+        "name": member.name,
+        "type": member.type_name,
+        "minOccurs": member.min_occurs,
+        "maxOccurs": member.max_occurs,
+        "line": member.line,
     }
-    documentation = _documentation(child.doc)
+    documentation = _documentation(member.doc)
     if documentation:
         entry["documentation"] = documentation
     return entry

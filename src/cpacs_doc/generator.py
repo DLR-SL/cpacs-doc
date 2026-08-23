@@ -225,26 +225,59 @@ def _attribute_table(attributes) -> str:
     )
 
 
+GROUP_LABEL = {
+    "sequence": "in this order",
+    "all": "in any order",
+    "choice": "one of",
+}
+
+
 def _child_table(children) -> str:
     if not children:
         return ""
-    rows = []
-    for child in children:
-        rows.append(
-            "<tr>"
-            f'<td><code>{escape(child["name"])}</code></td>'
-            f'<td>{_type_link(child.get("type"))}</td>'
-            f"<td>{escape(_cardinality(child))}</td>"
-            f'<td>{escape(COMPOSITOR_LABEL.get(child.get("compositor"), child.get("compositor") or ""))}</td>'
-            f'<td>{escape(child.get("documentation", {}).get("text", ""))}</td>'
-            "</tr>"
-        )
+    rows = _child_rows(children, depth=0)
+    if not rows:
+        return ""
     return (
         '<section class="cd-children"><h2>Child elements</h2><table>'
-        "<tr><th>Name</th><th>Type</th><th>Occurrence</th><th>Order</th><th>Description</th></tr>"
+        "<tr><th>Name</th><th>Type</th><th>Occurrence</th><th>Description</th></tr>"
         + "".join(rows)
         + "</table></section>"
     )
+
+
+def _child_rows(members, depth: int) -> list[str]:
+    """Rows for one level, groups as headings above their indented members.
+
+    A compositor governs a set of children, not each child on its own, so it is
+    a row of its own rather than a column repeated on every line.
+    """
+    rows = []
+    for member in members:
+        indent = f' style="padding-left:{depth * 1.4:.1f}rem"' if depth else ""
+        if member.get("kind") == "group":
+            rows.append(
+                f'<tr class="cd-group"><td{indent} colspan="3">'
+                f'<span class="cd-group-label">{escape(_group_label(member))}</span></td>'
+                f"<td></td></tr>"
+            )
+            rows.extend(_child_rows(member.get("members", []), depth + 1))
+            continue
+        rows.append(
+            "<tr>"
+            f'<td{indent}><code>{escape(member["name"])}</code></td>'
+            f'<td>{_type_link(member.get("type"))}</td>'
+            f"<td>{escape(_cardinality(member))}</td>"
+            f'<td>{escape(member.get("documentation", {}).get("text", ""))}</td>'
+            "</tr>"
+        )
+    return rows
+
+
+def _group_label(group) -> str:
+    label = GROUP_LABEL.get(group.get("compositor"), group.get("compositor") or "")
+    occurrence = _cardinality(group)
+    return label if occurrence == "1" else f"{label} · {occurrence}"
 
 
 def _cardinality(child) -> str:

@@ -42,5 +42,18 @@
 
     <xsd:complexType name="emptyType"/>
 
+    <xsd:complexType name="choiceType">
+        <xsd:sequence>
+            <xsd:element name="always" type="xsd:string"/>
+            <xsd:choice minOccurs="0">
+                <xsd:element name="either" type="xsd:string"/>
+                <xsd:sequence>
+                    <xsd:element name="bothA" type="xsd:string"/>
+                    <xsd:element name="bothB" type="xsd:string"/>
+                </xsd:sequence>
+            </xsd:choice>
+        </xsd:sequence>
+    </xsd:complexType>
+
     <xsd:element name="cpacs" type="wingType"/>
 </xsd:schema>

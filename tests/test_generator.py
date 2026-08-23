@@ -31,10 +31,16 @@ def model():
                      "declaredIn": "baseType", "line": 12},
                 ],
                 "children": [
-                    {"name": "span", "type": "xsd:double", "minOccurs": 1, "maxOccurs": 1,
-                     "compositor": "sequence"},
-                    {"name": "segment", "type": "baseType", "minOccurs": 0, "maxOccurs": None,
-                     "compositor": "sequence"},
+                    {"kind": "group", "compositor": "sequence", "minOccurs": 1, "maxOccurs": 1,
+                     "members": [
+                         {"kind": "element", "name": "span", "type": "xsd:double",
+                          "minOccurs": 1, "maxOccurs": 1},
+                         {"kind": "group", "compositor": "choice", "minOccurs": 0, "maxOccurs": 1,
+                          "members": [
+                              {"kind": "element", "name": "segment", "type": "baseType",
+                               "minOccurs": 0, "maxOccurs": None},
+                          ]},
+                     ]},
                 ],
             },
             "nacaType/code": {
@@ -112,13 +118,28 @@ def test_a_type_with_no_tree_occurrence_gets_no_such_link(model, tmp_path):
     assert "Show in tree" not in html
 
 
-def test_compositor_is_spelled_out(model, tmp_path):
-    """`sequence` and `all` name a distinction that matters when writing an
-    instance; the schema word alone does not convey it."""
+def test_a_group_heads_its_members_instead_of_repeating_per_row(model, tmp_path):
+    """A compositor governs a set of children, so it is a row of its own."""
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
-    assert "children in fixed order" in html
+    assert "in this order" in html
     assert ">sequence<" not in html
+    assert "cd-group" in html
+
+
+def test_an_optional_group_states_its_own_occurrence(model, tmp_path):
+    """14 of the 84 choice groups are optional as a whole; that belongs on the
+    group, not on its members."""
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert "one of · 0…1" in html
+
+
+def test_nested_members_are_indented(model, tmp_path):
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert "padding-left:1.4rem" in html
+    assert "padding-left:2.8rem" in html
 
 
 def test_bare_schema_line_is_not_shown(model, tmp_path):
