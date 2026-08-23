@@ -80,14 +80,16 @@
   // "sequence" and "all" are schema words for a distinction that matters to
   // anyone writing an instance: whether the children have to appear in the
   // given order. Spelling it out is worth more than the vocabulary term.
-  var COMPOSITOR_LABEL = {
+  // The schema word stays, for readers who think in it; the gloss says what it
+  // means for an instance, for those who do not.
+  var COMPOSITOR_GLOSS = {
     sequence: "in this order",
     all: "in any order",
-    choice: "one of"
+    choice: "exactly one of"
   };
 
-  function compositorLabel(name) {
-    return COMPOSITOR_LABEL[name] || name;
+  function compositorGloss(name) {
+    return COMPOSITOR_GLOSS[name] || "";
   }
 
   function cardinality(decl) {
@@ -317,11 +319,17 @@
     for (var i = 0; i < members.length; i++) {
       var member = members[i];
       if (member.kind === "group") {
-        var groupRow = element("tr", "cd-group");
+        var groupRow = element("tr", "cd-group cd-group-" + (member.compositor || ""));
         var groupCell = element("td");
         groupCell.setAttribute("colspan", "3");
         indent(groupCell, depth);
-        groupCell.appendChild(element("span", "cd-group-label", groupLabel(member)));
+        var label = element("span", "cd-group-label");
+        var mark = element("span", "cd-group-mark");
+        mark.setAttribute("aria-hidden", "true");
+        label.appendChild(mark);
+        label.appendChild(element("span", "cd-group-term", member.compositor || ""));
+        label.appendChild(element("span", "cd-group-gloss", groupGloss(member)));
+        groupCell.appendChild(label);
         groupRow.appendChild(groupCell);
         groupRow.appendChild(element("td"));
         table.appendChild(groupRow);
@@ -346,10 +354,10 @@
     if (depth) cell.style.paddingLeft = (depth * 1.4).toFixed(1) + "rem";
   }
 
-  function groupLabel(group) {
-    var label = compositorLabel(group.compositor);
+  function groupGloss(group) {
+    var gloss = compositorGloss(group.compositor);
     var occurrence = cardinality(group);
-    return occurrence === "1" ? label : label + " \u00B7 " + occurrence;
+    return occurrence === "1" ? gloss : gloss + " \u00B7 " + occurrence;
   }
 
   function appendTable(panel, heading, rows, columns) {
@@ -395,7 +403,7 @@
       meta.appendChild(typeCell(type.base));
     }
     if (type.compositor) {
-      meta.appendChild(document.createTextNode(" \u00B7 " + compositorLabel(type.compositor)));
+      meta.appendChild(document.createTextNode(" \u00B7 " + type.compositor + ", " + compositorGloss(type.compositor)));
     }
     meta.appendChild(document.createTextNode(" \u00B7 "));
     var page = element("a", null, "citable page");

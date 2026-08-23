@@ -119,12 +119,14 @@ def test_a_type_with_no_tree_occurrence_gets_no_such_link(model, tmp_path):
 
 
 def test_a_group_heads_its_members_instead_of_repeating_per_row(model, tmp_path):
-    """A compositor governs a set of children, so it is a row of its own."""
+    """A compositor governs a set of children, so it is a row of its own. The
+    schema word stays for readers who think in it, with a plain reading next to
+    it for those who do not."""
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert '<span class="cd-group-term">sequence</span>' in html
     assert "in this order" in html
-    assert ">sequence<" not in html
-    assert "cd-group" in html
+    assert "cd-group-sequence" in html
 
 
 def test_an_optional_group_states_its_own_occurrence(model, tmp_path):
@@ -132,7 +134,7 @@ def test_an_optional_group_states_its_own_occurrence(model, tmp_path):
     group, not on its members."""
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
-    assert "one of · 0…1" in html
+    assert "exactly one of · 0…1" in html
 
 
 def test_nested_members_are_indented(model, tmp_path):
