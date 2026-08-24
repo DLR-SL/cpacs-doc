@@ -175,7 +175,9 @@ td code { white-space: nowrap; }
 /* Indent guides, as a code editor draws them: one hairline per level, so it is
    visible at a glance which rows belong to which group. The repeating gradient
    is clipped to the indented width, which keeps one rule for every depth. */
-.cd-indent {
+/* `td.cd-indent`, not `.cd-indent`: `td:first-child` sets padding-left to zero
+   and outweighs a bare class. */
+td.cd-indent {
   padding-left: calc(var(--depth, 0) * 1.4rem);
   background-image: repeating-linear-gradient(
     to right, var(--guide) 0 1px, transparent 1px 1.4rem
