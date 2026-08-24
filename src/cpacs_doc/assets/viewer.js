@@ -25,6 +25,7 @@
     path: [],          // selected instance path, without the root element
     expanded: null,    // Set of expanded paths
     nodeByPath: null,  // path -> model node
+    searchEntries: null,  // built on first search, not on load
     shownType: null    // type displayed in place of the selected node's detail
   };
 
@@ -501,6 +502,185 @@
     });
   }
 
+  /* ---- search (F12–F14) ----
+   *
+   * Built from the model that is already loaded, so there is no separate index
+   * to ship or keep in step. Ranking follows F13: an exact name first, then a
+   * name that starts with the query, then any name containing it, then a path
+   * segment, then body text — because someone typing `wingUID` wants the
+   * element, not the twelve descriptions that mention it.
+   */
+  var SEARCH_LIMIT = 60;
+  var SEARCH_DELAY = 120;
+
+  var RANK = {
+    exactName: 0,
+    prefixName: 1,
+    name: 2,
+    attribute: 3,
+    path: 4,
+    text: 5
+  };
+
+  function buildSearchEntries() {
+    var entries = [];
+    state.nodeByPath.forEach(function (node, path) {
+      var decl = declaration(node);
+      entries.push({
+        kind: "element",
+        label: decl.name || "?",
+        path: path,
+        detail: path,
+        type: decl.type || "",
+        text: (decl.documentation && decl.documentation.text) || ""
+      });
+    });
+    Object.keys(state.model.types).forEach(function (name) {
+      var type = state.model.types[name];
+      var documentation = type.documentation || {};
+      entries.push({
+        kind: "type",
+        label: name,
+        typeName: name,
+        detail: type.kind || "type",
+        text: documentation.summary || ""
+      });
+      (type.attributes || []).forEach(function (attribute) {
+        entries.push({
+          kind: "attribute",
+          label: "@" + attribute.name,
+          typeName: name,
+          detail: name,
+          text: (attribute.documentation && attribute.documentation.text) || ""
+        });
+      });
+    });
+    return entries;
+  }
+
+  function scoreEntry(entry, query) {
+    var label = entry.label.toLowerCase();
+    if (label === query) return RANK.exactName;
+    if (label.indexOf(query) === 0) return RANK.prefixName;
+    if (label.indexOf(query) !== -1) {
+      return entry.kind === "attribute" ? RANK.attribute : RANK.name;
+    }
+    if (entry.path && entry.path.toLowerCase().indexOf(query) !== -1) return RANK.path;
+    if (entry.text && entry.text.toLowerCase().indexOf(query) !== -1) return RANK.text;
+    return -1;
+  }
+
+  function search(query) {
+    query = query.trim().toLowerCase();
+    if (query.length < 2) return null;
+    if (!state.searchEntries) state.searchEntries = buildSearchEntries();
+
+    // Collected into one bucket per rank rather than sorted as a whole: a
+    // broad query matches tens of thousands of the 58,920 entries, and sorting
+    // all of them to show sixty is where the time would go.
+    var buckets = [[], [], [], [], [], []];
+    var total = 0;
+    for (var i = 0; i < state.searchEntries.length; i++) {
+      var rank = scoreEntry(state.searchEntries[i], query);
+      if (rank === -1) continue;
+      buckets[rank].push(state.searchEntries[i]);
+      total += 1;
+    }
+
+    var shown = [];
+    for (var b = 0; b < buckets.length && shown.length < SEARCH_LIMIT; b++) {
+      buckets[b].sort(function (x, y) {
+        if (x.label.length !== y.label.length) return x.label.length - y.label.length;
+        return x.label < y.label ? -1 : x.label > y.label ? 1 : 0;
+      });
+      shown = shown.concat(buckets[b].slice(0, SEARCH_LIMIT - shown.length));
+    }
+    return { shown: shown, total: total };
+  }
+
+  function renderResults(result, query) {
+    var panel = document.getElementById("cd-results");
+    var count = document.getElementById("cd-search-count");
+    panel.textContent = "";
+
+    if (!result.total) {
+      count.textContent = "no matches";
+      panel.appendChild(element("p", "cd-empty", "Nothing matches " + query + "."));
+      return;
+    }
+
+    count.textContent = result.total > result.shown.length
+      ? result.shown.length + " of " + result.total
+      : String(result.total);
+
+    var list = element("div", "cd-result-list");
+    for (var i = 0; i < result.shown.length; i++) {
+      list.appendChild(renderResult(result.shown[i]));
+    }
+    panel.appendChild(list);
+  }
+
+  function renderResult(entry) {
+    var row = element("button", "cd-result");
+    var label = element("span", "cd-result-label", entry.label);
+    if (entry.kind === "type") label.className += " cd-result-type";
+    row.appendChild(label);
+    row.appendChild(element("span", "cd-result-detail", entry.detail));
+    row.addEventListener("click", function () {
+      if (entry.kind === "element") {
+        // F14: results navigate into the tree, expanding the path.
+        closeSearch();
+        var segments = entry.path.split("/");
+        select(segments.slice(1));
+      } else {
+        closeSearch();
+        showType(entry.typeName);
+      }
+    });
+    return row;
+  }
+
+  function closeSearch() {
+    var field = document.getElementById("cd-search");
+    if (field) field.value = "";
+    showResults(false);
+    document.getElementById("cd-search-count").textContent = "";
+  }
+
+  function showResults(on) {
+    document.getElementById("cd-results").hidden = !on;
+    document.getElementById("cd-tree").hidden = on;
+  }
+
+  function setupSearch() {
+    var field = document.getElementById("cd-search");
+    if (!field) return;
+    var timer = null;
+
+    field.addEventListener("input", function () {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(function () {
+        var hits = search(field.value);
+        if (hits === null) {
+          showResults(false);
+          document.getElementById("cd-search-count").textContent = "";
+          return;
+        }
+        renderResults(hits, field.value.trim());
+        showResults(true);
+      }, SEARCH_DELAY);
+    });
+
+    field.addEventListener("keydown", function (event) {
+      if (event.key === "Escape") closeSearch();
+      if (event.key === "Enter") {
+        var first = document.getElementById("cd-results").children[0];
+        var button = first && first.children && first.children[0];
+        if (button && button.click) button.click();
+      }
+    });
+  }
+
   function fail(message) {
     document.getElementById("cd-app").textContent = "";
     var panel = element("div", "cd-error");
@@ -520,6 +700,7 @@
     }
     state.root = location.root;
     setupSplitter();
+    setupSearch();
 
     fetch(state.root + MODEL_FILE)
       .then(function (response) {

@@ -384,7 +384,15 @@ def _write_router(output: Path) -> None:
         "<title>CPACS schema</title>\n"
         f"<style>\n{_asset('styles.css')}</style>\n"
         '<body class="cd-viewer">\n<div id="cd-app" class="cd-app">\n'
+        '<div class="cd-column">\n'
+        '<div class="cd-search">'
+        '<input id="cd-search" type="search" placeholder="Search elements, types, attributes"'
+        ' autocomplete="off" spellcheck="false" aria-label="Search">'
+        '<span id="cd-search-count" class="cd-search-count"></span>'
+        "</div>\n"
         '<div id="cd-tree" class="cd-pane"></div>\n'
+        '<div id="cd-results" class="cd-pane" hidden></div>\n'
+        "</div>\n"
         '<div id="cd-splitter" class="cd-splitter" role="separator" aria-orientation="vertical"'
         ' tabindex="0" aria-label="Resize the tree pane"></div>\n'
         '<div id="cd-detail" class="cd-pane cd-pane-detail"></div>\n'

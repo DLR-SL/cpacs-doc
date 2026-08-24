@@ -305,7 +305,52 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 }
 .cd-splitter:hover, .cd-splitter:focus-visible { background: var(--rule-strong); outline: none; }
 
-.cd-pane { max-height: calc(100vh - 2.4rem); overflow: auto; }
+.cd-column { display: flex; flex-direction: column; min-width: 0; }
+.cd-search { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 0.6rem; }
+.cd-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--step-1);
+  padding: 0.35rem 0.55rem;
+  color: inherit;
+  background: var(--field);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+.cd-search input:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
+.cd-search-count { color: var(--ink-soft); font-size: var(--step-0); white-space: nowrap; }
+
+.cd-result-list { display: flex; flex-direction: column; }
+.cd-result {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  padding: 0.28rem 0.3rem;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.cd-result:hover, .cd-result:focus-visible { background: var(--field); }
+.cd-result-label { font-family: var(--face-code); font-size: var(--step-1); flex: 0 0 auto; }
+.cd-result-type { font-style: italic; }
+/* The path is the disambiguator, so it is truncated at the front: the tail is
+   what tells two occurrences of the same element apart. */
+.cd-result-detail {
+  color: var(--ink-soft);
+  font-size: var(--step-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+.cd-pane { max-height: calc(100vh - 5rem); overflow: auto; }
 .cd-pane-detail { padding-right: 1rem; }
 /* Detail text keeps a readable measure even though the pane is wide. */
 .cd-pane-detail > * { max-width: 44rem; }
