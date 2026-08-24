@@ -607,7 +607,9 @@ Implement the extractor, generate the model for v3.5.1, verify coverage against 
 **Phase 2 — viewer prototype. In progress.**
 The ddue renderer and the generator are done: the renderer covers all 25 vocabulary elements in Python, and the generator writes one static page per type plus the assets they need. The result is deployed as a preview from CI. Rendering happens once, in the generator, and the resulting fragments travel in the model — a second renderer in JavaScript would be a second thing to keep in step. Generated output carries no version and no deployment prefix: pages link relatively, and the router derives its prefix from the requested path at run time, so the output directory stays movable.
 
-Remaining: tree canvas, detail panel, search, `serve` mode. Comparison against the existing documentation on a sample of types is still outstanding.
+The tree canvas, the detail panel and client-side search are done as well. The tree is flat — indentation there means containment in an instance, and a compositor contains nothing — so nodes bound to a `choice` are marked rather than nested; the combinations are spelled out in the child table, where indentation describes a type. Search is built from the loaded model rather than from a separate index (§5), because a second artefact would carry the same data twice and have to be kept in step.
+
+Remaining: `serve` mode, and the comparison against the existing documentation on a sample of types — the latter is acceptance criterion 1 and still entirely unverified.
 
 Original scope for reference:
 Tree canvas, detail panel, ddue renderer, search, `serve` mode. Deployed in parallel under a preview path. Compared against the existing documentation on a sample of types.
