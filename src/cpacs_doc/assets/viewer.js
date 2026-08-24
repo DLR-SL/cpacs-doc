@@ -628,10 +628,10 @@
     row.appendChild(element("span", "cd-result-detail", entry.detail));
     row.addEventListener("click", function () {
       if (entry.kind === "element") {
-        // F14: results navigate into the tree, expanding the path.
+        // F14: results navigate into the tree, expanding the path. The stored
+        // path already excludes the root element, as `state.path` does.
         closeSearch();
-        var segments = entry.path.split("/");
-        select(segments.slice(1));
+        select(entry.path ? entry.path.split("/") : []);
       } else {
         closeSearch();
         showType(entry.typeName);
