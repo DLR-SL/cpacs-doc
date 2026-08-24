@@ -49,6 +49,10 @@
     return node.children || [];
   }
 
+  function isGroup(node) {
+    return !!declaration(node).group;
+  }
+
   function indexTree() {
     // Paths are built once so selection and expansion are lookups rather than
     // repeated walks. Only the path string is stored, not a copy of the node.
@@ -63,8 +67,11 @@
       state.nodeByPath.set(path.join("/"), node);
       var children = childrenOf(node);
       for (var i = children.length - 1; i >= 0; i--) {
-        var name = declaration(children[i]).name || "?";
-        stack.push([children[i], path.concat(name)]);
+        // A group has no instance path: its members sit at the parent's level.
+        var childPath = isGroup(children[i])
+          ? path
+          : path.concat(declaration(children[i]).name || "?");
+        stack.push([children[i], childPath]);
       }
     }
   }
@@ -120,8 +127,9 @@
   }
 
   function renderNode(node, path, depth) {
-    var key = path.join("/");
     var decl = declaration(node);
+    if (decl.group) return renderGroupNode(node, path, depth);
+    var key = path.join("/");
     var children = childrenOf(node);
     var isExpanded = state.expanded.has(key);
     var isSelected = key === state.path.join("/");
@@ -160,9 +168,47 @@
 
     if (isExpanded) {
       for (var i = 0; i < children.length; i++) {
-        var childName = declaration(children[i]).name || "?";
-        wrapper.appendChild(renderNode(children[i], path.concat(childName), depth + 1));
+        wrapper.appendChild(renderChild(children[i], path, depth + 1));
       }
+    }
+    return wrapper;
+  }
+
+  function renderChild(child, parentPath, depth) {
+    if (isGroup(child)) return renderNode(child, parentPath, depth);
+    return renderNode(child, parentPath.concat(declaration(child).name || "?"), depth);
+  }
+
+  function renderGroupNode(node, path, depth) {
+    // Shown for choices only, and for the groups that form their alternatives.
+    // A sequence or an all elsewhere says nothing the tree does not show.
+    var decl = declaration(node);
+    var item = element("div", "cd-node cd-node-group");
+    item.style.paddingLeft = depth * 16 + "px";
+    item.appendChild(element("span", "cd-toggle cd-toggle-blank", ""));
+
+    var label = element("span", "cd-group-label");
+    var mark = element("span", "cd-group-mark");
+    mark.setAttribute("aria-hidden", "true");
+    item.className += " cd-group-" + decl.group;
+    label.appendChild(mark);
+    var term = element("span", "cd-group-term", decl.group);
+    term.setAttribute("tabindex", "0");
+    var tip = element("span", "cd-tip", compositorGloss(decl.group));
+    tip.setAttribute("role", "note");
+    term.appendChild(tip);
+    label.appendChild(term);
+    var occurrence = cardinality(decl);
+    if (occurrence !== "1") {
+      label.appendChild(element("span", "cd-group-occurs", "\u00B7 " + occurrence));
+    }
+    item.appendChild(label);
+
+    var wrapper = element("div", "cd-subtree");
+    wrapper.appendChild(item);
+    var children = childrenOf(node);
+    for (var i = 0; i < children.length; i++) {
+      wrapper.appendChild(renderChild(children[i], path, depth + 1));
     }
     return wrapper;
   }
@@ -171,7 +217,10 @@
     state.shownType = null;
     state.path = path;
     expandAncestors(path);
-    var url = state.root + TREE_SEGMENT + path.join("/") + (path.length ? "/" : "");
+    // The root element is part of the URL: it is part of an instance path, and
+    // the "show in tree" links on type pages are written that way.
+    var segments = [declaration(state.model.tree).name].concat(path);
+    var url = state.root + TREE_SEGMENT + segments.join("/") + "/";
     window.history.pushState({ path: path }, "", url);
     renderTree();
     renderDetail();

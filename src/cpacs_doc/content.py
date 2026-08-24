@@ -52,6 +52,8 @@ class ChildInfo:
     max_occurs: int | None
     doc: Documentation
     line: int | None
+    # The declaration itself, for the tree to expand from. Not serialised.
+    node: etree._Element = field(repr=False, default=None)
 
 
 @dataclass
@@ -84,6 +86,40 @@ class TypeContent:
         return not (self.attributes or self.enumeration or self.children)
 
 
+def content_groups(node, catalogue, source: str, findings: list[Finding]) -> list["ChildGroup"]:
+    """Compositor groups of a type, base content first.
+
+    Shared with `tree.py`: two traversals of the same schema structure would
+    drift apart, and the tree already once ordered inherited content the wrong
+    way round.
+    """
+    holder_content = _TypeContent_for_findings(findings)
+    groups: list[ChildGroup] = []
+    for holder, _, _ in reversed(list(_holders(node, catalogue))):
+        for compositor_name in COMPOSITORS:
+            compositor = holder.find(q(XSD, compositor_name))
+            if compositor is None:
+                continue
+            groups.append(
+                _read_group(compositor, compositor_name, _Anonymous(node), source, holder_content)
+            )
+    return groups
+
+
+class _Anonymous:
+    """Minimal stand-in where only a name is needed for a finding message."""
+
+    def __init__(self, node):
+        self.name = node.get("name") or "<anonymous>"
+
+
+class _TypeContent_for_findings:
+    """Collects findings without building a full TypeContent."""
+
+    def __init__(self, findings):
+        self.findings = findings
+
+
 def read(info, catalogue, source: str) -> TypeContent:
     """Collect attributes, enumeration values and children of one type."""
     content = TypeContent()
@@ -92,7 +128,7 @@ def read(info, catalogue, source: str) -> TypeContent:
 
     _attributes(info, catalogue, source, content)
     _enumeration(info, source, content)
-    _children(info, catalogue, source, content)
+    content.children = content_groups(info.node, catalogue, source, content.findings)
     return content
 
 
@@ -241,18 +277,6 @@ def _restrictions(node):
             yield restriction
 
 
-def _children(info, catalogue, source, content) -> None:
-    # Base content first: in an instance of a type extending another, the base
-    # type's elements precede the extension's. Listing them nearest-first would
-    # show an order no instance ever has.
-    for holder, _, _ in reversed(list(_holders(info.node, catalogue))):
-        for compositor_name in COMPOSITORS:
-            node = holder.find(q(XSD, compositor_name))
-            if node is None:
-                continue
-            content.children.append(_read_group(node, compositor_name, info, source, content))
-
-
 def _read_group(node, compositor_name, info, source, content) -> ChildGroup:
     group = ChildGroup(
         compositor=compositor_name,
@@ -296,6 +320,7 @@ def _read_child(node, info, source, content) -> ChildInfo | None:
         max_occurs=_occurs(node.get("maxOccurs"), 1),
         doc=doc,
         line=getattr(node, "sourceline", None),
+        node=node,
     )
 
 

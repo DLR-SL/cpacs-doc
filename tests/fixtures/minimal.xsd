@@ -82,6 +82,13 @@
                     </xsd:sequence>
                 </xsd:choice>
                 <xsd:element name="odd" type="outlierType" minOccurs="0"/>
+                <xsd:choice minOccurs="0">
+                    <xsd:element name="either" type="undocumentedType"/>
+                    <xsd:sequence>
+                        <xsd:element name="bothA" type="undocumentedType"/>
+                        <xsd:element name="bothB" type="undocumentedType"/>
+                    </xsd:sequence>
+                </xsd:choice>
             </xsd:sequence>
         </xsd:complexType>
     </xsd:element>

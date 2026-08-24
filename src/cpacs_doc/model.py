@@ -145,6 +145,7 @@ def _child_entry(member) -> dict:
 def _declaration_entry(node) -> dict:
     entry = {
         "name": node.name,
+        **({"group": node.group} if node.group else {}),
         "type": node.type_name,
         "minOccurs": node.min_occurs,
         # null encodes unbounded; a sentinel integer would be
@@ -168,6 +169,10 @@ def _declaration_key(node) -> str:
     tree references declarations instead of repeating them. Path and depth are
     recoverable from the tree structure itself.
     """
+    if node.group:
+        # Group nodes share their parent's path, so the line number of the
+        # compositor is what tells two of them apart.
+        return f"g{node.line}"
     return str(node.line) if node.line else f"{node.type_name}:{node.name}"
 
 

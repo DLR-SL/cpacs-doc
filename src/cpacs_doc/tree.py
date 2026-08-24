@@ -22,6 +22,7 @@ from lxml import etree
 
 from . import annotations as ann
 from .annotations import XSD, Documentation, local, location_of, q
+from . import content as content_module
 from .catalogue import COMPOSITORS, Catalogue
 from .findings import Finding
 
@@ -30,7 +31,8 @@ ROOT_ELEMENT = "cpacs"
 
 @dataclass
 class Node:
-    name: str            # element name as it appears in an instance
+    name: str            # element name as it appears in an instance, or the
+                         # compositor for a group node
     path: str            # slash-separated instance path, without a leading slash
     type_name: str | None
     depth: int
@@ -41,6 +43,10 @@ class Node:
     recursive: bool = False  # expansion stopped: the type is already on this path
     children: list["Node"] = field(default_factory=list)
     line: int | None = None
+    # A group node stands for a compositor and has no instance path: it exists
+    # in no document. Only choices, and groups inside them, are shown — see
+    # `_visible_groups`.
+    group: str | None = None
 
     @property
     def optional(self) -> bool:
@@ -173,12 +179,47 @@ def _expand(element, parent_path, depth, schema, catalogue, tree, source, seen, 
         tree.recursion_cuts += 1
         return node
 
-    for child, compositor in _child_elements(definition, catalogue):
-        child_node = _expand(child, path, depth + 1, schema, catalogue, tree, source, seen | {key}, cache)
-        child_node.compositor = compositor
-        node.children.append(child_node)
+    for member, compositor in _child_members(definition, catalogue, source, tree):
+        node.children.append(
+            _expand_member(member, compositor, path, depth + 1, schema, catalogue,
+                           tree, source, seen | {key}, cache)
+        )
 
     return node
+
+
+def _expand_member(member, compositor, parent_path, depth, schema, catalogue,
+                   tree, source, seen, cache) -> Node:
+    if not isinstance(member, content_module.ChildGroup):
+        child = _expand(member.node, parent_path, depth, schema, catalogue, tree, source, seen, cache)
+        child.compositor = compositor
+        return child
+
+    # A group node keeps the parent's path: its members sit at the same level in
+    # an instance, so the URL of a child is unaffected by the group.
+    group_node = Node(
+        name=member.compositor,
+        path=parent_path,
+        type_name=None,
+        depth=depth,
+        min_occurs=member.min_occurs,
+        max_occurs=member.max_occurs,
+        compositor=member.compositor,
+        doc=Documentation(),
+        line=member.line,
+        group=member.compositor,
+    )
+    tree.nodes += 1
+    # Inside a choice, groups are kept: they are the alternatives themselves.
+    # 48 of the 84 choices in the schema decide between groups of elements
+    # rather than between single ones, and flattening them here would present
+    # the members of one alternative as separate options.
+    for inner in member.members:
+        group_node.children.append(
+            _expand_member(inner, member.compositor, parent_path, depth, schema, catalogue,
+                           tree, source, seen, cache)
+        )
+    return group_node
 
 
 def _definition(element, catalogue):
@@ -194,37 +235,37 @@ def _definition(element, catalogue):
     return None
 
 
-def _child_elements(definition, catalogue):
-    """Element declarations directly below a type, following its derivation.
+def _child_members(definition, catalogue, source, tree):
+    """What sits directly below a type, as a list of members.
 
-    Yields (element, compositor). Inherited content is included because an
-    instance carries it: 1,051 of the 1,101 global types extend
-    `complexBaseType`, so omitting the base would drop uID from every node.
+    A member is either an element declaration or a group that is worth showing.
     """
-    # Base content first: an instance carries the base type's elements before
-    # the extension's, and the tree mirrors the instance.
-    for holder in reversed(list(_content_holders(definition, catalogue))):
-        for compositor_name in COMPOSITORS:
-            compositor = holder.find(q(XSD, compositor_name))
-            if compositor is None:
-                continue
-            yield from _elements_in(compositor, compositor_name)
+    groups = content_module.content_groups(definition, catalogue, source, tree.findings)
+    members = []
+    for group in groups:
+        members.extend(_visible_members(group, group.compositor))
+    return members
 
 
-def _elements_in(compositor, compositor_name):
-    """Element declarations inside a compositor, nested compositors included.
+def _visible_members(group, compositor):
+    """Members of a group, with only meaningful groups kept as their own node.
 
-    Descent stops at `xsd:element`: an element with an inline type holds its own
-    children, and those are its children, not siblings of the element itself.
+    `sequence` and `all` say nothing the tree does not already show: order is
+    what the tree displays, and neither changes which children may occur. A
+    `choice` does — its alternatives are not siblings, only one of them occurs —
+    so it stays, and so do groups directly inside it, because 48 of the 84
+    choices in the schema decide between groups rather than single elements.
     """
-    for child in compositor:
-        if not isinstance(child.tag, str):
-            continue
-        name = local(child.tag)
-        if name == "element":
-            yield child, compositor_name
-        elif name in COMPOSITORS:
-            yield from _elements_in(child, name)
+    members = []
+    for member in group.members:
+        if isinstance(member, content_module.ChildGroup):
+            if member.compositor == "choice":
+                members.append((member, compositor))
+            else:
+                members.extend(_visible_members(member, member.compositor))
+        else:
+            members.append((member, compositor))
+    return members
 
 
 def _content_holders(definition, catalogue, _guard=None):
