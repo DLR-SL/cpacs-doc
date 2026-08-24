@@ -49,10 +49,6 @@
     return node.children || [];
   }
 
-  function isGroup(node) {
-    return !!declaration(node).group;
-  }
-
   function indexTree() {
     // Paths are built once so selection and expansion are lookups rather than
     // repeated walks. Only the path string is stored, not a copy of the node.
@@ -64,20 +60,16 @@
       var item = stack.pop();
       var node = item[0];
       var path = item[1];
-      // Groups carry their parent's path and would otherwise overwrite the
-      // element's entry. Where two elements share a path — 860 of them do,
-      // through the branches of a choice — the first one found wins.
+      // Where two elements share a path — 860 of them do, through the
+      // branches of a choice — the first one found wins.
       var key = path.join("/");
-      if (!isGroup(node) && !state.nodeByPath.has(key)) {
+      if (!state.nodeByPath.has(key)) {
         state.nodeByPath.set(key, node);
       }
       var children = childrenOf(node);
       for (var i = children.length - 1; i >= 0; i--) {
         // A group has no instance path: its members sit at the parent's level.
-        var childPath = isGroup(children[i])
-          ? path
-          : path.concat(declaration(children[i]).name || "?");
-        stack.push([children[i], childPath]);
+        stack.push([children[i], path.concat(declaration(children[i]).name || "?")]);
       }
     }
   }
@@ -134,7 +126,6 @@
 
   function renderNode(node, path, depth) {
     var decl = declaration(node);
-    if (decl.group) return renderGroupNode(node, path, depth);
     var key = path.join("/");
     var children = childrenOf(node);
     var isExpanded = state.expanded.has(key);
@@ -164,6 +155,17 @@
     if (depth > 0) {
       label.appendChild(element("span", "cd-cardinality", cardinality(decl)));
     }
+    if (decl.alternative) {
+      // The tree stays flat; the constraint rides on the node it applies to.
+      var mark = element("span", "cd-alternative", "\u2442");
+      mark.setAttribute("tabindex", "0");
+      var tip = element("span", "cd-tip",
+        "One of several alternatives: only one branch of a choice may appear. "
+        + "The type page lists the combinations.");
+      tip.setAttribute("role", "note");
+      mark.appendChild(tip);
+      label.appendChild(mark);
+    }
     // The type name is not repeated here: for most nodes it merely echoes the
     // element name, and the detail panel states it precisely.
     label.addEventListener("click", function () { select(path); });
@@ -174,47 +176,9 @@
 
     if (isExpanded) {
       for (var i = 0; i < children.length; i++) {
-        wrapper.appendChild(renderChild(children[i], path, depth + 1));
+        var childName = declaration(children[i]).name || "?";
+        wrapper.appendChild(renderNode(children[i], path.concat(childName), depth + 1));
       }
-    }
-    return wrapper;
-  }
-
-  function renderChild(child, parentPath, depth) {
-    if (isGroup(child)) return renderNode(child, parentPath, depth);
-    return renderNode(child, parentPath.concat(declaration(child).name || "?"), depth);
-  }
-
-  function renderGroupNode(node, path, depth) {
-    // Shown for choices only, and for the groups that form their alternatives.
-    // A sequence or an all elsewhere says nothing the tree does not show.
-    var decl = declaration(node);
-    var item = element("div", "cd-node cd-node-group");
-    item.style.paddingLeft = depth * 16 + "px";
-    item.appendChild(element("span", "cd-toggle cd-toggle-blank", ""));
-
-    var label = element("span", "cd-group-label");
-    var mark = element("span", "cd-group-mark");
-    mark.setAttribute("aria-hidden", "true");
-    item.className += " cd-group-" + decl.group;
-    label.appendChild(mark);
-    var term = element("span", "cd-group-term", decl.group);
-    term.setAttribute("tabindex", "0");
-    var tip = element("span", "cd-tip", compositorGloss(decl.group));
-    tip.setAttribute("role", "note");
-    term.appendChild(tip);
-    label.appendChild(term);
-    var occurrence = cardinality(decl);
-    if (occurrence !== "1") {
-      label.appendChild(element("span", "cd-group-occurs", "\u00B7 " + occurrence));
-    }
-    item.appendChild(label);
-
-    var wrapper = element("div", "cd-subtree");
-    wrapper.appendChild(item);
-    var children = childrenOf(node);
-    for (var i = 0; i < children.length; i++) {
-      wrapper.appendChild(renderChild(children[i], path, depth + 1));
     }
     return wrapper;
   }

@@ -323,11 +323,39 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   border-radius: 3px;
 }
 .cd-node.cd-selected { background: var(--field); }
-/* Group rows stand for a compositor, not for an element: nothing to select,
-   nothing to expand, and set apart so they do not read as siblings. */
-.cd-node-group { padding-top: 0.15rem; }
-.cd-node-group .cd-group-term { font-size: var(--step-0); }
-.cd-toggle-blank { flex: 0 0 1.3rem; }
+/* Marks a node bound to a choice. The tree is flat — indentation there means
+   containment in an instance, and a compositor contains nothing — so the
+   constraint rides on the node rather than on a row of its own. */
+.cd-alternative {
+  position: relative;
+  color: var(--ink-soft);
+  font-size: var(--step-1);
+  cursor: help;
+  line-height: 1;
+}
+.cd-alternative:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.cd-alternative .cd-tip {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 5;
+  width: max-content;
+  max-width: 20rem;
+  padding: 0.5rem 0.7rem;
+  background: var(--tip-bg);
+  color: var(--tip-ink);
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  font-family: var(--face-text);
+  font-size: var(--step-0);
+  line-height: 1.45;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.cd-alternative:hover .cd-tip,
+.cd-alternative:focus-visible .cd-tip { opacity: 1; visibility: visible; }
 .cd-toggle {
   flex: 0 0 1.3rem;
   border: 0;

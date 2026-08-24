@@ -198,7 +198,7 @@ def _write_statistics(catalogue, tree, media_catalogue) -> None:
     documented = sum(1 for t in catalogue.types.values() if t.documented)
     print(
         f"types: {len(catalogue.types)} ({documented} documented) | "
-        f"tree: {tree.nodes} nodes (+{tree.group_nodes} groups), "
+        f"tree: {tree.nodes} nodes ({tree.alternatives} in a choice), "
         f"{tree.distinct_paths} distinct paths, depth {tree.max_depth} | "
         f"media: {len(media_catalogue.entries) if media_catalogue else 0} entries"
     )

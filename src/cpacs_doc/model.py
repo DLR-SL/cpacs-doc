@@ -145,7 +145,7 @@ def _child_entry(member) -> dict:
 def _declaration_entry(node) -> dict:
     entry = {
         "name": node.name,
-        **({"group": node.group} if node.group else {}),
+        **({"alternative": True} if node.alternative else {}),
         "type": node.type_name,
         "minOccurs": node.min_occurs,
         # null encodes unbounded; a sentinel integer would be
@@ -169,11 +169,10 @@ def _declaration_key(node) -> str:
     tree references declarations instead of repeating them. Path and depth are
     recoverable from the tree structure itself.
     """
-    if node.group:
-        # Group nodes share their parent's path, so the line number of the
-        # compositor is what tells two of them apart.
-        return f"g{node.line}"
-    return str(node.line) if node.line else f"{node.type_name}:{node.name}"
+    # Two declarations at the same line cannot differ; the alternative flag is
+    # a property of the declaration's position, so it is part of the key.
+    base = str(node.line) if node.line else f"{node.type_name}:{node.name}"
+    return f"{base}a" if node.alternative else base
 
 
 def _collect_declarations(node, into: dict) -> None:
@@ -274,7 +273,7 @@ def build(
             "types": len(catalogue.types),
             "documentedTypes": sum(1 for t in catalogue.types.values() if t.documented),
             "treeNodes": tree.nodes,
-            "treeGroupNodes": tree.group_nodes,
+            "treeAlternatives": tree.alternatives,
             "distinctPaths": tree.distinct_paths,
             "maxDepth": tree.max_depth,
             "recursionCuts": tree.recursion_cuts,

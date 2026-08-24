@@ -43,10 +43,11 @@ class Node:
     recursive: bool = False  # expansion stopped: the type is already on this path
     children: list["Node"] = field(default_factory=list)
     line: int | None = None
-    # A group node stands for a compositor and has no instance path: it exists
-    # in no document. Only choices, and groups inside them, are shown — see
-    # `_visible_groups`.
-    group: str | None = None
+    # Marks a node that is one alternative of a choice. The tree stays flat —
+    # indentation there means containment in an instance, and a compositor is
+    # not a container — so the constraint is carried by the node it applies to.
+    # The combinations themselves are shown on the type page.
+    alternative: bool = False
 
     @property
     def optional(self) -> bool:
@@ -62,7 +63,7 @@ class Tree:
     root: Node | None = None
     findings: list[Finding] = field(default_factory=list)
     nodes: int = 0        # element nodes; comparable across schema versions
-    group_nodes: int = 0  # compositor rows, which exist in no instance
+    alternatives: int = 0  # nodes bound to a choice
     max_depth: int = 0
     recursion_cuts: int = 0
 
@@ -113,11 +114,6 @@ def _report_ambiguous_paths(tree, source) -> None:
     """
     by_path: dict[str, list[Node]] = {}
     for node in tree.walk():
-        # Group nodes share their parent's path by construction: they stand for
-        # a compositor and appear in no instance, so they are not a second way
-        # of reaching that path.
-        if node.group:
-            continue
         by_path.setdefault(node.path, []).append(node)
 
     for path, nodes in sorted(by_path.items()):
@@ -185,47 +181,16 @@ def _expand(element, parent_path, depth, schema, catalogue, tree, source, seen, 
         tree.recursion_cuts += 1
         return node
 
-    for member, compositor in _child_members(definition, catalogue, source, tree):
-        node.children.append(
-            _expand_member(member, compositor, path, depth + 1, schema, catalogue,
-                           tree, source, seen | {key}, cache)
-        )
+    for member, compositor, alternative in _child_members(definition, catalogue, source, tree):
+        child = _expand(member.node, path, depth + 1, schema, catalogue, tree, source,
+                        seen | {key}, cache)
+        child.compositor = compositor
+        child.alternative = alternative
+        if alternative:
+            tree.alternatives += 1
+        node.children.append(child)
 
     return node
-
-
-def _expand_member(member, compositor, parent_path, depth, schema, catalogue,
-                   tree, source, seen, cache) -> Node:
-    if not isinstance(member, content_module.ChildGroup):
-        child = _expand(member.node, parent_path, depth, schema, catalogue, tree, source, seen, cache)
-        child.compositor = compositor
-        return child
-
-    # A group node keeps the parent's path: its members sit at the same level in
-    # an instance, so the URL of a child is unaffected by the group.
-    group_node = Node(
-        name=member.compositor,
-        path=parent_path,
-        type_name=None,
-        depth=depth,
-        min_occurs=member.min_occurs,
-        max_occurs=member.max_occurs,
-        compositor=member.compositor,
-        doc=Documentation(),
-        line=member.line,
-        group=member.compositor,
-    )
-    tree.group_nodes += 1
-    # Inside a choice, groups are kept: they are the alternatives themselves.
-    # 48 of the 84 choices in the schema decide between groups of elements
-    # rather than between single ones, and flattening them here would present
-    # the members of one alternative as separate options.
-    for inner in member.members:
-        group_node.children.append(
-            _expand_member(inner, member.compositor, parent_path, depth, schema, catalogue,
-                           tree, source, seen, cache)
-        )
-    return group_node
 
 
 def _definition(element, catalogue):
@@ -253,24 +218,22 @@ def _child_members(definition, catalogue, source, tree):
     return members
 
 
-def _visible_members(group, compositor):
-    """Members of a group, with only meaningful groups kept as their own node.
+def _visible_members(group, compositor, in_choice=False):
+    """Element declarations of a group, flattened, each with its constraints.
 
-    `sequence` and `all` say nothing the tree does not already show: order is
-    what the tree displays, and neither changes which children may occur. A
-    `choice` does — its alternatives are not siblings, only one of them occurs —
-    so it stays, and so do groups directly inside it, because 48 of the 84
-    choices in the schema decide between groups rather than single elements.
+    Yields (declaration, compositor, is_alternative). Compositors are not
+    nodes: in a tree, indentation means containment in an instance, and a
+    compositor contains nothing. A node that belongs to a choice is marked
+    instead, and the combinations are spelled out on the type page.
     """
     members = []
     for member in group.members:
         if isinstance(member, content_module.ChildGroup):
-            if member.compositor == "choice":
-                members.append((member, compositor))
-            else:
-                members.extend(_visible_members(member, member.compositor))
+            members.extend(
+                _visible_members(member, member.compositor, in_choice or member.compositor == "choice")
+            )
         else:
-            members.append((member, compositor))
+            members.append((member, compositor, in_choice))
     return members
 
 

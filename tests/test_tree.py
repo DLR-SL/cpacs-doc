@@ -33,25 +33,20 @@ def test_paths_reachable_through_two_choice_branches_are_reported(parse):
     assert any(f.severity == "warning" for f in ambiguous)
 
 
-def test_a_choice_becomes_a_node_of_its_own(parse):
-    """Alternatives are not siblings: only one of them occurs. Sequence and all
-    stay implicit, because the tree already shows order and neither changes
-    which children may occur."""
+def test_choice_members_are_marked_not_nested(parse):
+    """The tree stays flat: indentation there means containment in an instance,
+    and a compositor contains nothing. The constraint rides on the node."""
     tree = build(parse)
-    groups = [n for n in tree.walk() if n.group]
-    assert [g.group for g in groups] == ["choice", "sequence", "sequence"] or all(
-        g.group in ("choice", "sequence") for g in groups
-    )
-    assert any(g.group == "choice" for g in groups)
+    marked = {n.name for n in tree.walk() if n.alternative}
+    assert marked == {"shared", "either", "bothA", "bothB"}
+    depths = {n.name: n.depth for n in tree.walk() if n.name in marked | {"odd"}}
+    assert depths["either"] == depths["bothA"] == depths["odd"]
 
 
-def test_a_group_shares_its_parents_path(parse):
-    """A compositor exists in no instance, so it must not lengthen a path."""
-    tree = build(parse)
-    for node in tree.walk():
-        if node.group:
-            for child in node.children:
-                assert child.path.startswith(node.path)
+def test_alternatives_are_counted(parse):
+    """`shared` appears in both branches of the first choice, so it counts
+    twice; `either`, `bothA` and `bothB` once each."""
+    assert build(parse).alternatives == 5
 
 
 def test_annotation_findings_are_not_repeated_per_occurrence(parse):

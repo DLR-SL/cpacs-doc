@@ -16,8 +16,7 @@ def build_model(parse, tmp_path):
 
 def test_declarations_are_stored_once_and_referenced(parse, tmp_path):
     built = build_model(parse, tmp_path)
-    rows = built["statistics"]["treeNodes"] + built["statistics"]["treeGroupNodes"]
-    assert built["statistics"]["declarations"] <= rows
+    assert built["statistics"]["declarations"] <= built["statistics"]["treeNodes"]
     keys = set(built["declarations"])
     stack = [built["tree"]]
     while stack:
