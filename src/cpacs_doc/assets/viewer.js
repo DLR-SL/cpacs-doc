@@ -80,12 +80,14 @@
   // "sequence" and "all" are schema words for a distinction that matters to
   // anyone writing an instance: whether the children have to appear in the
   // given order. Spelling it out is worth more than the vocabulary term.
-  // The schema word stays, for readers who think in it; the gloss says what it
-  // means for an instance, for those who do not.
+  // The schema word carries the row; the explanation appears on hover and
+  // focus, so the table stays quiet for readers who know the vocabulary.
   var COMPOSITOR_GLOSS = {
-    sequence: "in this order",
-    all: "in any order",
-    choice: "exactly one of"
+    sequence: "The children below must appear in exactly this order. "
+      + "Each may repeat as often as its own occurrence allows.",
+    all: "The children below may appear in any order. Each may appear at most once.",
+    choice: "Exactly one of the alternatives below may appear, "
+      + "unless the occurrence next to this line says otherwise."
   };
 
   function compositorGloss(name) {
@@ -327,8 +329,19 @@
         var mark = element("span", "cd-group-mark");
         mark.setAttribute("aria-hidden", "true");
         label.appendChild(mark);
-        label.appendChild(element("span", "cd-group-term", member.compositor || ""));
-        label.appendChild(element("span", "cd-group-gloss", groupGloss(member)));
+
+        var term = element("span", "cd-group-term", member.compositor || "");
+        // Focusable so the explanation is reachable without a pointer.
+        term.setAttribute("tabindex", "0");
+        var tip = element("span", "cd-tip", compositorGloss(member.compositor));
+        tip.setAttribute("role", "note");
+        term.appendChild(tip);
+        label.appendChild(term);
+
+        var occurrence = cardinality(member);
+        if (occurrence !== "1") {
+          label.appendChild(element("span", "cd-group-occurs", "\u00B7 " + occurrence));
+        }
         groupCell.appendChild(label);
         groupRow.appendChild(groupCell);
         groupRow.appendChild(element("td"));
@@ -354,12 +367,6 @@
     if (!depth) return;
     cell.className = "cd-indent";
     cell.style.setProperty("--depth", String(depth));
-  }
-
-  function groupGloss(group) {
-    var gloss = compositorGloss(group.compositor);
-    var occurrence = cardinality(group);
-    return occurrence === "1" ? gloss : gloss + " \u00B7 " + occurrence;
   }
 
   function appendTable(panel, heading, rows, columns) {
@@ -405,7 +412,7 @@
       meta.appendChild(typeCell(type.base));
     }
     if (type.compositor) {
-      meta.appendChild(document.createTextNode(" \u00B7 " + type.compositor + ", " + compositorGloss(type.compositor)));
+      meta.appendChild(document.createTextNode(" \u00B7 " + type.compositor));
     }
     meta.appendChild(document.createTextNode(" \u00B7 "));
     var page = element("a", null, "citable page");

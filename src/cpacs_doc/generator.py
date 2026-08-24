@@ -173,7 +173,7 @@ def _kind_line(entry) -> str:
         bits.append(f"{escape(derivation)} {target}")
     compositor = entry.get("compositor")
     if compositor:
-        bits.append(escape(f"{compositor}, {GROUP_GLOSS.get(compositor, '')}".rstrip(", ")))
+        bits.append(escape(compositor))
     return f'<p class="cd-kind">{" · ".join(bits)}</p>'
 
 
@@ -217,12 +217,21 @@ def _attribute_table(attributes) -> str:
     )
 
 
-# The schema word stays, for readers who think in it; the gloss says what it
-# means for an instance, for those who do not.
+# The schema word carries the row; the explanation appears on hover and focus,
+# so the table stays quiet for readers who already know the vocabulary.
 GROUP_GLOSS = {
-    "sequence": "in this order",
-    "all": "in any order",
-    "choice": "exactly one of",
+    "sequence": (
+        "The children below must appear in exactly this order. "
+        "Each may repeat as often as its own occurrence allows."
+    ),
+    "all": (
+        "The children below may appear in any order. "
+        "Each may appear at most once."
+    ),
+    "choice": (
+        "Exactly one of the alternatives below may appear, "
+        "unless the occurrence next to this line says otherwise."
+    ),
 }
 
 
@@ -253,12 +262,19 @@ def _child_rows(members, depth: int) -> list[str]:
         indent = f' class="cd-indent" style="--depth:{depth}"' if depth else ""
         if member.get("kind") == "group":
             compositor = member.get("compositor") or ""
+            occurrence = _cardinality(member)
+            suffix = (
+                f'<span class="cd-group-occurs">· {escape(occurrence)}</span>'
+                if occurrence != "1"
+                else ""
+            )
             rows.append(
                 f'<tr class="cd-group cd-group-{escape(compositor)}"><td{indent} colspan="3">'
                 f'<span class="cd-group-label">'
                 f'<span class="cd-group-mark" aria-hidden="true"></span>'
-                f'<span class="cd-group-term">{escape(compositor)}</span>'
-                f'<span class="cd-group-gloss">{escape(_group_gloss(member))}</span>'
+                f'<span class="cd-group-term" tabindex="0">{escape(compositor)}'
+                f'<span class="cd-tip" role="note">{escape(GROUP_GLOSS.get(compositor, ""))}</span>'
+                f"</span>{suffix}"
                 f"</span></td><td></td></tr>"
             )
             rows.extend(_child_rows(member.get("members", []), depth + 1))
@@ -272,12 +288,6 @@ def _child_rows(members, depth: int) -> list[str]:
             "</tr>"
         )
     return rows
-
-
-def _group_gloss(group) -> str:
-    gloss = GROUP_GLOSS.get(group.get("compositor"), "")
-    occurrence = _cardinality(group)
-    return gloss if occurrence == "1" else f"{gloss} · {occurrence}"
 
 
 def _cardinality(child) -> str:

@@ -124,9 +124,17 @@ def test_a_group_heads_its_members_instead_of_repeating_per_row(model, tmp_path)
     it for those who do not."""
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
-    assert '<span class="cd-group-term">sequence</span>' in html
-    assert "in this order" in html
+    assert '<span class="cd-group-term" tabindex="0">sequence' in html
+    assert "must appear in exactly this order" in html
     assert "cd-group-sequence" in html
+
+
+def test_the_explanation_is_focusable_not_hover_only(model, tmp_path):
+    """A hover-only tooltip is unreachable by keyboard and on touch."""
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert 'class="cd-group-term" tabindex="0"' in html
+    assert 'class="cd-tip" role="note"' in html
 
 
 def test_an_optional_group_states_its_own_occurrence(model, tmp_path):
@@ -134,7 +142,8 @@ def test_an_optional_group_states_its_own_occurrence(model, tmp_path):
     group, not on its members."""
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
-    assert "exactly one of · 0…1" in html
+    assert "Exactly one of the alternatives" in html
+    assert "· 0…1" in html
 
 
 def test_nested_members_carry_their_depth(model, tmp_path):
