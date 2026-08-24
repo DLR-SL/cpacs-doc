@@ -61,7 +61,8 @@ class Node:
 class Tree:
     root: Node | None = None
     findings: list[Finding] = field(default_factory=list)
-    nodes: int = 0
+    nodes: int = 0        # element nodes; comparable across schema versions
+    group_nodes: int = 0  # compositor rows, which exist in no instance
     max_depth: int = 0
     recursion_cuts: int = 0
 
@@ -112,6 +113,11 @@ def _report_ambiguous_paths(tree, source) -> None:
     """
     by_path: dict[str, list[Node]] = {}
     for node in tree.walk():
+        # Group nodes share their parent's path by construction: they stand for
+        # a compositor and appear in no instance, so they are not a second way
+        # of reaching that path.
+        if node.group:
+            continue
         by_path.setdefault(node.path, []).append(node)
 
     for path, nodes in sorted(by_path.items()):
@@ -209,7 +215,7 @@ def _expand_member(member, compositor, parent_path, depth, schema, catalogue,
         line=member.line,
         group=member.compositor,
     )
-    tree.nodes += 1
+    tree.group_nodes += 1
     # Inside a choice, groups are kept: they are the alternatives themselves.
     # 48 of the 84 choices in the schema decide between groups of elements
     # rather than between single ones, and flattening them here would present

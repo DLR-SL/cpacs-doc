@@ -274,6 +274,7 @@ def build(
             "types": len(catalogue.types),
             "documentedTypes": sum(1 for t in catalogue.types.values() if t.documented),
             "treeNodes": tree.nodes,
+            "treeGroupNodes": tree.group_nodes,
             "distinctPaths": tree.distinct_paths,
             "maxDepth": tree.max_depth,
             "recursionCuts": tree.recursion_cuts,
