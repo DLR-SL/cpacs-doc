@@ -64,7 +64,13 @@
       var item = stack.pop();
       var node = item[0];
       var path = item[1];
-      state.nodeByPath.set(path.join("/"), node);
+      // Groups carry their parent's path and would otherwise overwrite the
+      // element's entry. Where two elements share a path — 860 of them do,
+      // through the branches of a choice — the first one found wins.
+      var key = path.join("/");
+      if (!isGroup(node) && !state.nodeByPath.has(key)) {
+        state.nodeByPath.set(key, node);
+      }
       var children = childrenOf(node);
       for (var i = children.length - 1; i >= 0; i--) {
         // A group has no instance path: its members sit at the parent's level.
