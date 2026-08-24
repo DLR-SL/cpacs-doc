@@ -20,6 +20,7 @@
   --plate: #ffffff;
   --plate-edge: rgba(0, 0, 0, 0.08);
   --guide: rgba(0, 0, 0, 0.13);
+  --group-tint: rgba(0, 0, 0, 0.035);
   --tip-bg: #23272c;
   --tip-ink: #f2f4f6;
 
@@ -50,6 +51,7 @@
     --plate: #edeff1;
     --plate-edge: rgba(255, 255, 255, 0.14);
     --guide: rgba(255, 255, 255, 0.17);
+    --group-tint: rgba(255, 255, 255, 0.045);
     --tip-bg: #f2f4f6;
     --tip-ink: #1a1d21;
   }
@@ -135,7 +137,6 @@ td {
   vertical-align: baseline;
   padding: 0.42rem 0.7rem 0.42rem 0;
   border-bottom: 1px solid var(--rule);
-  background-clip: padding-box;
 }
 tr:last-child td { border-bottom: 0; }
 td:first-child, th:first-child { padding-left: 0; }
@@ -147,7 +148,10 @@ td code { white-space: nowrap; }
 /* A compositor governs a set of children, so it heads them rather than
    repeating itself on every row. The schema word is kept for readers who think
    in it, with the plain reading next to it for those who do not. */
+/* The group row reads as a heading for the rows beneath it, so it carries a
+   tint of its own. This is colour marking a role, not encoding a level. */
 .cd-group td { border-bottom: 0; padding-bottom: 0.15rem; padding-top: 0.7rem; }
+.cd-group { background: var(--group-tint); }
 .cd-group-label { display: inline-flex; align-items: center; gap: 0.45rem; }
 .cd-group-term {
   font-family: var(--face-code);
@@ -218,11 +222,15 @@ td code { white-space: nowrap; }
    and outweighs a bare class. */
 td.cd-indent {
   padding-left: calc(var(--depth, 0) * 1.4rem);
+  /* Guides start at the second level. The outermost group holds nearly every
+     row, so a line for it would run the height of the table and mark no
+     grouping at all — and for the 1,030 types with a single group it would be
+     the only line there is. */
   background-image: repeating-linear-gradient(
     to right, var(--guide) 0 1px, transparent 1px 1.4rem
   );
-  background-size: calc(var(--depth, 0) * 1.4rem) 100%;
-  background-position: 0.45rem 0;
+  background-size: calc(max(var(--depth, 0) - 1, 0) * 1.4rem) 100%;
+  background-position: 1.85rem 0;
   background-repeat: no-repeat;
 }
 
