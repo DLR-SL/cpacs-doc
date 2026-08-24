@@ -137,11 +137,13 @@ def test_an_optional_group_states_its_own_occurrence(model, tmp_path):
     assert "exactly one of · 0…1" in html
 
 
-def test_nested_members_are_indented(model, tmp_path):
+def test_nested_members_carry_their_depth(model, tmp_path):
+    """Depth travels as a custom property so one CSS rule draws the guides for
+    any nesting level."""
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
-    assert "padding-left:1.4rem" in html
-    assert "padding-left:2.8rem" in html
+    assert 'class="cd-indent" style="--depth:1"' in html
+    assert 'class="cd-indent" style="--depth:2"' in html
 
 
 def test_bare_schema_line_is_not_shown(model, tmp_path):

@@ -351,7 +351,9 @@
   }
 
   function indent(cell, depth) {
-    if (depth) cell.style.paddingLeft = (depth * 1.4).toFixed(1) + "rem";
+    if (!depth) return;
+    cell.className = "cd-indent";
+    cell.style.setProperty("--depth", String(depth));
   }
 
   function groupGloss(group) {

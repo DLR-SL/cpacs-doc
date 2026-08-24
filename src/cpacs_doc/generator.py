@@ -248,7 +248,9 @@ def _child_rows(members, depth: int) -> list[str]:
     """
     rows = []
     for member in members:
-        indent = f' style="padding-left:{depth * 1.4:.1f}rem"' if depth else ""
+        # Depth travels as a custom property so one CSS rule draws the guides
+        # for any nesting level, rather than a rule per level.
+        indent = f' class="cd-indent" style="--depth:{depth}"' if depth else ""
         if member.get("kind") == "group":
             compositor = member.get("compositor") or ""
             rows.append(

@@ -19,6 +19,7 @@
      illustration and would wreck the latter to save the former. */
   --plate: #ffffff;
   --plate-edge: rgba(0, 0, 0, 0.08);
+  --guide: rgba(0, 0, 0, 0.13);
 
   /* A minor third between steps: enough separation to see hierarchy at a
      glance without the headings shouting. */
@@ -46,6 +47,7 @@
        a dark page. */
     --plate: #edeff1;
     --plate-edge: rgba(255, 255, 255, 0.14);
+    --guide: rgba(255, 255, 255, 0.17);
   }
 }
 
@@ -129,6 +131,7 @@ td {
   vertical-align: baseline;
   padding: 0.42rem 0.7rem 0.42rem 0;
   border-bottom: 1px solid var(--rule);
+  background-clip: padding-box;
 }
 tr:last-child td { border-bottom: 0; }
 td:first-child, th:first-child { padding-left: 0; }
@@ -169,6 +172,19 @@ td code { white-space: nowrap; }
 /* The same rungs without a spine: a set, no order. */
 .cd-group-all .cd-group-mark { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%204h10%22%2F%3E%3Cpath%20d%3D%22M3%208h10%22%2F%3E%3Cpath%20d%3D%22M3%2012h10%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M3%204h10%22%2F%3E%3Cpath%20d%3D%22M3%208h10%22%2F%3E%3Cpath%20d%3D%22M3%2012h10%22%2F%3E%3C%2Fsvg%3E"); }
 /* One path that forks: exactly one way on. */
+/* Indent guides, as a code editor draws them: one hairline per level, so it is
+   visible at a glance which rows belong to which group. The repeating gradient
+   is clipped to the indented width, which keeps one rule for every depth. */
+.cd-indent {
+  padding-left: calc(var(--depth, 0) * 1.4rem);
+  background-image: repeating-linear-gradient(
+    to right, var(--guide) 0 1px, transparent 1px 1.4rem
+  );
+  background-size: calc(var(--depth, 0) * 1.4rem) 100%;
+  background-position: 0.45rem 0;
+  background-repeat: no-repeat;
+}
+
 .cd-group-choice .cd-group-mark { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M2%208h4%22%2F%3E%3Cpath%20d%3D%22M6%208l4-4h4%22%2F%3E%3Cpath%20d%3D%22M6%208l4%204h4%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M2%208h4%22%2F%3E%3Cpath%20d%3D%22M6%208l4-4h4%22%2F%3E%3Cpath%20d%3D%22M6%208l4%204h4%22%2F%3E%3C%2Fsvg%3E"); }
 
 pre, .cd-code {
