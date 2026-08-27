@@ -202,9 +202,9 @@ def render_all(catalogue, media_catalogue, source: str) -> tuple[dict[str, Rende
     """Render every type's documentation once, for both the pages and the model.
 
     Rendering here rather than in the viewer keeps one implementation of the
-    vocabulary. The asset prefix is left empty: the generator writes pages at a
-    known depth below the output root, so image sources stay relative and the
-    whole output directory remains movable.
+    vocabulary. Image sources carry the renderer's root placeholder, which each
+    consumer resolves against its own depth: the same fragment is used by type
+    pages and by the viewer, and neither may bake in a deployment location.
     """
     entries = (
         {image_id: {"file": entry.file, "alt": entry.alt}

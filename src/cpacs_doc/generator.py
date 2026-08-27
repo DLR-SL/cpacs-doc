@@ -61,7 +61,7 @@ def generate(model: dict, output: Path, *, media_root: Path | None = None) -> Ge
 
     types = model.get("types", {})
     for name, entry in sorted(types.items()):
-        html = _type_page(name, entry, types, model.get("firstPaths", {}))
+        html = type_page(name, entry, types, model.get("firstPaths", {}))
         target = output / TYPES_DIRECTORY / slug(name) / "index.html"
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(html, encoding="utf-8")
@@ -120,7 +120,7 @@ def _document(title: str, depth: int, body: str) -> str:
     )
 
 
-def _type_page(name: str, entry: dict, types: dict, first_paths: dict) -> str:
+def type_page(name: str, entry: dict, types: dict, first_paths: dict) -> str:
     documentation = entry.get("documentation", {})
     parts = [
         _page_nav(name, first_paths),
@@ -340,7 +340,7 @@ def _resolve_cross_references(html: str, types: dict) -> str:
     )
 
 
-def _write_index(output: Path, types: dict, statistics: dict, meta: dict) -> None:
+def index_html(types: dict, statistics: dict, meta: dict) -> str:
     items = "".join(
         f'<li><a href="{TYPES_DIRECTORY}/{escape(slug(name))}/index.html">{escape(name)}</a></li>'
         for name in sorted(types)
@@ -353,23 +353,27 @@ def _write_index(output: Path, types: dict, statistics: dict, meta: dict) -> Non
         f'depth {statistics.get("maxDepth", 0)}</p>'
     )
     body = f"<h1>{heading}</h1>{summary}<ul class=\"cd-type-index\">{items}</ul>"
-    (output / "index.html").write_text(_substitute_root(_document(heading, 0, body), depth=0), encoding="utf-8")
+    return _substitute_root(_document(heading, 0, body), depth=0)
+
+
+def _write_index(output: Path, types: dict, statistics: dict, meta: dict) -> None:
+    (output / "index.html").write_text(index_html(types, statistics, meta), encoding="utf-8")
 
 
 ASSET_FILES = ("styles.css", "viewer.js")
 
 
-def _asset(name: str) -> str:
+def asset(name: str) -> str:
     return resources.files(__package__).joinpath("assets", name).read_text(encoding="utf-8")
 
 
 def _write_assets(directory: Path) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     for name in ASSET_FILES:
-        (directory / name).write_text(_asset(name), encoding="utf-8")
+        (directory / name).write_text(asset(name), encoding="utf-8")
 
 
-def _write_router(output: Path) -> None:
+def router_html() -> str:
     """The single not-found document that serves every tree path.
 
     Its stylesheet is inlined rather than linked: the page is served from
@@ -377,12 +381,12 @@ def _write_router(output: Path) -> None:
     own root until the script has run. The script is inlined for the same
     reason — loading it by absolute URL would need the root first.
     """
-    html = (
+    return (
         "<!doctype html>\n"
         '<html lang="en">\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         "<title>CPACS schema</title>\n"
-        f"<style>\n{_asset('styles.css')}</style>\n"
+        f"<style>\n{asset('styles.css')}</style>\n"
         '<body class="cd-viewer">\n<div id="cd-app" class="cd-app">\n'
         '<div class="cd-column">\n'
         '<div class="cd-search">'
@@ -397,7 +401,10 @@ def _write_router(output: Path) -> None:
         ' tabindex="0" aria-label="Resize the tree pane"></div>\n'
         '<div id="cd-detail" class="cd-pane cd-pane-detail"></div>\n'
         "</div>\n"
-        f"<script>\n{_asset('viewer.js')}</script>\n"
+        f"<script>\n{asset('viewer.js')}</script>\n"
         "</body>\n</html>\n"
     )
-    (output / "404.html").write_text(html, encoding="utf-8")
+
+
+def _write_router(output: Path) -> None:
+    (output / "404.html").write_text(router_html(), encoding="utf-8")

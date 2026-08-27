@@ -2,10 +2,13 @@
 
     cpacs-doc report schema/cpacs_schema.xsd
     cpacs-doc build  schema/cpacs_schema.xsd -o build/
+    cpacs-doc serve  schema/cpacs_schema.xsd
 
 `report` reads the schema and writes findings to the terminal. `build` does the
-same and additionally writes the intermediate model. Both share one pipeline, so
-the report can never describe a different run than the model does.
+same and additionally writes the intermediate model. `serve` builds the model in
+memory and serves the viewer from it, rebuilding when the schema changes (R4).
+All three share one pipeline, so the report can never describe a different run
+than the model does.
 
 Exit status is 1 when the report holds errors, so CI fails on a broken schema
 without a second check. `--tolerate-errors` suppresses that for exploratory runs.
@@ -116,14 +119,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--version", action="version", version=f"model {model_module.MODEL_VERSION}")
     subcommands = parser.add_subparsers(dest="command", required=True)
 
-    def common(sub):
+    def common(sub, *, exits_on_errors: bool = True):
         sub.add_argument("schema", type=Path, help="path to the XSD file")
         sub.add_argument("--media", type=Path, help=f"path to {DEFAULT_MEDIA_NAME}")
         sub.add_argument("--no-media", action="store_true", help="skip the media catalogue entirely")
         sub.add_argument("--limit", type=int, default=10,
                          help="findings shown per code, 0 for all (default: 10)")
-        sub.add_argument("--tolerate-errors", action="store_true",
-                         help="exit 0 even when the report holds errors")
+        # `serve` runs until interrupted and has no verdict to carry in an exit
+        # code, so the flag that suppresses one does not apply to it.
+        if exits_on_errors:
+            sub.add_argument("--tolerate-errors", action="store_true",
+                             help="exit 0 even when the report holds errors")
 
     report_command = subcommands.add_parser("report", help="write the build report only")
     common(report_command)
@@ -135,6 +141,16 @@ def main(argv: list[str] | None = None) -> int:
     build_command.add_argument("--site", action="store_true",
                                help="also write the static type pages")
     build_command.add_argument("--media-root", type=Path,
+                               help="directory the media catalogue paths are relative to "
+                                    "(default: the catalogue's own directory)")
+
+    serve_command = subcommands.add_parser("serve", help="serve the viewer and rebuild on change")
+    common(serve_command, exits_on_errors=False)
+    serve_command.add_argument("--host", default="127.0.0.1",
+                               help="address to bind (default: 127.0.0.1)")
+    serve_command.add_argument("--port", type=int, default=8000,
+                               help="port to bind, 0 for any free port (default: 8000)")
+    serve_command.add_argument("--media-root", type=Path,
                                help="directory the media catalogue paths are relative to "
                                     "(default: the catalogue's own directory)")
 
@@ -152,6 +168,22 @@ def main(argv: list[str] | None = None) -> int:
         media_path = default_media_path(args.schema)
 
     sys.setrecursionlimit(RECURSION_LIMIT)
+
+    if args.command == "serve":
+        # Imported here rather than at module scope: the server runs this
+        # module's pipeline, so a top-level import would close a cycle.
+        from . import serve as serve_module
+
+        return serve_module.serve(
+            args.schema,
+            media_path,
+            media_expected=not args.no_media,
+            media_root=args.media_root,
+            limit=None if args.limit == 0 else args.limit,
+            host=args.host,
+            port=args.port,
+        )
+
     report = Report()
 
     try:

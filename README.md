@@ -20,12 +20,24 @@ into HTML belongs to the generator.
 ```
 cpacs-doc report schema/cpacs_schema.xsd
 cpacs-doc build  schema/cpacs_schema.xsd -o build/
+cpacs-doc serve  schema/cpacs_schema.xsd
 ```
 
 The media catalogue (`documentation/media.json`) is picked up automatically when
 it sits next to the schema directory. `--media` points elsewhere, `--no-media`
 skips it. Exit status is 1 when the report holds errors; `--tolerate-errors`
 suppresses that.
+
+`serve` is the mode for working on the schema. It builds the model in memory,
+serves the viewer on `127.0.0.1:8000`, and rebuilds when the schema or the media
+catalogue changes — the build report goes to the terminal on every pass, and the
+browser reloads by itself. Nothing is written to disk.
+
+It reproduces the deployment target rather than merely serving files: one
+not-found document answers every path that is not a file, tree paths keep their
+address and carry status 404, and there are no directory listings. A generic
+static server does not do this, which is why `python -m http.server` is not a
+substitute.
 
 ## Installing
 

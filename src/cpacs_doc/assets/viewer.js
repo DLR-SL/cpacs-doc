@@ -198,7 +198,10 @@
   }
 
   function withRoot(html) {
-    return html.split(ROOT_TOKEN).join(state.root || ".");
+    // The empty string is a valid root — a site deployed at "/" — and yields
+    // an absolute "/media/…". A relative fallback would resolve against the
+    // requested tree path instead, which this file must never do.
+    return html.split(ROOT_TOKEN).join(state.root);
   }
 
   function typeHref(typeName) {
