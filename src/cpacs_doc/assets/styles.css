@@ -164,7 +164,10 @@ th {
   white-space: nowrap;
 }
 td {
-  vertical-align: baseline;
+  /* Top, not baseline: a cell that wraps — a long description, a type with a
+     marker under it — would otherwise drop its neighbours to the last line and
+     the row would read as though the name belonged to the bottom of it. */
+  vertical-align: top;
   padding: 0.42rem 0.7rem 0.42rem 0;
   border-bottom: 1px solid var(--rule);
 }
@@ -174,6 +177,24 @@ td:last-child, th:last-child { padding-right: 0; }
 td code { white-space: nowrap; }
 
 .cd-inherited, .cd-fixed { color: var(--ink-soft); font-size: var(--step-0); }
+/* What sits behind a type link, where the label alone would not say there is
+   anything: an inline restriction of `xsd:string` reads like a plain string.
+   Set quietly — it is a signpost, not the thing itself. */
+/* A link, because the words name what the reader is looking for and the type
+   name does not — but a step smaller than the type, so the column stays the
+   quieter of the two. */
+.cd-holds {
+  font-family: var(--face-text);
+  font-size: var(--step-0);
+  white-space: nowrap;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
 
 /* A facet is the schema's word for it, set like one, with the plain reading
    held on the word as the compositors hold theirs. The value beside it may be

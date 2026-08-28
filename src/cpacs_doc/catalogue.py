@@ -39,6 +39,7 @@ class TypeInfo:
     compositor: str | None  # outermost compositor of a complexType
     doc: Documentation
     line: int | None
+    simple_content: bool = False  # an instance writes a value into the element
     node: etree._Element = field(repr=False, default=None)
 
     @property
@@ -121,6 +122,7 @@ def _add_documented_locals(root, catalogue, source) -> None:
         if inline is not None:
             info.base, info.derivation = _derivation(inline)
             info.compositor = _compositor(inline)
+            info.simple_content = holds_a_value(inline)
         catalogue.types[name] = info
 
 
@@ -160,10 +162,23 @@ def _read(node, kind, name, anonymous, catalogue, source) -> TypeInfo:
         base=base,
         derivation=derivation,
         compositor=_compositor(node),
+        simple_content=holds_a_value(node),
         doc=doc,
         line=getattr(node, "sourceline", None),
         node=node,
     )
+
+
+def holds_a_value(node) -> bool:
+    """Whether an instance writes a value into the element itself.
+
+    A simple type does by definition. A complexType does when its content is
+    simple — 22 of them here, and they are the base types of every measured
+    quantity in the schema.
+    """
+    if local(node.tag) == "simpleType":
+        return True
+    return node.find(q(XSD, "simpleContent")) is not None
 
 
 def _derivation(node) -> tuple[str | None, str | None]:

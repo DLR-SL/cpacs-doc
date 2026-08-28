@@ -614,6 +614,11 @@
       var line = element("p", "cd-kind");
       line.appendChild(document.createTextNode("Type: "));
       line.appendChild(typeCell(decl.type));
+      var value = valueType(decl.type);
+      if (value) {
+        line.appendChild(document.createTextNode(" \u00B7 value "));
+        line.appendChild(element("code", null, value));
+      }
       panel.appendChild(line);
 
       appendTypeBody(panel, state.model.types[decl.type]);
@@ -642,6 +647,7 @@
         appendTable(panel, "Attributes", type.attributes, [
           { head: "Name", cell: function (a) { return text("@" + a.name, "code"); } },
           { head: "Type", cell: function (a) { return typeCell(a.type); } },
+          { head: "Constraints", cell: constraintsCell },
           { head: "Use", cell: function (a) { return text(a.use || ""); } },
           { head: "Default", cell: valueCell },
           { head: "Description", cell: function (a) { return text(documentationText(a)); } },
@@ -692,6 +698,35 @@
     return element(tag || "span", className || null, value);
   }
 
+  // What a type holds that its name does not show. The count says there is
+  // something to open and names the section it leads to; children are left out
+  // because nearly every type has some.
+  function holdings(typeName) {
+    var type = state.model.types[typeName];
+    if (!type) return "";
+    var parts = [];
+    var values = (type.enumeration || []).length;
+    if (values) parts.push(values + (values === 1 ? " value" : " values"));
+    var seen = {};
+    (type.facets || []).forEach(function (facet) {
+      if (seen[facet.name]) return;
+      seen[facet.name] = true;
+      parts.push(facet.name);
+    });
+    return parts.join(", ");
+  }
+
+  // Linked like the type beside it, and to the same page: a reader who does
+  // not yet know that a type name is where the values live follows the words
+  // that name them.
+  function constraintsCell(entry) {
+    var holds = holdings(entry.type);
+    if (!holds) return element("span");
+    var button = element("button", "cd-holds cd-crumb", holds);
+    button.addEventListener("click", function () { showType(entry.type); });
+    return button;
+  }
+
   function typeCell(typeName) {
     if (!typeName || typeName.indexOf("xsd:") === 0) {
       return element("code", null, typeName || "");
@@ -701,10 +736,7 @@
       // Not in this schema: leave the name as text rather than link nowhere.
       return element("code", null, typeName);
     }
-    // An anonymous type is labelled with its base: its synthetic name says
-    // where it was declared, which the row it sits in has just said, while the
-    // base says what may be written there. The values are one click away.
-    var label = type.anonymous && type.base ? type.base : typeName;
+    var label = typeLabel(typeName);
     // Switching the panel rather than following a link keeps the tree, and its
     // selection, in place. Where a type is worth citing, the panel offers the
     // static page explicitly.
@@ -712,6 +744,23 @@
     button.appendChild(element("code", null, label));
     button.addEventListener("click", function () { showType(typeName); });
     return button;
+  }
+
+  // An anonymous type is labelled with its base: its synthetic name says where
+  // it was declared, which the row it sits in has just said, while the base
+  // says what may be written there. The values are one click away.
+  function typeLabel(typeName) {
+    var type = state.model.types[typeName];
+    return type && type.anonymous && type.base ? type.base : typeName;
+  }
+
+  // What an instance writes into the element, where the label does not already
+  // say it. The chain that answers it runs three types deep in this schema, and
+  // following it was left to the reader.
+  function valueType(typeName) {
+    var type = state.model.types[typeName];
+    if (!type || !type.contentType) return "";
+    return type.contentType === typeLabel(typeName) ? "" : type.contentType;
   }
 
   function showType(typeName) {
@@ -734,7 +783,7 @@
     panel.appendChild(element("h2", null, "Child elements"));
     var table = element("table");
     var head = element("tr");
-    var headings = ["Name", "Type", "Occurrence", "Default", "Description"];
+    var headings = ["Name", "Type", "Constraints", "Occurrence", "Default", "Description"];
     for (var h = 0; h < headings.length; h++) head.appendChild(element("th", null, headings[h]));
     table.appendChild(head);
     appendChildRows(table, members, 0);
@@ -749,7 +798,7 @@
       if (member.kind === "group") {
         var groupRow = element("tr", "cd-group cd-group-" + (member.compositor || ""));
         var groupCell = element("td");
-        groupCell.setAttribute("colspan", "4");
+        groupCell.setAttribute("colspan", "5");
         indent(groupCell, depth);
         var label = element("span", "cd-group-label");
         var mark = element("span", "cd-group-mark");
@@ -783,6 +832,9 @@
       var typeCellNode = element("td");
       typeCellNode.appendChild(typeCell(member.type));
       row.appendChild(typeCellNode);
+      var holdsTd = element("td");
+      holdsTd.appendChild(constraintsCell(member));
+      row.appendChild(holdsTd);
       row.appendChild(text(cardinality(member), "td"));
       var valueTd = element("td");
       valueTd.appendChild(valueCell(member));
@@ -839,6 +891,10 @@
     if (type.base) {
       meta.appendChild(document.createTextNode(" \u00B7 " + (type.derivation || "derives from") + " "));
       meta.appendChild(typeCell(type.base));
+    }
+    if (type.contentType && type.contentType !== type.base) {
+      meta.appendChild(document.createTextNode(" \u00B7 value "));
+      meta.appendChild(element("code", null, type.contentType));
     }
     if (type.compositor) {
       meta.appendChild(document.createTextNode(" \u00B7 " + type.compositor));

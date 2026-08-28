@@ -14,6 +14,22 @@
         </xsd:sequence>
     </xsd:complexType>
 
+    <xsd:complexType name="valueBaseType">
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:double">
+                <xsd:attribute name="unit" type="xsd:string"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="measuredValueType">
+        <xsd:simpleContent>
+            <xsd:extension base="valueBaseType">
+                <xsd:attribute name="accuracy" type="xsd:double"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
     <xsd:complexType name="cpacsType">
         <xsd:annotation>
             <xsd:appinfo>
@@ -67,6 +83,7 @@
                     </xsd:restriction>
                 </xsd:simpleType>
             </xsd:element>
+            <xsd:element name="mass" type="measuredValueType" minOccurs="0"/>
             <xsd:element name="ratio" minOccurs="0" default="0.5">
                 <xsd:simpleType>
                     <xsd:restriction base="xsd:double">

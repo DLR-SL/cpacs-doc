@@ -50,6 +50,15 @@ correctly"*.
 > unchanged. The tables label such a type with its base rather than its
 > synthetic name — `xsd:string`, not `axleType/sideOfFirstWheel` — and keep the
 > link, because that page is where the values are.
+>
+> The link alone turned out not to be signal enough: `xsd:string` in a row reads
+> exactly like the plain string beside it, and nothing tells a reader who has
+> not met the convention that there is anything to open. The tables therefore
+> carry a **Constraints** column naming what sits behind the link — `3 values`,
+> `pattern`, `minInclusive, maxInclusive` — linked to the same page, so the
+> words that name what the reader is after are themselves the way there. XSD
+> calls an enumeration a constraining facet, which is why one column holds both.
+> It appears on 262 of the 7,685 rows across all type pages.
 
 ### 2. No facet other than `enumeration` is extracted at all
 
@@ -75,9 +84,12 @@ accounted for?"*.
 > Measured against the same schema afterwards: **30 of 30** — 8 `pattern`,
 > 9 `minInclusive`, 6 `maxInclusive`, 5 `minExclusive`, 2 `maxExclusive`.
 > Pages and panel show them as *Value constraints*, the schema word carrying
-> its plain reading on hover and focus as a compositor does. Together with
-> finding 1 this reaches the elements that declare their own type: the panel
-> for `naca4DigitCode` now reads `Type: xsd:string` and `pattern [0-9]{4}`.
+> its plain reading on hover and focus as a compositor does, and the row that
+> leads there names the facet rather than counting it — `pattern`, not
+> "1 constraint", because 121 of the 262 marked rows carry exactly one. Together
+> with finding 1 this reaches the elements that declare their own type: the
+> panel for `naca4DigitCode` now reads `Type: xsd:string` and `pattern
+> [0-9]{4}`.
 
 ### 3. The value type of a `simpleContent` type is never stated
 
@@ -87,6 +99,14 @@ Sandcastle names it outright — `Content Type: double` on
 doubleBaseType`) and leave the reader to walk `doubleConstraintBaseType →
 doubleBaseType → xsd:double` across three pages to find out what to write into
 the element.
+
+> **Closed, 2026-08-28.** `model.content_types` resolves the chain once for
+> everyone and the model carries `contentType`. **104** types hold a value —
+> the 22 with simple content, the simple types, and the inline types declared
+> at an element or an attribute — and for **64** of them it says something the
+> base does not. Shown as `· value xsd:double` on the kind line and on the
+> node's own type line, and left out where the base has already said it, so
+> `doubleBaseType` still reads `extension xsd:double` and nothing more.
 
 ### 4. `xsd:any` is dropped from the child table, documentation and all
 

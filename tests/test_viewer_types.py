@@ -139,3 +139,65 @@ def test_a_column_headed_default_does_not_repeat_the_word(browser, base):
       return null;
     """)
     assert cell == "0.5", cell
+
+
+def test_a_node_says_what_may_be_written_into_it(browser, base):
+    """`mass` is a `measuredValueType`, which extends `valueBaseType`, which
+    extends `xsd:double`. The node named the first and left the reader to walk
+    the rest."""
+    browser.open(base + "/tree/cpacs/mass/")
+    browser.wait_for(READY, "the tree")
+    line = browser.evaluate(r"""
+      var lines = document.querySelectorAll('#cd-detail .cd-kind');
+      for (var i = 0; i < lines.length; i++) {
+        var text = lines[i].textContent.replace(/\s+/g, ' ').trim();
+        if (text.indexOf('Type:') === 0) return text;
+      }
+      return null;
+    """)
+    assert line == "Type: measuredValueType · value xsd:double"
+
+
+def test_a_row_says_what_sits_behind_the_type_link(browser, base):
+    """`xsd:string` in a row looks exactly like the plain string next to it,
+    and an inexperienced reader has no reason to click it. The count says there
+    is something there, and names the section it leads to."""
+    browser.open(base + "/tree/cpacs/")
+    browser.wait_for(READY, "the tree")
+    rows = browser.evaluate(r"""
+      var out = {};
+      var rows = document.querySelectorAll('#cd-detail table tr');
+      for (var i = 1; i < rows.length; i++) {
+        var name = rows[i].children[0];
+        var holds = rows[i].querySelector('.cd-holds');
+        if (!name) continue;
+        out[name.textContent.trim()] = holds ? holds.textContent.trim() : "";
+      }
+      return out;
+    """)
+    assert rows.get("mode") == "2 values"
+    # Facets are named, not counted: `pattern` says more than "1 constraint",
+    # and most rows that carry a facet carry exactly one.
+    assert rows.get("ratio") == "minInclusive, maxInclusive"
+    # A type that hides nothing leaves the column empty.
+    assert rows.get("header") == ""
+
+
+def test_the_constraints_cell_leads_to_the_values_it_counts(browser, base):
+    """Two links in a row lead to one page on purpose. The type name says what
+    may be written; these words say that there are two of them, and a reader
+    who does not yet know the first follows the second."""
+    browser.open(base + "/tree/cpacs/")
+    browser.wait_for(READY, "the tree")
+    opened = browser.evaluate(r"""
+      var cells = document.querySelectorAll('#cd-detail .cd-holds');
+      for (var i = 0; i < cells.length; i++) {
+        if (cells[i].textContent.trim() === '2 values') { cells[i].click(); return true; }
+      }
+      return false;
+    """)
+    assert opened, "no cell counting values was found"
+    panel = browser.evaluate(PANEL)
+    assert panel["heading"] == "cpacsType/mode"
+    assert "Allowed values" in panel["text"]
+    assert panel["values"] == ["inline-only", "second"]

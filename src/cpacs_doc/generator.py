@@ -303,10 +303,56 @@ def _kind_line(entry) -> str:
         derivation = entry.get("derivation") or "derives from"
         target = _type_link(base)
         bits.append(f"{escape(derivation)} {target}")
+    # What an instance actually writes here, where the base does not already
+    # say it: `doubleConstraintBaseType` extends `doubleBaseType` extends
+    # `xsd:double`, and only the last of the three answers the question.
+    content_type = entry.get("contentType")
+    if content_type and content_type != base:
+        bits.append(f"value <code>{escape(content_type)}</code>")
     compositor = entry.get("compositor")
     if compositor:
         bits.append(escape(compositor))
     return f'<p class="cd-kind">{" · ".join(bits)}</p>'
+
+
+def _holdings(entry) -> str:
+    """What narrows the value behind a type link, in the schema's own words.
+
+    A row says `xsd:string`, which is what an instance writes there and looks
+    exactly like the plain string next to it — while behind the link sit three
+    allowed values or a pattern the value must match. XSD calls both of these
+    constraining facets, which is why one column holds them.
+
+    Facets are named rather than counted: `pattern` says more than "1
+    constraint", and 121 of the 262 marked rows carry exactly one facet — a
+    column of "1 constraint" would be wallpaper. Values are counted rather than
+    named, because there can be eighteen of them and they are one click away.
+
+    Children are deliberately left out: nearly every type has some, and a
+    number on nearly every row is no signal at all.
+    """
+    parts = []
+    values = len(entry.get("enumeration", []))
+    if values:
+        parts.append(f"{values} value" + ("s" if values != 1 else ""))
+    parts.extend(dict.fromkeys(f["name"] for f in entry.get("facets", [])))
+    return ", ".join(parts)
+
+
+def _constraints_cell(type_name, types) -> str:
+    """Linked to the same page as the type beside it.
+
+    Two links in a row leading to one page is a small redundancy against the
+    reader who does not yet know that a type name is where values live. The
+    words differ — one says what may be written, the other that there are three
+    of them — and the second is the one a beginner follows.
+    """
+    entry = (types or {}).get(type_name) or {}
+    holds = _holdings(entry)
+    if not holds:
+        return ""
+    return (f'<a class="cd-holds" href="../{escape(slug(type_name))}/index.html">'
+            f"{escape(holds)}</a>")
 
 
 def _type_link(type_name: str, types: dict | None = None) -> str:
@@ -323,7 +369,8 @@ def _type_link(type_name: str, types: dict | None = None) -> str:
         return f"<code>{escape(type_name or '')}</code>"
     entry = (types or {}).get(type_name) or {}
     label = entry.get("base") or type_name if entry.get("anonymous") else type_name
-    return f'<a href="../{escape(slug(type_name))}/index.html"><code>{escape(label)}</code></a>'
+    return (f'<a href="../{escape(slug(type_name))}/index.html">'
+            f"<code>{escape(label)}</code></a>")
 
 
 def _documentation_list(sections) -> str:
@@ -375,6 +422,7 @@ def _attribute_table(attributes, types=None) -> str:
             "<tr>"
             f'<td><code>@{escape(attribute["name"])}</code></td>'
             f'<td>{_type_link(attribute.get("type"), types)}</td>'
+            f'<td>{_constraints_cell(attribute.get("type"), types)}</td>'
             f'<td>{escape(attribute.get("use", ""))}</td>'
             f"<td>{value}</td>"
             f'<td>{escape(attribute.get("documentation", {}).get("text", ""))}</td>'
@@ -383,7 +431,7 @@ def _attribute_table(attributes, types=None) -> str:
         )
     return (
         '<section class="cd-attributes"><h2>Attributes</h2><table>'
-        "<tr><th>Name</th><th>Type</th><th>Use</th><th>Default</th>"
+        "<tr><th>Name</th><th>Type</th><th>Constraints</th><th>Use</th><th>Default</th>"
         "<th>Description</th><th>Inherited from</th></tr>"
         + "".join(rows)
         + "</table></section>"
@@ -416,8 +464,8 @@ def _child_table(children, types=None) -> str:
         return ""
     return (
         '<section class="cd-children"><h2>Child elements</h2><table>'
-        "<tr><th>Name</th><th>Type</th><th>Occurrence</th><th>Default</th>"
-        "<th>Description</th></tr>"
+        "<tr><th>Name</th><th>Type</th><th>Constraints</th><th>Occurrence</th>"
+        "<th>Default</th><th>Description</th></tr>"
         + "".join(rows)
         + "</table></section>"
     )
@@ -443,7 +491,7 @@ def _child_rows(members, depth: int, types=None) -> list[str]:
                 else ""
             )
             rows.append(
-                f'<tr class="cd-group cd-group-{escape(compositor)}"><td{indent} colspan="4">'
+                f'<tr class="cd-group cd-group-{escape(compositor)}"><td{indent} colspan="5">'
                 f'<span class="cd-group-label">'
                 f'<span class="cd-group-mark" aria-hidden="true"></span>'
                 f'<span class="cd-group-term" tabindex="0">{escape(compositor)}'
@@ -457,6 +505,7 @@ def _child_rows(members, depth: int, types=None) -> list[str]:
             "<tr>"
             f'<td{indent}><code>{escape(member["name"])}</code></td>'
             f'<td>{_type_link(member.get("type"), types)}</td>'
+            f'<td>{_constraints_cell(member.get("type"), types)}</td>'
             f"<td>{escape(_cardinality(member))}</td>"
             f"<td>{_value_cell(member)}</td>"
             f'<td>{escape(member.get("documentation", {}).get("text", ""))}</td>'

@@ -69,7 +69,37 @@ def _documentation(doc: Documentation, html: "RenderedDocumentation | None" = No
     return entry
 
 
-def _type_entry(info, content, html) -> dict:
+def content_types(catalogue) -> dict[str, str]:
+    """The value an instance writes, for every type that holds one.
+
+    Sandcastle names it outright: `Content Type: double`. Without it the chain
+    is the reader's to walk — `doubleConstraintBaseType` extends
+    `doubleBaseType` extends `xsd:double`, three pages to answer what may be
+    written into the element. Resolved once here rather than by each consumer,
+    like the first paths below.
+    """
+    resolved: dict[str, str] = {}
+
+    def walk(name, seen):
+        info = catalogue.types.get(name)
+        if info is None or not info.simple_content or not info.base:
+            return None
+        if info.base.startswith("xsd:"):
+            return info.base
+        if info.base in seen:
+            return None  # a cycle; the catalogue reports it where it is read
+        return walk(info.base, seen | {name})
+
+    for name, info in catalogue.types.items():
+        if not info.simple_content:
+            continue
+        value = walk(name, frozenset())
+        if value:
+            resolved[name] = value
+    return resolved
+
+
+def _type_entry(info, content, html, content_type=None) -> dict:
     entry = {
         "name": info.name,
         "kind": info.kind,
@@ -77,6 +107,7 @@ def _type_entry(info, content, html) -> dict:
         "base": info.base,
         "derivation": info.derivation,
         "compositor": info.compositor,
+        **({"contentType": content_type} if content_type else {}),
         "line": info.line,
         "documentation": _documentation(info.doc, html),
     }
@@ -392,6 +423,7 @@ def build(
     content_by_type: dict | None = None,
     rendered: dict[str, RenderedDocumentation] | None = None,
 ) -> dict:
+    values = content_types(catalogue)
     declarations: dict[str, dict] = {}
     if tree.root:
         _collect_declarations(tree.root, declarations)
@@ -420,7 +452,8 @@ def build(
             "mediaEntries": len(media_catalogue.entries) if media_catalogue else 0,
         },
         "types": {
-            name: _type_entry(info, content_by_type.get(name), rendered.get(name))
+            name: _type_entry(info, content_by_type.get(name), rendered.get(name),
+                              values.get(name))
             for name, info in sorted(catalogue.types.items())
         },
         "declarations": declarations,

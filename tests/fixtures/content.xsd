@@ -19,6 +19,22 @@
         </xsd:restriction>
     </xsd:simpleType>
 
+    <xsd:complexType name="valueBaseType">
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:double">
+                <xsd:attribute name="unit" type="xsd:string"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:complexType name="measuredValueType">
+        <xsd:simpleContent>
+            <xsd:extension base="valueBaseType">
+                <xsd:attribute name="accuracy" type="xsd:double"/>
+            </xsd:extension>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
     <xsd:complexType name="wingType">
         <xsd:complexContent>
             <xsd:extension base="baseType">

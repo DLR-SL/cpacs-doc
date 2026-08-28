@@ -49,3 +49,23 @@ def test_write_leaves_no_temporary_behind(parse, tmp_path):
     built = build_model(parse, tmp_path)
     model.write(built, tmp_path / "model.json")
     assert list(tmp_path.glob("*.tmp")) == []
+
+
+def test_the_value_a_type_holds_is_resolved_through_the_chain(parse):
+    """`measuredValueType` extends `valueBaseType` extends `xsd:double`. Only
+    the last of the three answers what may be written into the element, and
+    following the chain was the reader's job across as many pages."""
+    root = parse("content.xsd")
+    catalogue = catalogue_module.build(root, "content.xsd")
+    values = model.content_types(catalogue)
+    assert values["measuredValueType"] == "xsd:double"
+    assert values["valueBaseType"] == "xsd:double"
+    # A type whose content is elements holds no value of its own.
+    assert "wingType" not in values
+    assert "baseType" not in values
+
+
+def test_a_simple_type_holds_its_own_value(parse):
+    root = parse("content.xsd")
+    catalogue = catalogue_module.build(root, "content.xsd")
+    assert model.content_types(catalogue)["symmetryType"] == "xsd:string"

@@ -260,7 +260,13 @@ def test_an_anonymous_type_is_labelled_by_its_base_and_still_linked(model, tmp_p
     generator.generate(model, tmp_path)
     page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
     assert "wingType/mode" not in page, "the synthetic name has no business in a table"
-    assert '<a href="../wingType--mode/index.html"><code>xsd:string</code></a>' in page
+    assert '<a href="../wingType--mode/index.html"><code>xsd:string</code>' in page
+    # And the row says there is something behind the link: `xsd:string` alone
+    # reads like the plain string in the row above it.
+    # …and says so in words that name what is there, linked to the same page:
+    # a reader who does not know that a type name holds values follows these.
+    assert ('<a class="cd-holds" href="../wingType--mode/index.html">1 value</a>'
+            in page)
     values = (tmp_path / "type" / "wingType--mode" / "index.html").read_text(encoding="utf-8")
     assert "inline-only" in values
 
@@ -301,3 +307,19 @@ def test_a_child_shows_what_it_is_worth_unwritten(model, tmp_path):
     assert "<code>0.5</code>" in children
     # A fixed value is not a default, and the column says so.
     assert '<code>m</code> <span class="cd-fixed">fixed</span>' in children
+
+
+def test_the_kind_line_names_the_value_where_the_base_does_not(model, tmp_path):
+    model["types"]["wingType"]["contentType"] = "xsd:double"
+    generator.generate(model, tmp_path)
+    page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert "value <code>xsd:double</code>" in page
+
+
+def test_the_kind_line_does_not_say_the_base_twice(model, tmp_path):
+    """`doubleBaseType` extends `xsd:double`: the base has already said it."""
+    model["types"]["wingType"]["base"] = "xsd:double"
+    model["types"]["wingType"]["contentType"] = "xsd:double"
+    generator.generate(model, tmp_path)
+    page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert "value <code>" not in page
