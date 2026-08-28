@@ -311,6 +311,7 @@
       var index = state.cursorIndex;
       var row = state.rows[index];
       if (!row) return;
+      dismissHint();
 
       if (event.key === "ArrowDown") {
         moveCursor(index + 1);
@@ -348,6 +349,66 @@
     });
   }
 
+  /* ---- the keyboard hint ----
+   *
+   * The tree is the one control here whose keys cannot be read off it, and a
+   * reader who never presses one never learns they exist. So it is said once,
+   * quietly, and taken back the moment it is no longer news — the first key in
+   * the tree, or the button. Remembered like the tree width; the reader who
+   * has moved a cursor once does not need telling again.
+   */
+  var HINT_KEY = "cpacs-doc.keyboardHint";
+  var HINT_ITEMS = [
+    [["\u2191", "\u2193"], "move"],
+    [["\u2192", "\u2190"], "open, close"],
+    [["Enter"], "details"],
+    [["/"], "search"]
+  ];
+
+  function hintSeen() {
+    try {
+      return window.localStorage.getItem(HINT_KEY) === "seen";
+    } catch (e) {
+      return false;  // private mode: show it, do not fail
+    }
+  }
+
+  function dismissHint() {
+    var hint = document.getElementById("cd-hint");
+    if (!hint) return;
+    hint.parentNode.removeChild(hint);
+    try { window.localStorage.setItem(HINT_KEY, "seen"); } catch (e) { /* private mode */ }
+  }
+
+  function setupHint() {
+    if (hintSeen()) return;
+    var tree = document.getElementById("cd-tree");
+    if (!tree || !tree.parentNode) return;
+
+    var hint = element("div", "cd-hint");
+    hint.id = "cd-hint";
+    hint.setAttribute("role", "note");
+    hint.appendChild(element("span", "cd-hint-lead", "Keyboard"));
+
+    for (var i = 0; i < HINT_ITEMS.length; i++) {
+      var item = element("span", "cd-hint-item");
+      var keys = HINT_ITEMS[i][0];
+      for (var k = 0; k < keys.length; k++) {
+        item.appendChild(element("kbd", null, keys[k]));
+      }
+      item.appendChild(element("span", "cd-hint-what", HINT_ITEMS[i][1]));
+      hint.appendChild(item);
+    }
+
+    var close = element("button", "cd-hint-close", "\u00D7");
+    close.setAttribute("aria-label", "Hide the keyboard hint");
+    close.addEventListener("click", dismissHint);
+    hint.appendChild(close);
+
+    // Ahead of the tree, so it is read before what it describes.
+    tree.parentNode.insertBefore(hint, tree);
+  }
+
   function isTextField(node) {
     if (!node) return false;
     return node.tagName === "INPUT" || node.tagName === "TEXTAREA"
@@ -373,6 +434,19 @@
           focusCursor();
         }
         event.preventDefault();
+        return;
+      }
+      // Straight after a page load the focus is nowhere, and an arrow key
+      // would scroll a page that does not scroll: both panes carry their own
+      // scrollbar. The reader meant the tree. Only an event that reached the
+      // document from the body itself qualifies — anything focused, the tree
+      // included, has handled its own keys by now.
+      if (event.target === document.body || event.target === document.documentElement) {
+        if (event.key.indexOf("Arrow") === 0) {
+          dismissHint();
+          focusCursor();
+          event.preventDefault();
+        }
       }
     });
   }
@@ -948,6 +1022,7 @@
         expandAncestors(segments);
         renderTree();
         renderDetail();
+        setupHint();
       })
       .catch(function (error) {
         fail("The documentation model could not be loaded: " + error.message);

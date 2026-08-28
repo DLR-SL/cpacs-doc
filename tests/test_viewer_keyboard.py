@@ -79,10 +79,22 @@ def base(tmp_path_factory):
     thread.join(timeout=5)
 
 
+TREE_READY = 'return document.querySelectorAll(\'[role="treeitem"]\').length > 1;'
+
+
 @pytest.fixture(scope="module")
-def browser(tmp_path_factory):
+def browser(tmp_path_factory, base):
     driver = cdp.Browser(BROWSER)
     driver.start(tmp_path_factory.mktemp("profile"))
+    # The hint is shown to a reader who has not used the keys yet. Every test
+    # but the ones about the hint itself wants the steady state, so it is
+    # marked as seen once for this origin before anything else runs.
+    assert cdp.reachable(base + "/tree/cpacs/"), "the development server did not answer"
+    driver.open(base + "/tree/cpacs/")
+    driver.wait_for(TREE_READY, "the tree")
+    driver.evaluate(
+        "window.localStorage.setItem('cpacs-doc.keyboardHint', 'seen'); return true;"
+    )
     yield driver
     driver.close()
 
@@ -90,12 +102,8 @@ def browser(tmp_path_factory):
 @pytest.fixture
 def page(browser, base):
     """A freshly loaded tree, with the keyboard already in it."""
-    assert cdp.reachable(base + "/tree/cpacs/"), "the development server did not answer"
     browser.open(base + "/tree/cpacs/")
-    browser.wait_for(
-        "return document.querySelectorAll('[role=\"treeitem\"]').length > 1;",
-        "the tree",
-    )
+    browser.wait_for(TREE_READY, "the tree")
     # A reader arrives at the tree by clicking or by Tab; the tests start from
     # there rather than repeating the way in every one of them.
     browser.evaluate("document.querySelector('.cd-node.cd-cursor').focus(); return true;")
@@ -222,6 +230,18 @@ def test_the_keys_work_right_after_a_click(page):
     assert after["focusIsCursor"], f"focus on {after['focus']}"
 
 
+def test_an_arrow_key_reaches_the_tree_when_the_focus_is_nowhere(page):
+    """Straight after a load the focus is nowhere. An arrow key would scroll a
+    page that does not scroll — both panes carry their own scrollbar — so it is
+    taken into the tree instead, which is what the reader meant."""
+    page.evaluate("document.activeElement.blur(); return true;")
+    assert page.evaluate("return document.activeElement === document.body;")
+    page.press("ArrowDown")
+    after = state(page)
+    assert after["focusIsCursor"], f"focus on {after['focus']}"
+    assert after["scrolled"] == 0
+
+
 def test_one_tab_from_the_search_field_reaches_the_tree(page):
     page.evaluate("document.getElementById('cd-search').focus(); return true;")
     page.press("Tab")
@@ -237,3 +257,54 @@ def test_slash_opens_the_search_and_escape_returns_to_the_cursor(page):
     after = state(page)
     assert after["focusIsCursor"], f"focus on {after['focus']}"
     assert after["cursor"] == cursor
+
+
+@pytest.fixture
+def unseen(page, base):
+    """The page as a first-time reader gets it, hint and all."""
+    page.evaluate("window.localStorage.removeItem('cpacs-doc.keyboardHint'); return true;")
+    page.open(base + "/tree/cpacs/")
+    page.wait_for(TREE_READY, "the tree")
+    yield page
+    page.evaluate(
+        "window.localStorage.setItem('cpacs-doc.keyboardHint', 'seen'); return true;"
+    )
+
+
+def test_the_hint_is_shown_to_a_reader_who_has_not_used_the_keys(unseen):
+    hint = unseen.evaluate("""
+      var hint = document.getElementById('cd-hint');
+      if (!hint) return null;
+      return {
+        keys: hint.querySelectorAll('kbd').length,
+        follows: hint.nextElementSibling ? hint.nextElementSibling.id : null,
+        role: hint.getAttribute('role'),
+        keyBorder: getComputedStyle(hint.querySelector('kbd')).borderTopWidth
+      };
+    """)
+    assert hint is not None, "a first-time reader should be told"
+    # Ahead of the tree in the document, so it is read before what it describes.
+    assert hint["follows"] == "cd-tree"
+    assert hint["keys"] >= 4
+    assert hint["role"] == "note"
+    # The keys are the whole point of the strip, so they are set in relief. A
+    # rule that stops matching would leave the words and take the keys.
+    assert hint["keyBorder"] not in ("0px", "", None), hint["keyBorder"]
+
+
+def test_the_hint_goes_at_the_first_key_and_does_not_come_back(unseen, base):
+    unseen.evaluate("document.querySelector('.cd-node.cd-cursor').focus(); return true;")
+    unseen.press("ArrowDown")
+    assert unseen.evaluate("return !document.getElementById('cd-hint');")
+    unseen.open(base + "/tree/cpacs/")
+    unseen.wait_for(TREE_READY, "the tree")
+    assert unseen.evaluate("return !document.getElementById('cd-hint');"), "it stays away"
+
+
+def test_the_hint_can_be_put_away_by_hand(unseen):
+    spot = unseen.evaluate("""
+      var box = document.querySelector('.cd-hint-close').getBoundingClientRect();
+      return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    """)
+    unseen.click(spot["x"], spot["y"])
+    assert unseen.evaluate("return !document.getElementById('cd-hint');")
