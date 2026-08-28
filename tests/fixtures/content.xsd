@@ -101,5 +101,15 @@
         </xsd:sequence>
     </xsd:complexType>
 
-    <xsd:element name="cpacs" type="wingType"/>
+    <xsd:element name="cpacs" type="wingType">
+        <xsd:keyref name="segmentRef" refer="segmentKey">
+            <xsd:selector xpath="./segment"/>
+            <xsd:field xpath="@uID"/>
+        </xsd:keyref>
+        <xsd:key name="segmentKey">
+            <xsd:selector xpath="./segment/*"/>
+            <xsd:field xpath="@uID"/>
+            <xsd:field xpath="@name"/>
+        </xsd:key>
+    </xsd:element>
 </xsd:schema>

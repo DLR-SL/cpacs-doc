@@ -29,6 +29,26 @@ from .findings import Finding
 ROOT_ELEMENT = "cpacs"
 
 
+@dataclass(frozen=True)
+class IdentityConstraint:
+    """A key, a reference to one, or a uniqueness rule declared on an element.
+
+    Two in CPACS 3.5.1, both on the root: the version a dataset states must be
+    one of the versions its own header lists. That is the only rule the schema
+    gives beyond its structure, and nothing showed it — a reader had to open
+    the XSD to find out that the two ends have to agree.
+
+    They hang off the declaration, not off the type, so they travel with the
+    node rather than with the type page.
+    """
+
+    kind: str                  # "key" | "keyref" | "unique"
+    name: str | None
+    refer: str | None          # the key a keyref points at
+    selector: str | None       # the elements the rule applies to
+    fields: tuple[str, ...]    # what must be unique, or must match
+
+
 @dataclass
 class Node:
     name: str            # element name as it appears in an instance, or the
@@ -42,6 +62,7 @@ class Node:
     doc: Documentation
     default: str | None = None   # value an instance means by leaving it out
     fixed: str | None = None     # value an instance must write if it writes one
+    identity: tuple[IdentityConstraint, ...] = ()
     recursive: bool = False  # expansion stopped: the type is already on this path
     children: list["Node"] = field(default_factory=list)
     line: int | None = None
@@ -162,6 +183,7 @@ def _expand(element, parent_path, depth, schema, catalogue, tree, source, seen, 
         max_occurs=_occurs(element.get("maxOccurs"), 1),
         default=element.get("default"),
         fixed=element.get("fixed"),
+        identity=_identity_constraints(element),
         compositor=None,
         doc=doc,
         line=getattr(element, "sourceline", None),
@@ -198,6 +220,29 @@ def _expand(element, parent_path, depth, schema, catalogue, tree, source, seen, 
         node.children.append(child)
 
     return node
+
+
+def _identity_constraints(element) -> tuple[IdentityConstraint, ...]:
+    """Read in document order: a keyref may stand before the key it refers to,
+    and it does here."""
+    kinds = ("key", "keyref", "unique")
+    found = []
+    for node in element:
+        if not isinstance(node.tag, str) or local(node.tag) not in kinds:
+            continue
+        selector = node.find(q(XSD, "selector"))
+        found.append(
+            IdentityConstraint(
+                kind=local(node.tag),
+                name=node.get("name"),
+                refer=node.get("refer"),
+                selector=selector.get("xpath") if selector is not None else None,
+                fields=tuple(
+                    field.get("xpath") for field in node.findall(q(XSD, "field"))
+                ),
+            )
+        )
+    return tuple(found)
 
 
 def _definition(element, catalogue):

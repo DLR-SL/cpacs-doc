@@ -138,6 +138,24 @@ table — Type / Description / Selector / Fields — showing the key on
 `./header/versionInfos/*` `@version` and the reference from `./header` `version`.
 We show nothing, so the one integrity rule the schema states is invisible.
 
+> **Closed, 2026-08-28.** `tree._identity_constraints` reads `key`, `keyref`
+> and `unique` from the declaration in document order — a keyref may stand
+> before the key it names, and here it does — and the node carries them into
+> the model as `identityConstraints`. The panel shows them at the foot of the
+> node, below what the type says: the rule is about this element, but one node
+> of 53,692 carries one, and above the prose it would cost every reader of the
+> root node a screen to get past it.
+>
+> | Constraint | Name | Refers to | Selector | Fields |
+> | --- | --- | --- | --- | --- |
+> | `keyref` | versionKeyRef | versionKey | `./header` | `version` |
+> | `key` | versionKey | | `./header/versionInfos/*` | `@version` |
+>
+> The schema word carries its reading on hover and focus, as a compositor does.
+> The static pages do not show it and should not: the rule hangs off the
+> element, the type is not where it was written, and this architecture has no
+> element pages.
+
 ### 6. "Used by" is missing (known: F10)
 
 Sandcastle lists *Usages* on every type page (34 elements for

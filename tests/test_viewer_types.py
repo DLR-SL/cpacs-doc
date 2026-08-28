@@ -229,3 +229,33 @@ def test_a_wildcard_is_visible_at_the_node_that_allows_it(browser, base):
     assert row[5] == "Whatever a tool puts here."
     # And the reading of the word rides along on it.
     assert "An element the schema does not name may appear here." in row[0]
+
+
+def test_the_rule_a_dataset_must_satisfy_is_shown_at_the_node(browser, base):
+    """It hangs off the declaration, not off the type, so the node is the only
+    place it can be read — there is no page for an element here."""
+    browser.open(base + "/tree/cpacs/")
+    browser.wait_for(READY, "the tree")
+    table = browser.evaluate(r"""
+      var heads = document.querySelectorAll('#cd-detail h2');
+      for (var i = 0; i < heads.length; i++) {
+        if (heads[i].textContent !== 'Identity constraints') continue;
+        var rows = heads[i].nextElementSibling.querySelectorAll('tr');
+        var out = [];
+        for (var r = 0; r < rows.length; r++) {
+          var cells = [];
+          for (var c = 0; c < rows[r].children.length; c++) {
+            cells.push(rows[r].children[c].textContent.trim());
+          }
+          out.push(cells);
+        }
+        return out;
+      }
+      return null;
+    """)
+    assert table is not None, "no identity constraints are shown"
+    assert table[0] == ["Constraint", "Name", "Refers to", "Selector", "Fields"]
+    assert table[1][1:] == ["nameKey", "", "./header", "name"]
+    # The schema word carries its reading, as the compositors do.
+    assert table[1][0].startswith("key")
+    assert "may appear only once" in table[1][0]

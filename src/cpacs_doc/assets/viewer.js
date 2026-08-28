@@ -105,6 +105,43 @@
     return COMPOSITOR_GLOSS[name] || "";
   }
 
+  /* ---- identity constraints ----
+   *
+   * A key, a reference to one, or a uniqueness rule. They hang off the
+   * declaration rather than off the type, so they belong to the node and not
+   * to a type page — which is also why the static pages do not carry them:
+   * there is no page for an element in this architecture, and the type is not
+   * where the rule was written.
+   */
+  var IDENTITY_GLOSS = {
+    key: "Each element the selector picks must carry these fields, and each "
+      + "combination of them may appear only once.",
+    keyref: "These fields must match a key declared elsewhere, the one named "
+      + "beside them.",
+    unique: "Among the elements the selector picks, each combination of these "
+      + "fields may appear only once."
+  };
+
+  function identityTerm(rule) {
+    var term = element("span", "cd-facet", rule.kind);
+    term.setAttribute("tabindex", "0");
+    var tip = element("span", "cd-tip", IDENTITY_GLOSS[rule.kind] || "");
+    tip.setAttribute("role", "note");
+    term.appendChild(tip);
+    return term;
+  }
+
+  function appendIdentity(panel, decl) {
+    appendTable(panel, "Identity constraints", decl.identityConstraints, [
+      { head: "Constraint", cell: identityTerm },
+      { head: "Name", cell: function (r) { return text(r.name || "", "code"); } },
+      { head: "Refers to", cell: function (r) { return text(r.refer || "", "code"); } },
+      { head: "Selector", cell: function (r) { return text(r.selector || "", "code"); } },
+      { head: "Fields", cell: function (r) {
+          return text((r.fields || []).join(", "), "code"); } }
+    ]);
+  }
+
   // The one construct in the child table that is neither an element nor a
   // group: a place where the schema allows what it does not name.
   var ANY_GLOSS = "An element the schema does not name may appear here. The namespace beside it says which are allowed; strict means the element must be declared in a schema of its own.";
@@ -624,9 +661,17 @@
         line.appendChild(element("code", null, value));
       }
       panel.appendChild(line);
+    }
 
+    if (decl.type) {
       appendTypeBody(panel, state.model.types[decl.type]);
     }
+
+    // Last, though the rule is about this element and everything above it
+    // describes the type: one node of 53,692 carries one, and putting it first
+    // pushed the prose down the page for every reader of the root node, which
+    // is where the only rule in the schema happens to sit.
+    appendIdentity(panel, decl);
   }
 
   function appendTypeBody(panel, type) {

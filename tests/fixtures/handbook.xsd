@@ -100,5 +100,10 @@
         </xsd:sequence>
     </xsd:complexType>
 
-    <xsd:element name="cpacs" type="cpacsType"/>
+    <xsd:element name="cpacs" type="cpacsType">
+        <xsd:key name="nameKey">
+            <xsd:selector xpath="./header"/>
+            <xsd:field xpath="name"/>
+        </xsd:key>
+    </xsd:element>
 </xsd:schema>

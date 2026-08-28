@@ -207,6 +207,16 @@ def _declaration_entry(node) -> dict:
         "maxOccurs": node.max_occurs,
         **({"default": node.default} if node.default is not None else {}),
         **({"fixed": node.fixed} if node.fixed is not None else {}),
+        **({"identityConstraints": [
+            {
+                "kind": rule.kind,
+                **({"name": rule.name} if rule.name else {}),
+                **({"refer": rule.refer} if rule.refer else {}),
+                "selector": rule.selector,
+                "fields": list(rule.fields),
+            }
+            for rule in node.identity
+        ]} if node.identity else {}),
         "compositor": node.compositor,
         "line": node.line,
     }

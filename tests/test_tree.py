@@ -104,3 +104,24 @@ def test_a_wildcard_becomes_no_node(parse):
     names = [child.name for child in tree.root.children]
     assert "any" not in names
     assert "span" in names and "segment" in names
+
+
+def test_identity_constraints_travel_with_the_declaration(parse):
+    """The version a CPACS dataset states must be one of the versions its own
+    header lists. That rule is the only one the schema gives beyond structure,
+    it hangs off the element rather than off the type, and nothing showed it."""
+    root = parse("content.xsd")
+    catalogue = catalogue_module.build(root, "content.xsd")
+    tree = tree_module.build(root, catalogue, "content.xsd")
+    rules = tree.root.identity
+    # Document order, because a keyref may stand before the key it names — and
+    # in the real schema it does.
+    assert [r.kind for r in rules] == ["keyref", "key"]
+    assert rules[0].refer == "segmentKey"
+    assert rules[0].selector == "./segment"
+    assert rules[0].fields == ("@uID",)
+    assert rules[1].name == "segmentKey"
+    assert rules[1].fields == ("@uID", "@name")
+    assert rules[1].refer is None
+    # A node further down carries none.
+    assert tree.root.children[0].identity == ()
