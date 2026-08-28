@@ -393,6 +393,8 @@ def router_html() -> str:
         '<input id="cd-search" type="search" placeholder="Search elements, types, attributes"'
         ' autocomplete="off" spellcheck="false" aria-label="Search">'
         '<span id="cd-search-count" class="cd-search-count"></span>'
+        '<button id="cd-help" class="cd-help" type="button" aria-expanded="false"'
+        ' title="Keyboard shortcuts" aria-label="Keyboard shortcuts">?</button>'
         "</div>\n"
         '<div id="cd-tree" class="cd-pane" role="tree" aria-label="Instance tree"></div>\n'
         '<div id="cd-results" class="cd-pane" hidden></div>\n'

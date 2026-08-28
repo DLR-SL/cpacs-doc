@@ -207,6 +207,8 @@ def test_the_panes_carry_what_keyboard_operation_needs(model, tmp_path):
     html = (tmp_path / "404.html").read_text(encoding="utf-8")
     assert 'role="tree"' in html
     assert 'id="cd-detail" class="cd-pane cd-pane-detail" tabindex="-1"' in html
+    # The keys cannot be read off the tree, so there is a way to ask for them.
+    assert 'id="cd-help"' in html
 
 
 def test_assets_are_written_as_files_for_the_static_pages(model, tmp_path):

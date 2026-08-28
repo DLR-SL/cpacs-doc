@@ -357,6 +357,27 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-pane-detail table, .cd-pane-detail img, .cd-pane-detail pre { max-width: 100%; }
 .cd-pane-detail h1 { font-size: var(--step-4); }
 
+/* The way back to the hint once it has been put away, and the sign that there
+   is something to know at all. It sits with the search box because that is the
+   only chrome the tree column has. */
+.cd-help {
+  align-self: center;
+  flex: 0 0 auto;
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--step-0);
+  line-height: 1;
+  cursor: pointer;
+}
+.cd-help:hover,
+.cd-help[aria-expanded="true"] { color: var(--ink); border-color: var(--ink); }
+
 /* Said once, above the thing it describes, and gone at the first key. In the
    idiom of the rest of the page: a quiet strip, no card, no motion — the keys
    themselves carry it, so they are the only thing set in relief. */

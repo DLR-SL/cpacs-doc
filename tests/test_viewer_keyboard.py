@@ -242,10 +242,16 @@ def test_an_arrow_key_reaches_the_tree_when_the_focus_is_nowhere(page):
     assert after["scrolled"] == 0
 
 
-def test_one_tab_from_the_search_field_reaches_the_tree(page):
+def test_the_tree_is_a_step_or_two_from_the_search_field(page):
+    """What matters is that no row of the tree is a tab stop of its own; the
+    chrome above it is allowed a control."""
     page.evaluate("document.getElementById('cd-search').focus(); return true;")
-    page.press("Tab")
-    assert state(page)["focusIsCursor"], f"focus on {state(page)['focus']}"
+    for step in range(1, 4):
+        page.press("Tab")
+        if state(page)["focusIsCursor"]:
+            assert step <= 2, f"the tree took {step} tab stops"
+            return
+    raise AssertionError("Tab never reached the tree: " + str(state(page)["focus"]))
 
 
 def test_slash_opens_the_search_and_escape_returns_to_the_cursor(page):
@@ -307,4 +313,47 @@ def test_the_hint_can_be_put_away_by_hand(unseen):
       return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
     """)
     unseen.click(spot["x"], spot["y"])
+    assert unseen.evaluate("return !document.getElementById('cd-hint');")
+
+
+def click_help(page):
+    spot = page.evaluate("""
+      var box = document.getElementById('cd-help').getBoundingClientRect();
+      return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    """)
+    page.click(spot["x"], spot["y"])
+
+
+def test_the_help_button_brings_the_hint_back_after_it_was_put_away(page):
+    """The keys cannot be read off the tree, so there has to be a way to ask
+    for them again — the hint is shown once and then gone for good."""
+    assert page.evaluate("return !document.getElementById('cd-hint');")
+    click_help(page)
+    assert page.evaluate("return !!document.getElementById('cd-hint');")
+    assert page.evaluate(
+        "return document.getElementById('cd-help').getAttribute('aria-expanded');"
+    ) == "true"
+    click_help(page)
+    assert page.evaluate("return !document.getElementById('cd-hint');"), "it toggles"
+    assert page.evaluate(
+        "return document.getElementById('cd-help').getAttribute('aria-expanded');"
+    ) == "false"
+
+
+def test_a_hint_the_reader_asked_for_stays_while_the_keys_are_tried(page):
+    """The one that appears by itself goes at the first key, having been proved
+    superfluous. Snatching away the one that was asked for, because the reader
+    tried a key from it, would be the opposite of help."""
+    click_help(page)
+    page.evaluate("document.querySelector('.cd-node.cd-cursor').focus(); return true;")
+    page.press("ArrowDown")
+    assert page.evaluate("return !!document.getElementById('cd-hint');")
+    page.press("Escape")
+    assert page.evaluate("return !document.getElementById('cd-hint');"), "Escape closes it"
+
+
+def test_the_hint_that_came_by_itself_goes_at_the_first_key(unseen):
+    assert unseen.evaluate("return !!document.getElementById('cd-hint');")
+    unseen.evaluate("document.querySelector('.cd-node.cd-cursor').focus(); return true;")
+    unseen.press("ArrowDown")
     assert unseen.evaluate("return !document.getElementById('cd-hint');")

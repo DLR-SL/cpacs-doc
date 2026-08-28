@@ -311,7 +311,7 @@
       var index = state.cursorIndex;
       var row = state.rows[index];
       if (!row) return;
-      dismissHint();
+      hintUsed();
 
       if (event.key === "ArrowDown") {
         moveCursor(index + 1);
@@ -358,11 +358,15 @@
    * has moved a cursor once does not need telling again.
    */
   var HINT_KEY = "cpacs-doc.keyboardHint";
+  var hintIsAutomatic = false;
   var HINT_ITEMS = [
     [["\u2191", "\u2193"], "move"],
     [["\u2192", "\u2190"], "open, close"],
     [["Enter"], "details"],
-    [["/"], "search"]
+    [["/"], "search"],
+    // The way back. Enter without it strands a reader in the detail panel,
+    // and the same key closes the search results and this hint.
+    [["Esc"], "back to the tree"]
   ];
 
   function hintSeen() {
@@ -373,15 +377,46 @@
     }
   }
 
-  function dismissHint() {
+  function markHelp(open) {
+    var help = document.getElementById("cd-help");
+    if (!help) return;
+    help.setAttribute("aria-expanded", String(open));
+    if (open) help.setAttribute("aria-controls", "cd-hint");
+    else help.removeAttribute("aria-controls");
+  }
+
+  function hideHint() {
     var hint = document.getElementById("cd-hint");
     if (!hint) return;
     hint.parentNode.removeChild(hint);
+    hintIsAutomatic = false;
+    markHelp(false);
     try { window.localStorage.setItem(HINT_KEY, "seen"); } catch (e) { /* private mode */ }
   }
 
+  // Using the keys takes back the hint that appeared by itself: it has just
+  // been proved superfluous. One the reader asked for stays until the reader
+  // closes it — being shown the keys and then having them snatched away for
+  // trying one is not help.
+  function hintUsed() {
+    if (hintIsAutomatic) hideHint();
+  }
+
+  function setupHelp() {
+    var help = document.getElementById("cd-help");
+    if (!help) return;
+    help.addEventListener("click", function () {
+      if (document.getElementById("cd-hint")) hideHint();
+      else showHint(false);
+    });
+  }
+
   function setupHint() {
-    if (hintSeen()) return;
+    if (!hintSeen()) showHint(true);
+  }
+
+  function showHint(automatic) {
+    if (document.getElementById("cd-hint")) return;
     var tree = document.getElementById("cd-tree");
     if (!tree || !tree.parentNode) return;
 
@@ -402,11 +437,13 @@
 
     var close = element("button", "cd-hint-close", "\u00D7");
     close.setAttribute("aria-label", "Hide the keyboard hint");
-    close.addEventListener("click", dismissHint);
+    close.addEventListener("click", hideHint);
     hint.appendChild(close);
 
     // Ahead of the tree, so it is read before what it describes.
     tree.parentNode.insertBefore(hint, tree);
+    hintIsAutomatic = automatic;
+    markHelp(true);
   }
 
   function isTextField(node) {
@@ -430,6 +467,8 @@
       if (event.key === "Escape") {
         if (!document.getElementById("cd-results").hidden) {
           closeSearch(true);
+        } else if (document.getElementById("cd-hint")) {
+          hideHint();
         } else {
           focusCursor();
         }
@@ -443,7 +482,7 @@
       // included, has handled its own keys by now.
       if (event.target === document.body || event.target === document.documentElement) {
         if (event.key.indexOf("Arrow") === 0) {
-          dismissHint();
+          hintUsed();
           focusCursor();
           event.preventDefault();
         }
@@ -1004,6 +1043,7 @@
     setupTreeKeys();
     setupResultKeys();
     setupGlobalKeys();
+    setupHelp();
 
     fetch(state.root + MODEL_FILE)
       .then(function (response) {
