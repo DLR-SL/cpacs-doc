@@ -187,6 +187,13 @@ THEME_SCRIPT = """<script>
   function apply(mode) {
     if (mode === "light" || mode === "dark") root.setAttribute("data-theme", mode);
     else root.removeAttribute("data-theme");
+    // The attribute is enough for the tokens, which are painted with the
+    // stylesheet anyway. The canvas is not: it is the browser's, and on a page
+    // that links its stylesheet rather than inlining it there is a window in
+    // which the sheet has not arrived and the ground is already white. Saying
+    // it here closes that window.
+    root.style.colorScheme = mode === "light" || mode === "dark" ? mode : "light dark";
+
   }
   apply(read());
 

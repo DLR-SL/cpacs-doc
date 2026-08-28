@@ -18,7 +18,13 @@ pytestmark = pytest.mark.skipif(
     BROWSER is None, reason="no Chrome or Edge on this machine"
 )
 
-READY = "return !!document.getElementById('cd-theme');"
+# A linked stylesheet arrives after the document. Waiting only for the button
+# measures — and clicks — a page that has not been laid out yet, which is what
+# CI caught: the attribute was set and the rule that reads it was not in force.
+READY = (
+    "return document.readyState === 'complete'"
+    " && !!document.getElementById('cd-theme');"
+)
 
 STATE = """
   var root = document.documentElement;
@@ -142,3 +148,36 @@ def test_a_page_can_change_the_theme_for_the_viewer(page, base):
     page.open(base + "/tree/cpacs/")
     page.wait_for(READY, "the theme button")
     assert state(page)["attribute"] == "light"
+
+
+def test_the_palette_is_decided_before_the_stylesheet_arrives(page, base):
+    """The point of an inline script is the moment before the stylesheet is in
+    force. With the sheet blocked outright, that moment is the whole page: the
+    attribute is set and the canvas already knows which way it goes, even
+    though not one rule has been read.
+
+    This is the failure CI found, made deliberate. Waiting for the load event
+    hides it; blocking the sheet holds it still.
+    """
+    click_theme(page)
+    click_theme(page)  # dark
+    page.command("Network.enable")
+    page.command("Network.setBlockedURLs", {"urls": ["*styles.css"]})
+    try:
+        page.open(base + "/doc/1-overview/index.html")
+        page.wait_for(READY, "the theme button without a stylesheet")
+        stranded = page.evaluate("""
+          var root = document.documentElement;
+          return {
+            attribute: root.getAttribute('data-theme'),
+            scheme: getComputedStyle(root).colorScheme,
+            inline: root.style.colorScheme,
+            styled: getComputedStyle(document.body).maxWidth
+          };
+        """)
+    finally:
+        page.command("Network.setBlockedURLs", {"urls": []})
+    assert stranded["styled"] == "none", "the stylesheet should not have been applied"
+    assert stranded["attribute"] == "dark"
+    assert stranded["inline"] == "dark"
+    assert stranded["scheme"] == "dark"

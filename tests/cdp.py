@@ -239,6 +239,11 @@ class Browser:
             self.command("Page.enable")
             self.command("Runtime.enable")
         self.command("Page.navigate", {"url": url})
+        # Navigation answers when the document is committed, not when its
+        # stylesheet is in force. A test that measures or clicks before then
+        # sees an unlaid-out page — which is subtle, machine-dependent, and
+        # cost a CI run once already.
+        self.wait_for("return document.readyState === 'complete';", "the document")
 
     def command(self, method: str, params: dict | None = None) -> dict:
         assert self._socket is not None, "the browser was not started"
