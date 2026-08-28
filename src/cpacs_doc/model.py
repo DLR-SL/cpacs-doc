@@ -141,6 +141,8 @@ def _child_entry(member) -> dict:
         "type": member.type_name,
         "minOccurs": member.min_occurs,
         "maxOccurs": member.max_occurs,
+        **({"default": member.default} if member.default is not None else {}),
+        **({"fixed": member.fixed} if member.fixed is not None else {}),
         "line": member.line,
     }
     documentation = _documentation(member.doc)
@@ -158,6 +160,8 @@ def _declaration_entry(node) -> dict:
         # null encodes unbounded; a sentinel integer would be
         # indistinguishable from a real bound.
         "maxOccurs": node.max_occurs,
+        **({"default": node.default} if node.default is not None else {}),
+        **({"fixed": node.fixed} if node.fixed is not None else {}),
         "compositor": node.compositor,
         "line": node.line,
     }

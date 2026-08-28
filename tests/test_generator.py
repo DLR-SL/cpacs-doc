@@ -286,3 +286,18 @@ def test_a_type_without_constraints_gets_no_table(model, tmp_path):
     generator.generate(model, tmp_path)
     page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
     assert "Value constraints" not in page
+
+
+def test_a_child_shows_what_it_is_worth_unwritten(model, tmp_path):
+    members = model["types"]["wingType"]["children"][0]["members"]
+    members.append({"kind": "element", "name": "ratio", "type": "xsd:double",
+                    "minOccurs": 0, "maxOccurs": 1, "default": "0.5"})
+    members.append({"kind": "element", "name": "unit", "type": "xsd:string",
+                    "minOccurs": 0, "maxOccurs": 1, "fixed": "m"})
+    generator.generate(model, tmp_path)
+    page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    children = page.split("<h2>Child elements</h2>")[1]
+    assert "<th>Default</th>" in children
+    assert "<code>0.5</code>" in children
+    # A fixed value is not a default, and the column says so.
+    assert '<code>m</code> <span class="cd-fixed">fixed</span>' in children

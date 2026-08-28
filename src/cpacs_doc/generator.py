@@ -345,6 +345,21 @@ def _documentation_list(sections) -> str:
     )
 
 
+def _value_cell(entry) -> str:
+    """What the declaration says the value is, where it says anything.
+
+    A default and a fixed value are not the same thing — one is what an
+    instance means by leaving the element out, the other the only value it may
+    write — so the cell says which it is rather than showing the bare value for
+    both.
+    """
+    if entry.get("fixed") is not None:
+        return (f'<code>{escape(entry["fixed"])}</code>'
+                f' <span class="cd-fixed">fixed</span>')
+    default = entry.get("default")
+    return f"<code>{escape(default)}</code>" if default is not None else ""
+
+
 def _attribute_table(attributes, types=None) -> str:
     if not attributes:
         return ""
@@ -355,13 +370,13 @@ def _attribute_table(attributes, types=None) -> str:
             if attribute.get("inherited")
             else ""
         )
-        default = attribute.get("default") or attribute.get("fixed") or ""
+        value = _value_cell(attribute)
         rows.append(
             "<tr>"
             f'<td><code>@{escape(attribute["name"])}</code></td>'
             f'<td>{_type_link(attribute.get("type"), types)}</td>'
             f'<td>{escape(attribute.get("use", ""))}</td>'
-            f"<td>{escape(default)}</td>"
+            f"<td>{value}</td>"
             f'<td>{escape(attribute.get("documentation", {}).get("text", ""))}</td>'
             f"<td>{origin}</td>"
             "</tr>"
@@ -401,7 +416,8 @@ def _child_table(children, types=None) -> str:
         return ""
     return (
         '<section class="cd-children"><h2>Child elements</h2><table>'
-        "<tr><th>Name</th><th>Type</th><th>Occurrence</th><th>Description</th></tr>"
+        "<tr><th>Name</th><th>Type</th><th>Occurrence</th><th>Default</th>"
+        "<th>Description</th></tr>"
         + "".join(rows)
         + "</table></section>"
     )
@@ -427,7 +443,7 @@ def _child_rows(members, depth: int, types=None) -> list[str]:
                 else ""
             )
             rows.append(
-                f'<tr class="cd-group cd-group-{escape(compositor)}"><td{indent} colspan="3">'
+                f'<tr class="cd-group cd-group-{escape(compositor)}"><td{indent} colspan="4">'
                 f'<span class="cd-group-label">'
                 f'<span class="cd-group-mark" aria-hidden="true"></span>'
                 f'<span class="cd-group-term" tabindex="0">{escape(compositor)}'
@@ -442,6 +458,7 @@ def _child_rows(members, depth: int, types=None) -> list[str]:
             f'<td{indent}><code>{escape(member["name"])}</code></td>'
             f'<td>{_type_link(member.get("type"), types)}</td>'
             f"<td>{escape(_cardinality(member))}</td>"
+            f"<td>{_value_cell(member)}</td>"
             f'<td>{escape(member.get("documentation", {}).get("text", ""))}</td>'
             "</tr>"
         )

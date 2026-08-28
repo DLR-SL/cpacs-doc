@@ -40,6 +40,8 @@ class Node:
     max_occurs: int | None   # None means unbounded
     compositor: str | None   # compositor of the parent that holds this element
     doc: Documentation
+    default: str | None = None   # value an instance means by leaving it out
+    fixed: str | None = None     # value an instance must write if it writes one
     recursive: bool = False  # expansion stopped: the type is already on this path
     children: list["Node"] = field(default_factory=list)
     line: int | None = None
@@ -158,6 +160,8 @@ def _expand(element, parent_path, depth, schema, catalogue, tree, source, seen, 
         depth=depth,
         min_occurs=_occurs(element.get("minOccurs"), 1),
         max_occurs=_occurs(element.get("maxOccurs"), 1),
+        default=element.get("default"),
+        fixed=element.get("fixed"),
         compositor=None,
         doc=doc,
         line=getattr(element, "sourceline", None),

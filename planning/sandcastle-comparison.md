@@ -125,6 +125,23 @@ copy — this is a labelling decision, not a defect.
 `ataChapterListType`. Our page shows `simpleType` and nothing else; the
 Sandcastle page shows nothing either. A gap against the schema, not a regression.
 
+### 9. A declared default is invisible on both sides
+
+Twelve element declarations carry `default` — `controlPointNumber` 12,
+`maximumError` 1e-5, `phi` 0.0, three `reinforcementNumber*` 0, `continuity`
+and `interpolation` 0 at four places each. Sandcastle's page for
+`controlPointNumber` shows its type, its `Min Inclusive 4` and its parents, and
+not the default. Neither did we. A reader who cannot open the schema had no way
+to learn what leaving the element out means.
+
+> **Closed, 2026-08-28.** `default` and `fixed` are read from element
+> declarations, carried on child rows and on tree nodes, and shown in a
+> *Default* column beside the one the attributes table already had, and on the
+> node itself: `occurs 1 · default 1e-5`. The two are kept apart rather than
+> folded into one field — a default is what an instance means by leaving the
+> element out, a fixed value the only one it may write — and the column says
+> which. All 12 are carried; the schema uses no `fixed`.
+
 ## Where the new output is ahead
 
 Attribute tables carry `use` and `default` and name the declaring type;

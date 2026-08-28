@@ -32,7 +32,8 @@
                         </xsd:simpleType>
                     </xsd:element>
                     <xsd:element name="segment" type="xsd:string" maxOccurs="unbounded"/>
-                    <xsd:element name="ratio" minOccurs="0">
+                    <xsd:element name="unit" type="xsd:string" fixed="m" minOccurs="0"/>
+                    <xsd:element name="ratio" minOccurs="0" default="0.5">
                         <xsd:simpleType>
                             <xsd:restriction base="xsd:double">
                                 <xsd:minInclusive value="0"/>

@@ -67,6 +67,11 @@ class ChildInfo:
     max_occurs: int | None
     doc: Documentation
     line: int | None
+    # What the element is worth when it is left out, and what it must be when
+    # it is written. Kept apart: a default may be overridden, a fixed value may
+    # not, and folding both into one field would say the weaker of the two.
+    default: str | None = None
+    fixed: str | None = None
     # The declaration itself, for the tree to expand from. Not serialised.
     node: etree._Element = field(repr=False, default=None)
 
@@ -397,6 +402,12 @@ def _read_child(node, info, source, content, catalogue) -> ChildInfo | None:
         type_name=node.get("type") or inline_reference(node, catalogue),
         min_occurs=_occurs(node.get("minOccurs"), 1),
         max_occurs=_occurs(node.get("maxOccurs"), 1),
+        # What an instance means when it leaves the element out, or must write
+        # when it does not. Twelve elements in CPACS 3.5.1 carry one and the
+        # predecessor never wrote them out, so a reader who cannot open the
+        # schema has no way to learn that `controlPointNumber` defaults to 12.
+        default=node.get("default"),
+        fixed=node.get("fixed"),
         doc=doc,
         line=getattr(node, "sourceline", None),
         node=node,

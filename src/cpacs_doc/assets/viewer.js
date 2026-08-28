@@ -600,6 +600,10 @@
 
     var meta = element("p", "cd-kind");
     meta.appendChild(element("span", null, "occurs " + cardinality(decl)));
+    // Nowhere else would a reader learn it: the predecessor never wrote a
+    // declared default out, and the schema is what it exists to replace.
+    var declared = declaredValue(decl);
+    if (declared) meta.appendChild(element("span", null, " \u00B7 " + declared));
     panel.appendChild(meta);
 
     if (decl.documentation && decl.documentation.text) {
@@ -639,7 +643,7 @@
           { head: "Name", cell: function (a) { return text("@" + a.name, "code"); } },
           { head: "Type", cell: function (a) { return typeCell(a.type); } },
           { head: "Use", cell: function (a) { return text(a.use || ""); } },
-          { head: "Default", cell: function (a) { return text(a["default"] || a.fixed || ""); } },
+          { head: "Default", cell: valueCell },
           { head: "Description", cell: function (a) { return text(documentationText(a)); } },
           { head: "Inherited from", cell: function (a) {
               return text(a.inherited ? a.declaredIn : "", null, "cd-inherited"); } }
@@ -654,6 +658,30 @@
           { head: "Description", cell: function (v) { return text(documentationText(v)); } }
         ]);
       }
+  }
+
+  // A default is what an instance means by leaving the element out; a fixed
+  // value is the only one it may write. The schema's own word says which.
+  function declaredValue(entry) {
+    if (entry.fixed !== undefined && entry.fixed !== null) return "fixed " + entry.fixed;
+    if (entry["default"] !== undefined && entry["default"] !== null) {
+      return "default " + entry["default"];
+    }
+    return "";
+  }
+
+  // The same value under a heading that already names it. Saying "default" in
+  // a column headed Default says it twice; a fixed value still needs its mark,
+  // because it is not a default.
+  function valueCell(entry) {
+    var cell = element("span");
+    if (entry.fixed !== undefined && entry.fixed !== null) {
+      cell.appendChild(element("code", null, entry.fixed));
+      cell.appendChild(element("span", "cd-fixed", " fixed"));
+    } else if (entry["default"] !== undefined && entry["default"] !== null) {
+      cell.appendChild(element("code", null, entry["default"]));
+    }
+    return cell;
   }
 
   function documentationText(entry) {
@@ -706,7 +734,7 @@
     panel.appendChild(element("h2", null, "Child elements"));
     var table = element("table");
     var head = element("tr");
-    var headings = ["Name", "Type", "Occurrence", "Description"];
+    var headings = ["Name", "Type", "Occurrence", "Default", "Description"];
     for (var h = 0; h < headings.length; h++) head.appendChild(element("th", null, headings[h]));
     table.appendChild(head);
     appendChildRows(table, members, 0);
@@ -721,7 +749,7 @@
       if (member.kind === "group") {
         var groupRow = element("tr", "cd-group cd-group-" + (member.compositor || ""));
         var groupCell = element("td");
-        groupCell.setAttribute("colspan", "3");
+        groupCell.setAttribute("colspan", "4");
         indent(groupCell, depth);
         var label = element("span", "cd-group-label");
         var mark = element("span", "cd-group-mark");
@@ -756,6 +784,9 @@
       typeCellNode.appendChild(typeCell(member.type));
       row.appendChild(typeCellNode);
       row.appendChild(text(cardinality(member), "td"));
+      var valueTd = element("td");
+      valueTd.appendChild(valueCell(member));
+      row.appendChild(valueTd);
       row.appendChild(text(documentationText(member), "td"));
       table.appendChild(row);
     }

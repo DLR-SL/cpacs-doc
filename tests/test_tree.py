@@ -73,3 +73,23 @@ def test_a_node_whose_type_is_declared_inline_names_it(parse):
     mode = find(tree.root, "mode")
     assert mode is not None
     assert mode.type_name == "wingType/mode"
+
+
+def test_a_node_carries_the_default_of_its_declaration(parse):
+    """The panel says what the element is worth unwritten, and it can only say
+    it if the declaration brought it along."""
+    def find(node, name):
+        if node.name == name:
+            return node
+        for child in node.children:
+            hit = find(child, name)
+            if hit is not None:
+                return hit
+        return None
+
+    root = parse("content.xsd")
+    catalogue = catalogue_module.build(root, "content.xsd")
+    tree = tree_module.build(root, catalogue, "content.xsd")
+    assert find(tree.root, "ratio").default == "0.5"
+    assert find(tree.root, "unit").fixed == "m"
+    assert find(tree.root, "span").default is None

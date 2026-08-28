@@ -106,3 +106,36 @@ def test_the_schema_word_carries_its_reading(constrained):
     assert tip["word"] == "minInclusive"
     assert tip["tip"] == "The value must be this or greater."
     assert tip["reachable"] == "0"
+
+
+def test_the_node_says_what_it_is_worth_unwritten(constrained):
+    """`occurs` alone leaves the reader to guess what omitting the element
+    means. The schema says it; nothing showed it before."""
+    panel = constrained.evaluate(PANEL)
+    assert "occurs 0…1 · default 0.5" in panel["text"]
+
+
+def test_a_column_headed_default_does_not_repeat_the_word(browser, base):
+    """The node itself says "default 0.5", because nothing there names the
+    field. A table cell sits under a heading that has just named it."""
+    # The root node, because that is where a child table with the column is.
+    browser.open(base + "/tree/cpacs/")
+    browser.wait_for(READY, "the tree")
+    cell = browser.evaluate("""
+      var tables = document.querySelectorAll('#cd-detail table');
+      for (var t = 0; t < tables.length; t++) {
+        var head = tables[t].querySelector('tr');
+        var columns = head.children, at = -1;
+        for (var c = 0; c < columns.length; c++) {
+          if (columns[c].textContent.trim() === 'Default') at = c;
+        }
+        if (at === -1) continue;
+        var rows = tables[t].querySelectorAll('tr');
+        for (var r = 1; r < rows.length; r++) {
+          var text = rows[r].children[at] ? rows[r].children[at].textContent.trim() : '';
+          if (text) return text;
+        }
+      }
+      return null;
+    """)
+    assert cell == "0.5", cell

@@ -153,3 +153,18 @@ def test_facets_belong_to_their_own_type(parse):
     """As with the values: a free descent would take a child's constraints and
     attribute them to the parent."""
     assert read(parse, "wingType").facets == []
+
+
+def test_a_declared_default_and_a_fixed_value_are_read_and_kept_apart(parse):
+    """Twelve elements in CPACS 3.5.1 carry a default and the predecessor never
+    wrote one out, so a reader who cannot open the schema cannot learn that
+    `controlPointNumber` means 12 when it is left out.
+
+    Default and fixed are two different statements — one is what an instance
+    means by omitting the element, the other the only value it may write — so
+    they stay two fields.
+    """
+    children = {c.name: c for c in flatten(read(parse, "wingType").children)}
+    assert children["ratio"].default == "0.5" and children["ratio"].fixed is None
+    assert children["unit"].fixed == "m" and children["unit"].default is None
+    assert children["span"].default is None and children["span"].fixed is None
