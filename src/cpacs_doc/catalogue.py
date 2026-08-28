@@ -111,13 +111,13 @@ def _add_documented_locals(root, catalogue, source) -> None:
         owner = _owning_construct(schema_doc)
         if owner is None or local(owner.tag) != "element":
             continue
-        name = _synthetic_name(owner, root)
+        name = synthetic_name(owner)
         if name in catalogue.types:
             continue
         info = _read(owner, "element", name, True, catalogue, source)
         # An element with an inline type is one unit: the element carries the
         # documentation, the anonymous type below it carries the structure.
-        inline = _inline_type(owner)
+        inline = inline_type(owner)
         if inline is not None:
             info.base, info.derivation = _derivation(inline)
             info.compositor = _compositor(inline)
@@ -130,8 +130,8 @@ def _add_anonymous(root, catalogue, source) -> None:
             if node.get("name"):
                 continue
             owner = node.getparent()
-            name = _synthetic_name(owner, root)
-            if name in catalogue.types and _inline_type(owner) is node:
+            name = synthetic_name(owner)
+            if name in catalogue.types and inline_type(owner) is node:
                 continue  # already folded into the documented element above
             if name in catalogue.types:
                 catalogue.findings.append(
@@ -198,7 +198,7 @@ def _compositor(node) -> str | None:
     return None
 
 
-def _inline_type(owner):
+def inline_type(owner):
     """The anonymous complexType or simpleType declared inside `owner`, if any."""
     for kind in ("complexType", "simpleType"):
         child = owner.find(q(XSD, kind))
@@ -215,11 +215,15 @@ def _owning_construct(node):
     return None
 
 
-def _synthetic_name(owner, root) -> str:
+def synthetic_name(owner) -> str:
     """Stable identifier for a construct that has no global name.
 
     Built from the chain of named ancestors so it survives reordering of the
     schema file; the line number would not.
+
+    Public because the declarations have to name the same thing: an element or
+    attribute that declares its type on the spot refers to it by this name, and
+    a name only one side knows is no reference at all.
     """
     parts = []
     for ancestor in reversed(list(owner.iterancestors())):

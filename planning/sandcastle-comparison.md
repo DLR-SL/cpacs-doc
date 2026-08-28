@@ -1,0 +1,143 @@
+# Comparison against the Sandcastle output
+
+Date: 2026-08-28 · Acceptance criterion 1 · findings, with what has been closed marked as such
+
+## What was compared
+
+`build_sandcastle/doc` (5,055 pages, 3,360 distinct titles: 1,101 complex types,
+8 simple types, 3,631 elements, 311 attributes) against a build of this tool
+from `build_sandcastle/schema/cpacs_schema.xsd`. That file is byte-identical to
+`D:/Entwicklung/CPACS/develop/schema/cpacs_schema.xsd` (SHA-256 `113ce4a9…`), so
+both outputs describe exactly the same schema.
+
+Two methods. Every facet in the schema was matched against the model **by source
+line**, which is independent of naming conventions and catches what a name-based
+lookup misses — a first attempt using carrier names reported 187 false gaps.
+Then a sample of hard types was read page against page: `doubleConstraintBaseType`
+(simpleContent, inline attribute enumeration), `ataChapterListType` (15
+documented values), `toolType` (wildcard), `axleType` (inline element type),
+`systemTypeType` (union), `cpacs` (identity constraints).
+
+## Findings
+
+### 1. Four fifths of the enumeration values are extracted but unreachable
+
+The model holds all 265 values. Only 48 of them can be reached in the output —
+the ones on named types (32 simpleType, 16 complexType). The other **217 sit in
+anonymous types that nothing links to**:
+
+| carrier | anonymous types | values | what the page says instead |
+| --- | --- | --- | --- |
+| element with an inline type | 50 | 187 | nothing: the declaration carries `type: null`, so the detail panel prints no type line at all, and the Type cell in the child table is empty |
+| attribute with an inline type | 7 | 30 | the base type, `xsd:string`, in place of the inline one |
+
+Sandcastle puts them on the element's or the attribute's own page, as a
+*Content Type* table with columns Item / Facet / Value / Description. For
+`sideOfFirstWheel`: `string`, then `Enumeration inboard`, `outboard`, `centre`.
+Our page for the same element shows the description and stops. The description
+happens to name two of the three values in prose; `centre` appears nowhere.
+
+This is a linking defect, not an extraction one — the values are already in the
+model, addressable as `axleType/sideOfFirstWheel`. Covers the ToDo entries
+*"enumeration items not listed"* and *"inline type-specifications not displayed
+correctly"*.
+
+> **Closed, 2026-08-28.** A declaration that names no type now names the one it
+> declares, in all three places that refer to one: child rows, attribute rows
+> and tree nodes (`content.inline_reference`). Measured against the same schema
+> afterwards: declarations without a type 88 → **0**, enumeration values
+> reachable from a declaration or an attribute row 48 → **265**, statistics
+> unchanged. The tables label such a type with its base rather than its
+> synthetic name — `xsd:string`, not `axleType/sideOfFirstWheel` — and keep the
+> link, because that page is where the values are.
+
+### 2. No facet other than `enumeration` is extracted at all
+
+30 constraints are lost, every one of them:
+
+| facet | count | carriers |
+| --- | --- | --- |
+| `pattern` | 8 | `doubleArrayBaseType`, `doubleVectorBaseType`, `posIntVectorBaseType` (the `;`-separated vector grammars), `naca4DigitCode`, `naca5DigitCode`, `prioritySetting`, `wayPointType`, `variableConditions` |
+| `minInclusive` | 9 | `controlPointNumber` (4), `phi`, `share`, `fillFactor`, `posOnBogie`, … |
+| `maxInclusive` | 6 | `posOnBogie` (1), `phi` (360), `relativePosition`, … |
+| `minExclusive` | 5 | `posExcl0DoubleBaseType`, `posExcl0IntBaseType`, `maximumError`, … |
+| `maxExclusive` | 2 | `cornerRadius` (0.5), `lowerHeightFraction` (1) |
+
+`content.py::_enumeration` walks the restrictions but reads only
+`xsd:enumeration` from them. Sandcastle lists all of them in the same facet
+table. A reader of `phi` cannot learn from us that it is bounded to 0…360, nor
+that `naca4DigitCode` is exactly four digits. Covers the ToDo *"restrictions not
+accounted for?"*.
+
+### 3. The value type of a `simpleContent` type is never stated
+
+22 named types extend a simple type and therefore hold a value themselves.
+Sandcastle names it outright — `Content Type: double` on
+`doubleConstraintBaseType`. We give one hop of the chain (`extension
+doubleBaseType`) and leave the reader to walk `doubleConstraintBaseType →
+doubleBaseType → xsd:double` across three pages to find out what to write into
+the element.
+
+### 4. `xsd:any` is dropped from the child table, documentation and all
+
+One occurrence, in `toolType`, where it is the point of the type. Sandcastle
+lists it as a child row named `Any` and carries its description, *"Wildcard for
+the root element of a toolspecific namespace"*. Our child table shows `name` and
+`version` and gives no sign that anything else may appear.
+
+### 5. Identity constraints are not shown
+
+`xsd:key` and `xsd:keyref` on the `cpacs` element. Sandcastle has a *Constraints*
+table — Type / Description / Selector / Fields — showing the key on
+`./header/versionInfos/*` `@version` and the reference from `./header` `version`.
+We show nothing, so the one integrity rule the schema states is invisible.
+
+### 6. "Used by" is missing (known: F10)
+
+Sandcastle lists *Usages* on every type page (34 elements for
+`doubleConstraintBaseType`) and *Parents* on every element and attribute page.
+We carry `firstPaths`, which is one path per type and exists to give the page a
+way back into the tree. Confirms the ToDo *"parents-list in type documentation
+could actually be useful"* as a real regression against the predecessor, not
+only a wish.
+
+### 7. "Inherited from" is right and reads wrong
+
+The ToDo asks why the column says `complexBaseType` for an attribute of type
+`xsd:string`. The data is correct: `externalDataDirectory` **is** declared in
+`complexBaseType` and its type **is** `xsd:string`; the two columns answer
+different questions. Sandcastle has no such column at all, so there is nothing to
+copy — this is a labelling decision, not a defect.
+
+### 8. The union is empty on both sides
+
+`systemTypeType` unions `individualSystemCategoriesType` and
+`ataChapterListType`. Our page shows `simpleType` and nothing else; the
+Sandcastle page shows nothing either. A gap against the schema, not a regression.
+
+## Where the new output is ahead
+
+Attribute tables carry `use` and `default` and name the declaring type;
+Sandcastle has Name / Type / Required / Description and no default. Enumeration
+descriptions sit in the same table as the values (43 of 265 are documented)
+rather than being repeated below it. Occurrence is shown per path rather than per
+declaration, choice membership is marked at the node, and the search and the
+handbook split have no counterpart at all.
+
+## Differences that are not defects
+
+Sandcastle documents 3,631 **elements** as pages of their own, each with its
+parents; this tool resolves 53,692 instance paths in the browser and writes pages
+only for the 1,206 types. That is the architecture, decided in the specification,
+and the reason the element pages have no equivalent here.
+
+Two ToDo entries turn out to have no precedent to copy: Sandcastle writes
+occurrence as `[0, 1]` after the name, which is no more prose than our `0…1`; and
+it does not link `xsd:string`, `xsd:double` to their official descriptions
+either.
+
+## Not compared
+
+Rendered `ddue` prose was not compared page by page — only its presence. Media,
+tables and cross-references inside the documentation bodies are unexamined, as
+are the 3,631 element pages beyond the two read for findings 1 and 5.

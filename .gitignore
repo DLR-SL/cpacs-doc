@@ -2,6 +2,10 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 build/
+# The Sandcastle output to compare against: 104 MB of generated HTML with GUID
+# names, and a copy of the schema it was built from. Local reference material,
+# not a deliverable — see planning/sandcastle-comparison.md.
+build_sandcastle/
 .venv/
 dist/
 *.egg-info/

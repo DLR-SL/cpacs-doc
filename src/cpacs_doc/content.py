@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from lxml import etree
 
 from . import annotations as ann
+from .catalogue import inline_type, synthetic_name
 from .annotations import XSD, Documentation, local, location_of, q
 from .findings import Finding
 
@@ -86,7 +87,27 @@ class TypeContent:
         return not (self.attributes or self.enumeration or self.children)
 
 
-def content_groups(node, catalogue, source: str, findings: list[Finding]) -> list["ChildGroup"]:
+def inline_reference(node, catalogue) -> str | None:
+    """Catalogue name of a type the declaration itself declares.
+
+    An element or an attribute may declare its type on the spot instead of
+    naming one. The catalogue gives such a type a synthetic name and a page of
+    its own (0003); without naming it here the declaration would point at
+    nothing, and what the type says — 217 of the schema's 265 enumeration
+    values sit in exactly these — could not be reached from the page that needs
+    it.
+
+    Only a name the catalogue actually holds is returned. A synthetic name can
+    collide, and the catalogue reports that rather than overwriting; pointing
+    at the loser of a collision would be worse than pointing at nothing.
+    """
+    if inline_type(node) is None:
+        return None
+    name = synthetic_name(node)
+    return name if name in catalogue.types else None
+
+
+def content_groups(node, catalogue, source: str, findings: list["Finding"]) -> list["ChildGroup"]:
     """Compositor groups of a type, base content first.
 
     Shared with `tree.py`: two traversals of the same schema structure would
@@ -101,7 +122,8 @@ def content_groups(node, catalogue, source: str, findings: list[Finding]) -> lis
             if compositor is None:
                 continue
             groups.append(
-                _read_group(compositor, compositor_name, _Anonymous(node), source, holder_content)
+                _read_group(compositor, compositor_name, _Anonymous(node), source,
+                            holder_content, catalogue)
             )
     return groups
 
@@ -206,7 +228,8 @@ def _attributes(info, catalogue, source, content) -> None:
 
             seen[name] = AttributeInfo(
                 name=name,
-                type_name=node.get("type") or _inline_base(node),
+                type_name=(node.get("type") or inline_reference(node, catalogue)
+                           or _inline_base(node)),
                 use=use,
                 default=node.get("default"),
                 fixed=node.get("fixed"),
@@ -277,7 +300,7 @@ def _restrictions(node):
             yield restriction
 
 
-def _read_group(node, compositor_name, info, source, content) -> ChildGroup:
+def _read_group(node, compositor_name, info, source, content, catalogue) -> ChildGroup:
     group = ChildGroup(
         compositor=compositor_name,
         min_occurs=_occurs(node.get("minOccurs"), 1),
@@ -289,15 +312,15 @@ def _read_group(node, compositor_name, info, source, content) -> ChildGroup:
             continue
         name = local(child.tag)
         if name in COMPOSITORS:
-            group.members.append(_read_group(child, name, info, source, content))
+            group.members.append(_read_group(child, name, info, source, content, catalogue))
         elif name == "element":
-            member = _read_child(child, info, source, content)
+            member = _read_child(child, info, source, content, catalogue)
             if member is not None:
                 group.members.append(member)
     return group
 
 
-def _read_child(node, info, source, content) -> ChildInfo | None:
+def _read_child(node, info, source, content, catalogue) -> ChildInfo | None:
     declared = node.get("name") or node.get("ref")
     if not declared:
         content.findings.append(
@@ -315,7 +338,7 @@ def _read_child(node, info, source, content) -> ChildInfo | None:
     content.findings.extend(problems)
     return ChildInfo(
         name=declared,
-        type_name=node.get("type"),
+        type_name=node.get("type") or inline_reference(node, catalogue),
         min_occurs=_occurs(node.get("minOccurs"), 1),
         max_occurs=_occurs(node.get("maxOccurs"), 1),
         doc=doc,

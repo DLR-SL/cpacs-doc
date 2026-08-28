@@ -58,6 +58,15 @@
         <xsd:sequence>
             <xsd:element name="header" type="headerType"/>
             <xsd:element name="wings" type="headerType" minOccurs="0"/>
+            <!-- declares its type on the spot, so the declaration has to name it -->
+            <xsd:element name="mode" minOccurs="0">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:string">
+                        <xsd:enumeration value="inline-only"/>
+                        <xsd:enumeration value="second"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
         </xsd:sequence>
     </xsd:complexType>
 

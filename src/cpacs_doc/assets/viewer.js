@@ -638,15 +638,20 @@
     if (!typeName || typeName.indexOf("xsd:") === 0) {
       return element("code", null, typeName || "");
     }
-    if (!state.model.types[typeName]) {
+    var type = state.model.types[typeName];
+    if (!type) {
       // Not in this schema: leave the name as text rather than link nowhere.
       return element("code", null, typeName);
     }
+    // An anonymous type is labelled with its base: its synthetic name says
+    // where it was declared, which the row it sits in has just said, while the
+    // base says what may be written there. The values are one click away.
+    var label = type.anonymous && type.base ? type.base : typeName;
     // Switching the panel rather than following a link keeps the tree, and its
     // selection, in place. Where a type is worth citing, the panel offers the
     // static page explicitly.
     var button = element("button", "cd-crumb");
-    button.appendChild(element("code", null, typeName));
+    button.appendChild(element("code", null, label));
     button.addEventListener("click", function () { showType(typeName); });
     return button;
   }

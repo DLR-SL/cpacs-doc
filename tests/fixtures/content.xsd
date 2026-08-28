@@ -36,6 +36,14 @@
                 <xsd:attribute name="uID" type="xsd:ID" use="required"/>
                 <xsd:attribute name="symmetry" type="symmetryType" default="none"/>
                 <xsd:attribute name="externalDataDirectory" type="xsd:string" use="required"/>
+                <xsd:attribute name="rating">
+                    <xsd:simpleType>
+                        <xsd:restriction base="xsd:string">
+                            <xsd:enumeration value="draft"/>
+                            <xsd:enumeration value="final"/>
+                        </xsd:restriction>
+                    </xsd:simpleType>
+                </xsd:attribute>
             </xsd:extension>
         </xsd:complexContent>
     </xsd:complexType>

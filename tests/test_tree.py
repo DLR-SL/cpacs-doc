@@ -52,3 +52,24 @@ def test_alternatives_are_counted(parse):
 def test_annotation_findings_are_not_repeated_per_occurrence(parse):
     tree = build(parse)
     assert not any(f.code.startswith("SCHEMADOC_") for f in tree.findings)
+
+
+def test_a_node_whose_type_is_declared_inline_names_it(parse):
+    """The viewer shows a node's type and everything that type says. With no
+    type on the declaration it showed neither, though the entry was there."""
+    def find(node, name):
+        if node.name == name:
+            return node
+        for child in node.children:
+            hit = find(child, name)
+            if hit is not None:
+                return hit
+        return None
+
+    # content.xsd is the fixture with an element that declares its own type.
+    root = parse("content.xsd")
+    catalogue = catalogue_module.build(root, "content.xsd")
+    tree = tree_module.build(root, catalogue, "content.xsd")
+    mode = find(tree.root, "mode")
+    assert mode is not None
+    assert mode.type_name == "wingType/mode"

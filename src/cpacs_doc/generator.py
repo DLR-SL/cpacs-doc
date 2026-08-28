@@ -193,7 +193,6 @@ THEME_SCRIPT = """<script>
     // which the sheet has not arrived and the ground is already white. Saying
     // it here closes that window.
     root.style.colorScheme = mode === "light" || mode === "dark" ? mode : "light dark";
-
   }
   apply(read());
 
@@ -267,8 +266,8 @@ def type_page(name: str, entry: dict, types: dict, first_paths: dict, sections=(
         parts.append(f'<div class="cd-remarks">{remarks}</div>')
 
     parts.append(_documentation_list(sections))
-    parts.append(_attribute_table(entry.get("attributes", [])))
-    parts.append(_child_table(entry.get("children", [])))
+    parts.append(_attribute_table(entry.get("attributes", []), types))
+    parts.append(_child_table(entry.get("children", []), types))
     parts.append(_enumeration_list(entry.get("enumeration", [])))
     parts.append(_source_line(entry))
 
@@ -309,14 +308,21 @@ def _kind_line(entry) -> str:
     return f'<p class="cd-kind">{" · ".join(bits)}</p>'
 
 
-def _type_link(type_name: str) -> str:
+def _type_link(type_name: str, types: dict | None = None) -> str:
     """A link from one type page to another, or plain text for built-in types.
 
     Type pages are siblings under `type/`, so one level up is enough.
+
+    An anonymous type is labelled with its base rather than its synthetic name.
+    The name says where the type was declared — which the row it sits in has
+    just said — while the base says what may be written there. The link stays:
+    that page is where the values are.
     """
     if not type_name or type_name.startswith("xsd:"):
         return f"<code>{escape(type_name or '')}</code>"
-    return f'<a href="../{escape(slug(type_name))}/index.html"><code>{escape(type_name)}</code></a>'
+    entry = (types or {}).get(type_name) or {}
+    label = entry.get("base") or type_name if entry.get("anonymous") else type_name
+    return f'<a href="../{escape(slug(type_name))}/index.html"><code>{escape(label)}</code></a>'
 
 
 def _documentation_list(sections) -> str:
@@ -338,7 +344,7 @@ def _documentation_list(sections) -> str:
     )
 
 
-def _attribute_table(attributes) -> str:
+def _attribute_table(attributes, types=None) -> str:
     if not attributes:
         return ""
     rows = []
@@ -352,7 +358,7 @@ def _attribute_table(attributes) -> str:
         rows.append(
             "<tr>"
             f'<td><code>@{escape(attribute["name"])}</code></td>'
-            f'<td>{_type_link(attribute.get("type"))}</td>'
+            f'<td>{_type_link(attribute.get("type"), types)}</td>'
             f'<td>{escape(attribute.get("use", ""))}</td>'
             f"<td>{escape(default)}</td>"
             f'<td>{escape(attribute.get("documentation", {}).get("text", ""))}</td>'
@@ -386,10 +392,10 @@ GROUP_GLOSS = {
 }
 
 
-def _child_table(children) -> str:
+def _child_table(children, types=None) -> str:
     if not children:
         return ""
-    rows = _child_rows(children, depth=0)
+    rows = _child_rows(children, depth=0, types=types)
     if not rows:
         return ""
     return (
@@ -400,7 +406,7 @@ def _child_table(children) -> str:
     )
 
 
-def _child_rows(members, depth: int) -> list[str]:
+def _child_rows(members, depth: int, types=None) -> list[str]:
     """Rows for one level, groups as headings above their indented members.
 
     A compositor governs a set of children, not each child on its own, so it is
@@ -428,12 +434,12 @@ def _child_rows(members, depth: int) -> list[str]:
                 f"</span>{suffix}"
                 f"</span></td><td></td></tr>"
             )
-            rows.extend(_child_rows(member.get("members", []), depth + 1))
+            rows.extend(_child_rows(member.get("members", []), depth + 1, types))
             continue
         rows.append(
             "<tr>"
             f'<td{indent}><code>{escape(member["name"])}</code></td>'
-            f'<td>{_type_link(member.get("type"))}</td>'
+            f'<td>{_type_link(member.get("type"), types)}</td>'
             f"<td>{escape(_cardinality(member))}</td>"
             f'<td>{escape(member.get("documentation", {}).get("text", ""))}</td>'
             "</tr>"

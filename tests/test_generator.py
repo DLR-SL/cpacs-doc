@@ -242,3 +242,24 @@ def test_router_keeps_the_root_placeholder_for_run_time_substitution(model, tmp_
     generator.generate(model, tmp_path)
     script = (tmp_path / "assets" / "viewer.js").read_text(encoding="utf-8")
     assert generator.ROOT_TOKEN in script
+
+
+def test_an_anonymous_type_is_labelled_by_its_base_and_still_linked(model, tmp_path):
+    """The synthetic name says where the type was declared, which the row it
+    sits in has just said; the base says what may be written there. The link is
+    what makes the values reachable at all, so it stays."""
+    model["types"]["wingType/mode"] = {
+        "name": "wingType/mode", "kind": "simpleType", "anonymous": True,
+        "base": "xsd:string", "derivation": "restriction", "line": 7,
+        "documentation": {}, "enumeration": [{"value": "inline-only"}],
+    }
+    model["types"]["wingType"]["children"][0]["members"].append(
+        {"kind": "element", "name": "mode", "type": "wingType/mode",
+         "minOccurs": 0, "maxOccurs": 1}
+    )
+    generator.generate(model, tmp_path)
+    page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert "wingType/mode" not in page, "the synthetic name has no business in a table"
+    assert '<a href="../wingType--mode/index.html"><code>xsd:string</code></a>' in page
+    values = (tmp_path / "type" / "wingType--mode" / "index.html").read_text(encoding="utf-8")
+    assert "inline-only" in values

@@ -140,7 +140,10 @@ def _report_ambiguous_paths(tree, source) -> None:
 def _expand(element, parent_path, depth, schema, catalogue, tree, source, seen, cache) -> Node:
     name = element.get("name") or element.get("ref") or "?"
     path = f"{parent_path}/{name}" if parent_path else name
-    type_name = element.get("type")
+    # An element that declares its type on the spot names it here too, or the
+    # declaration would point at nothing and everything the type says would be
+    # out of reach from the node that has it.
+    type_name = element.get("type") or content_module.inline_reference(element, catalogue)
 
     # Documentation belongs to the declaration, not to the occurrence: a
     # declaration below a widely reused type is expanded hundreds of times.

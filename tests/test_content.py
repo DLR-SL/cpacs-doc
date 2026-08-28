@@ -98,3 +98,35 @@ def test_nested_groups_are_preserved(parse):
 
 def test_type_without_content_is_empty(parse):
     assert read(parse, "emptyType").is_empty
+
+
+def test_a_child_naming_no_type_names_the_one_it_declares(parse):
+    """An element may declare its type on the spot. Unless the child says which
+    catalogue entry that is, everything the type holds — in CPACS 3.5.1 that is
+    187 of the 265 enumeration values — is unreachable from the page that needs
+    it: the entry exists, and nothing points at it.
+    """
+    children = {c.name: c for c in flatten(read(parse, "wingType").children)}
+    assert children["mode"].type_name == "wingType/mode"
+    # a child that names a type still names that one
+    assert children["span"].type_name == "xsd:double"
+
+
+def test_an_attribute_naming_no_type_names_the_one_it_declares(parse):
+    """The base alone would say `xsd:string` and lose the two allowed values."""
+    names = {a.name: a for a in read(parse, "wingType").attributes}
+    assert names["rating"].type_name == "wingType/rating"
+    assert names["symmetry"].type_name == "symmetryType"
+
+
+def test_the_declared_type_holds_the_values(parse):
+    """The other half of the reference: what it points at is the thing that
+    knows, and it is catalogued under exactly that name."""
+    root = parse("content.xsd")
+    catalogue = catalogue_module.build(root, "content.xsd")
+    for name, expected in (("wingType/mode", ["inline-only"]),
+                           ("wingType/rating", ["draft", "final"])):
+        entry = catalogue.get(name)
+        assert entry is not None and entry.anonymous
+        values = content.read(entry, catalogue, "content.xsd").enumeration
+        assert [v.value for v in values] == expected
