@@ -175,6 +175,18 @@ td code { white-space: nowrap; }
 
 .cd-inherited { color: var(--ink-soft); font-size: var(--step-0); }
 
+/* A facet is the schema's word for it, set like one, with the plain reading
+   held on the word as the compositors hold theirs. The value beside it may be
+   a regular expression 150 characters long, so it wraps rather than forcing the
+   table wider than the page. */
+.cd-facet {
+  font-family: var(--face-code);
+  font-size: var(--step-0);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.cd-facets td:last-child code { white-space: normal; overflow-wrap: anywhere; }
+
 /* A compositor governs a set of children, so it heads them rather than
    repeating itself on every row. The schema word is kept for readers who think
    in it, with the plain reading next to it for those who do not. */
@@ -195,8 +207,9 @@ td code { white-space: nowrap; }
    who know the vocabulary are not made to read it on every group. Shown on
    focus as well as hover, so it is reachable without a pointer, and left in
    the document so a screen reader announces it either way. */
-.cd-group-term { position: relative; cursor: help; }
-.cd-group-term:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.cd-group-term, .cd-facet { position: relative; cursor: help; }
+.cd-group-term:focus-visible,
+.cd-facet:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
 .cd-tip {
   position: absolute;
   left: 0;
@@ -223,7 +236,9 @@ td code { white-space: nowrap; }
   pointer-events: none;
 }
 .cd-group-term:hover .cd-tip,
-.cd-group-term:focus-visible .cd-tip { opacity: 1; visibility: visible; }
+.cd-group-term:focus-visible .cd-tip,
+.cd-facet:hover .cd-tip,
+.cd-facet:focus-visible .cd-tip { opacity: 1; visibility: visible; }
 @media (prefers-reduced-motion: reduce) { .cd-tip { transition: none; } }
 
 /* Masked rather than inlined so the mark takes the surrounding text colour in

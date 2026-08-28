@@ -130,3 +130,26 @@ def test_the_declared_type_holds_the_values(parse):
         assert entry is not None and entry.anonymous
         values = content.read(entry, catalogue, "content.xsd").enumeration
         assert [v.value for v in values] == expected
+
+
+def test_facets_are_read_and_kept_apart_from_the_values(parse):
+    """An enumeration says which values there are; a facet says what a value
+    must satisfy. Reading only the first left 30 constraints in the schema —
+    every pattern and every bound — out of the documentation entirely."""
+    root = parse("content.xsd")
+    catalogue = catalogue_module.build(root, "content.xsd")
+    ratio = content.read(catalogue.get("wingType/ratio"), catalogue, "content.xsd")
+    assert [(f.name, f.value) for f in ratio.facets] == [
+        ("minInclusive", "0"), ("maxInclusive", "1"),
+    ]
+    assert ratio.enumeration == []
+    # and the other way round
+    symmetry = read(parse, "symmetryType")
+    assert symmetry.facets == []
+    assert len(symmetry.enumeration) == 3
+
+
+def test_facets_belong_to_their_own_type(parse):
+    """As with the values: a free descent would take a child's constraints and
+    attribute them to the parent."""
+    assert read(parse, "wingType").facets == []

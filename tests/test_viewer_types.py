@@ -69,3 +69,40 @@ def test_the_type_opens_its_own_page_from_the_panel(page):
     panel = page.evaluate(PANEL)
     assert panel["heading"] == "cpacsType/mode"
     assert "citable page" in panel["text"]
+
+
+@pytest.fixture
+def constrained(browser, base):
+    """A node whose value is narrowed by facets rather than listed."""
+    browser.open(base + "/tree/cpacs/ratio/")
+    browser.wait_for(READY, "the tree")
+    return browser
+
+
+def test_the_constraints_on_a_value_reach_the_node(constrained):
+    """Before they were read at all, a reader could not learn from us that
+    `phi` is bounded to 0…360 or that a NACA code is four digits."""
+    panel = constrained.evaluate(PANEL)
+    assert panel["heading"] == "ratio"
+    assert "Type: xsd:double" in panel["text"]
+    assert "Value constraints" in panel["text"]
+    # The cell holds the word and, clipped inside it, the reading of the word.
+    assert [v.split("The value")[0] for v in panel["values"]] == [
+        "minInclusive", "maxInclusive",
+    ]
+    assert "0" in panel["text"] and "1" in panel["text"]
+
+
+def test_the_schema_word_carries_its_reading(constrained):
+    """The word is what the schema says; the reading is what it means. Both,
+    the same way a compositor does it."""
+    tip = constrained.evaluate("""
+      var term = document.querySelector('#cd-detail .cd-facet');
+      return term ? { word: term.firstChild.textContent,
+                      tip: term.querySelector('.cd-tip').textContent,
+                      reachable: term.getAttribute('tabindex') } : null;
+    """)
+    assert tip is not None
+    assert tip["word"] == "minInclusive"
+    assert tip["tip"] == "The value must be this or greater."
+    assert tip["reachable"] == "0"

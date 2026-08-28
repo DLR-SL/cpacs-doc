@@ -268,6 +268,7 @@ def type_page(name: str, entry: dict, types: dict, first_paths: dict, sections=(
     parts.append(_documentation_list(sections))
     parts.append(_attribute_table(entry.get("attributes", []), types))
     parts.append(_child_table(entry.get("children", []), types))
+    parts.append(_facet_table(entry.get("facets", [])))
     parts.append(_enumeration_list(entry.get("enumeration", [])))
     parts.append(_source_line(entry))
 
@@ -452,6 +453,50 @@ def _cardinality(child) -> str:
     maximum = child.get("maxOccurs", 1)
     upper = "∞" if maximum is None else str(maximum)
     return f"{minimum}…{upper}" if str(minimum) != upper else str(minimum)
+
+
+# The schema word carries the row, as it does for a compositor, with the plain
+# reading on hover and focus. `minInclusive` is exact and unreadable; "0 or
+# greater" is readable and is not what the schema says — so both are here, and
+# the one that is the schema's stays in the table.
+FACET_GLOSS = {
+    "minInclusive": "The value must be this or greater.",
+    "maxInclusive": "The value must be this or less.",
+    "minExclusive": "The value must be greater than this.",
+    "maxExclusive": "The value must be less than this.",
+    "pattern": "The value must match this regular expression.",
+    "length": "The value must be exactly this long.",
+    "minLength": "The value must be at least this long.",
+    "maxLength": "The value must be at most this long.",
+    "totalDigits": "The value must have at most this many digits in all.",
+    "fractionDigits": "The value must have at most this many digits after the point.",
+    "whiteSpace": "How whitespace is treated before the value is checked.",
+}
+
+
+def _facet_table(facets) -> str:
+    """What narrows the value space, next to the values themselves.
+
+    Sandcastle puts facets and enumeration values in one table; they answer
+    different questions — a facet says what a value must satisfy, an
+    enumeration says which values there are — and only one of the two carries
+    documentation, so they are two tables here.
+    """
+    if not facets:
+        return ""
+    rows = []
+    for facet in facets:
+        name = facet["name"]
+        rows.append(
+            '<tr><td><span class="cd-facet" tabindex="0">'
+            f"{escape(name)}"
+            f'<span class="cd-tip" role="note">{escape(FACET_GLOSS.get(name, ""))}</span>'
+            f'</span></td><td><code>{escape(facet["value"])}</code></td></tr>'
+        )
+    return (
+        '<section class="cd-facets"><h2>Value constraints</h2><table>'
+        "<tr><th>Constraint</th><th>Value</th></tr>" + "".join(rows) + "</table></section>"
+    )
 
 
 def _enumeration_list(values) -> str:

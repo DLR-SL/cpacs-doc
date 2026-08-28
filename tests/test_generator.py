@@ -263,3 +263,26 @@ def test_an_anonymous_type_is_labelled_by_its_base_and_still_linked(model, tmp_p
     assert '<a href="../wingType--mode/index.html"><code>xsd:string</code></a>' in page
     values = (tmp_path / "type" / "wingType--mode" / "index.html").read_text(encoding="utf-8")
     assert "inline-only" in values
+
+
+def test_value_constraints_are_shown_with_the_schema_word_and_its_reading(model, tmp_path):
+    """The schema word stays in the table, as it does for compositors, and the
+    plain reading rides along on it."""
+    model["types"]["wingType"]["facets"] = [
+        {"name": "minInclusive", "value": "0"},
+        {"name": "pattern", "value": "[0-9]{4}"},
+    ]
+    generator.generate(model, tmp_path)
+    page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert "<h2>Value constraints</h2>" in page
+    assert "minInclusive" in page and "<code>0</code>" in page
+    assert "The value must be this or greater." in page
+    assert "The value must match this regular expression." in page
+    # Reachable without a pointer, like every other explanation on these pages.
+    assert '<span class="cd-facet" tabindex="0">' in page
+
+
+def test_a_type_without_constraints_gets_no_table(model, tmp_path):
+    generator.generate(model, tmp_path)
+    page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert "Value constraints" not in page

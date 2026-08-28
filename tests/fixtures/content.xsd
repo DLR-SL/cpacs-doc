@@ -32,6 +32,14 @@
                         </xsd:simpleType>
                     </xsd:element>
                     <xsd:element name="segment" type="xsd:string" maxOccurs="unbounded"/>
+                    <xsd:element name="ratio" minOccurs="0">
+                        <xsd:simpleType>
+                            <xsd:restriction base="xsd:double">
+                                <xsd:minInclusive value="0"/>
+                                <xsd:maxInclusive value="1"/>
+                            </xsd:restriction>
+                        </xsd:simpleType>
+                    </xsd:element>
                 </xsd:sequence>
                 <xsd:attribute name="uID" type="xsd:ID" use="required"/>
                 <xsd:attribute name="symmetry" type="symmetryType" default="none"/>

@@ -24,7 +24,7 @@ from lxml import etree
 from . import renderer
 from .annotations import DDUE, Documentation
 
-MODEL_VERSION = "1.1"
+MODEL_VERSION = "1.2"
 
 
 def flatten(node: etree._Element | None) -> str:
@@ -85,6 +85,10 @@ def _type_entry(info, content, html) -> dict:
             entry["attributes"] = [_attribute_entry(a) for a in content.attributes]
         if content.enumeration:
             entry["enumeration"] = [_enumeration_entry(v) for v in content.enumeration]
+        if content.facets:
+            entry["facets"] = [
+                {"name": f.name, "value": f.value, "line": f.line} for f in content.facets
+            ]
         if content.children:
             entry["children"] = [_child_entry(c) for c in content.children]
     return entry
@@ -408,6 +412,7 @@ def build(
             "declarations": len(declarations),
             "attributes": sum(len(c.attributes) for c in content_by_type.values()),
             "enumerationValues": sum(len(c.enumeration) for c in content_by_type.values()),
+            "valueConstraints": sum(len(c.facets) for c in content_by_type.values()),
             "mediaEntries": len(media_catalogue.entries) if media_catalogue else 0,
         },
         "types": {

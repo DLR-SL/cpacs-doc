@@ -105,6 +105,32 @@
     return COMPOSITOR_GLOSS[name] || "";
   }
 
+  // The same reading of the same words as the type pages give. Two copies of
+  // the prose, as with the compositors above: the generator writes the pages in
+  // Python and the viewer builds its panel here.
+  var FACET_GLOSS = {
+    minInclusive: "The value must be this or greater.",
+    maxInclusive: "The value must be this or less.",
+    minExclusive: "The value must be greater than this.",
+    maxExclusive: "The value must be less than this.",
+    pattern: "The value must match this regular expression.",
+    length: "The value must be exactly this long.",
+    minLength: "The value must be at least this long.",
+    maxLength: "The value must be at most this long.",
+    totalDigits: "The value must have at most this many digits in all.",
+    fractionDigits: "The value must have at most this many digits after the point.",
+    whiteSpace: "How whitespace is treated before the value is checked."
+  };
+
+  function facetTerm(facet) {
+    var term = element("span", "cd-facet", facet.name);
+    term.setAttribute("tabindex", "0");
+    var tip = element("span", "cd-tip", FACET_GLOSS[facet.name] || "");
+    tip.setAttribute("role", "note");
+    term.appendChild(tip);
+    return term;
+  }
+
   function cardinality(decl) {
     var min = decl.minOccurs === undefined ? 1 : decl.minOccurs;
     var max = decl.maxOccurs === undefined ? 1 : decl.maxOccurs;
@@ -619,6 +645,10 @@
               return text(a.inherited ? a.declaredIn : "", null, "cd-inherited"); } }
         ]);
         appendChildTable(panel, type.children);
+        appendTable(panel, "Value constraints", type.facets, [
+          { head: "Constraint", cell: facetTerm },
+          { head: "Value", cell: function (f) { return text(f.value, "code"); } }
+        ]);
         appendTable(panel, "Allowed values", type.enumeration, [
           { head: "Value", cell: function (v) { return text(v.value, "code"); } },
           { head: "Description", cell: function (v) { return text(documentationText(v)); } }

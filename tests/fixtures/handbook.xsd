@@ -67,6 +67,14 @@
                     </xsd:restriction>
                 </xsd:simpleType>
             </xsd:element>
+            <xsd:element name="ratio" minOccurs="0">
+                <xsd:simpleType>
+                    <xsd:restriction base="xsd:double">
+                        <xsd:minInclusive value="0"/>
+                        <xsd:maxInclusive value="1"/>
+                    </xsd:restriction>
+                </xsd:simpleType>
+            </xsd:element>
         </xsd:sequence>
     </xsd:complexType>
 

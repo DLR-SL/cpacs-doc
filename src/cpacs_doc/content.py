@@ -46,6 +46,20 @@ class EnumerationValue:
 
 
 @dataclass
+class Facet:
+    """One constraining facet: what a value must satisfy to be allowed.
+
+    Kept apart from the enumeration, which answers a different question — the
+    enumeration lists the values, a facet narrows the space they come from —
+    and which carries documentation of its own where a facet never does.
+    """
+
+    name: str
+    value: str
+    line: int | None
+
+
+@dataclass
 class ChildInfo:
     name: str
     type_name: str | None
@@ -79,12 +93,13 @@ class ChildGroup:
 class TypeContent:
     attributes: list[AttributeInfo] = field(default_factory=list)
     enumeration: list[EnumerationValue] = field(default_factory=list)
+    facets: list[Facet] = field(default_factory=list)
     children: list[ChildInfo] = field(default_factory=list)
     findings: list[Finding] = field(default_factory=list)
 
     @property
     def is_empty(self) -> bool:
-        return not (self.attributes or self.enumeration or self.children)
+        return not (self.attributes or self.enumeration or self.facets or self.children)
 
 
 def inline_reference(node, catalogue) -> str | None:
@@ -150,6 +165,7 @@ def read(info, catalogue, source: str) -> TypeContent:
 
     _attributes(info, catalogue, source, content)
     _enumeration(info, source, content)
+    _facets(info, source, content)
     content.children = content_groups(info.node, catalogue, source, content.findings)
     return content
 
@@ -277,6 +293,46 @@ def _enumeration(info, source, content) -> None:
             content.findings.extend(problems)
             content.enumeration.append(
                 EnumerationValue(value=value, doc=doc, line=getattr(node, "sourceline", None))
+            )
+
+
+# Every constraining facet XSD defines, less `enumeration`, which is read on
+# its own. In document order, because `pattern` may appear more than once and
+# the alternatives then read as they were written.
+FACETS = (
+    "length", "minLength", "maxLength", "pattern", "whiteSpace",
+    "maxInclusive", "maxExclusive", "minInclusive", "minExclusive",
+    "totalDigits", "fractionDigits",
+)
+
+
+def _facets(info, source, content) -> None:
+    """What narrows this type's value space, beyond the values it lists.
+
+    Along the same explicit paths as the enumeration and for the same reason: a
+    free descent would take the constraints of a child that declares its own
+    type and attribute them to the parent.
+    """
+    for restriction in _restrictions(info.node):
+        for node in restriction:
+            if not isinstance(node.tag, str):
+                continue
+            name = local(node.tag)
+            if name not in FACETS:
+                continue
+            value = node.get("value")
+            if value is None:
+                content.findings.append(
+                    Finding(
+                        "error",
+                        "FACET_WITHOUT_VALUE",
+                        f"{info.name}: xsd:{name} without @value",
+                        location_of(node, source),
+                    )
+                )
+                continue
+            content.facets.append(
+                Facet(name=name, value=value, line=getattr(node, "sourceline", None))
             )
 
 

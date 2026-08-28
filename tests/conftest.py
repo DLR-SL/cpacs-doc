@@ -1,4 +1,5 @@
 import shutil
+import tempfile
 import threading
 from pathlib import Path
 
@@ -23,19 +24,27 @@ def parse():
 
 
 @pytest.fixture(scope="session")
-def browser(tmp_path_factory):
+def browser():
     """One headless browser for the session; every module navigates the same tab.
 
     Starting one costs about a second and a navigation a tenth of that, so the
     modules share it rather than each paying for its own.
+
+    Its profile is kept out of pytest's own temporary tree and removed here,
+    ignoring what will not go. Windows holds a browser profile for a moment
+    after the process ends, and one left behind by a killed run made pytest's
+    housekeeping fail at the *start* of the next session — every browser test
+    erroring in setup for a reason that had nothing to do with any of them.
     """
     executable = cdp.find_browser()
     if executable is None:
         pytest.skip("no Chrome or Edge on this machine")
+    profile = Path(tempfile.mkdtemp(prefix="cpacs-doc-profile-"))
     driver = cdp.Browser(executable)
-    driver.start(tmp_path_factory.mktemp("profile"))
+    driver.start(profile)
     yield driver
     driver.close()
+    shutil.rmtree(profile, ignore_errors=True)
 
 
 @pytest.fixture(scope="module")

@@ -69,6 +69,16 @@ table. A reader of `phi` cannot learn from us that it is bounded to 0…360, nor
 that `naca4DigitCode` is exactly four digits. Covers the ToDo *"restrictions not
 accounted for?"*.
 
+> **Closed, 2026-08-28.** `content._facets` reads every constraining facet XSD
+> defines along the same paths the enumeration already used, and the model
+> carries them as `facets` (version 1.2, `statistics.valueConstraints`).
+> Measured against the same schema afterwards: **30 of 30** — 8 `pattern`,
+> 9 `minInclusive`, 6 `maxInclusive`, 5 `minExclusive`, 2 `maxExclusive`.
+> Pages and panel show them as *Value constraints*, the schema word carrying
+> its plain reading on hover and focus as a compositor does. Together with
+> finding 1 this reaches the elements that declare their own type: the panel
+> for `naca4DigitCode` now reads `Type: xsd:string` and `pattern [0-9]{4}`.
+
 ### 3. The value type of a `simpleContent` type is never stated
 
 22 named types extend a simple type and therefore hold a value themselves.
