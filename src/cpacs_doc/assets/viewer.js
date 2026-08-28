@@ -29,6 +29,8 @@
     expanded: null,    // Set of expanded paths
     nodeByPath: null,  // path -> model node
     searchEntries: null,  // built on first search, not on load
+    usage: null,          // reverse index, built on first type view
+    usageOpen: false,     // whether "Used by" stands open, page-lifetime
     shownType: null,   // type displayed in place of the selected node's detail
     shownSection: null, // documentation section displayed in its place
     tab: "tree"        // half of the left column the reader last chose
@@ -918,7 +920,7 @@
 
   function appendTable(panel, heading, rows, columns) {
     if (!rows || !rows.length) return;
-    panel.appendChild(element("h2", null, heading));
+    if (heading) panel.appendChild(element("h2", null, heading));
     var table = element("table");
     var head = element("tr");
     for (var c = 0; c < columns.length; c++) {
@@ -972,6 +974,7 @@
     panel.appendChild(meta);
 
     appendTypeBody(panel, type);
+    appendUsage(panel, typeName);
   }
 
   function renderSectionDetail(panel, slug) {
@@ -1004,6 +1007,145 @@
     // Rendered once, by the generator, as everything else here is.
     body.innerHTML = withRoot(section.html);
     panel.appendChild(body);
+  }
+
+  /* ---- who uses a type ----
+   *
+   * Derived here rather than carried in the model, for the reason 0009 gives
+   * about the search: both facts are in the model already — the references in
+   * every type's children and attributes, the occurrences in the tree — and a
+   * second copy would be 8.3 MB of instance paths to keep in step. Built on
+   * the first type view, as the search index is built on the first keystroke.
+   */
+  var USAGE_LIMIT = 25;
+
+  function usageIndex() {
+    if (state.usage) return state.usage;
+    var users = {};
+    var types = state.model.types;
+    Object.keys(types).forEach(function (name) {
+      var entry = types[name];
+      var stack = (entry.children || []).slice();
+      while (stack.length) {
+        var member = stack.pop();
+        if (member.kind === "group") {
+          var group = member.members || [];
+          for (var g = 0; g < group.length; g++) stack.push(group[g]);
+          continue;
+        }
+        if (member.kind === "any" || !member.type) continue;
+        (users[member.type] = users[member.type] || []).push([name, member.name]);
+      }
+      (entry.attributes || []).forEach(function (attribute) {
+        if (!attribute.type) return;
+        (users[attribute.type] = users[attribute.type] || [])
+          .push([name, "@" + attribute.name]);
+      });
+    });
+
+    // The tree itself, not `nodeByPath`: that map holds one node per distinct
+    // path and drops the 860 that repeat, and what is counted here is
+    // occurrences, which is what the pages count too. The paths are kept up
+    // to the cap, because where a type stands in a document is the answer a
+    // reader wants first.
+    var paths = {};
+    var counts = {};
+    var nodes = state.model.tree ? [[state.model.tree, ""]] : [];
+    while (nodes.length) {
+      var item = nodes.pop();
+      var node = item[0];
+      var decl = declaration(node);
+      var here = item[1] ? item[1] + "/" + (decl.name || "?") : (decl.name || "?");
+      if (decl.type) {
+        counts[decl.type] = (counts[decl.type] || 0) + 1;
+        if (!paths[decl.type]) paths[decl.type] = [];
+        if (paths[decl.type].length < USAGE_LIMIT) paths[decl.type].push(here);
+      }
+      // Pushed in reverse so they come off in document order: the list is
+      // capped, and "and N more" has to mean the ones after these.
+      var children = childrenOf(node);
+      for (var i = children.length - 1; i >= 0; i--) nodes.push([children[i], here]);
+    }
+
+    state.usage = { users: users, paths: paths, counts: counts };
+    return state.usage;
+  }
+
+  function appendPathList(panel, paths, count) {
+    var list = element("ul", "cd-usage-list");
+    paths.forEach(function (path) {
+      var item = element("li");
+      var jump = element("button", "cd-crumb", path);
+      jump.addEventListener("click", function () {
+        // The walk starts at the root element, which `state.path` leaves out.
+        select(path.split("/").slice(1));
+      });
+      item.appendChild(jump);
+      list.appendChild(item);
+    });
+    if (count > paths.length) {
+      list.appendChild(element("li", "cd-inherited",
+        "and " + (count - paths.length) + " more"));
+    }
+    panel.appendChild(list);
+  }
+
+  function heading(text, count, word) {
+    var head = element("h3", null, text + " ");
+    head.appendChild(element("span", "cd-inherited",
+      "\u00B7 " + count + " " + word + (count === 1 ? "" : "s")));
+    return head;
+  }
+
+  function appendUsage(panel, typeName) {
+    var index = usageIndex();
+    var seen = {};
+    var users = [];
+    (index.users[typeName] || []).forEach(function (pair) {
+      var key = pair[0] + "/" + pair[1];
+      if (seen[key]) return;
+      seen[key] = true;
+      users.push(pair);
+    });
+    users.sort(function (a, b) {
+      return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : (a[1] < b[1] ? -1 : 1);
+    });
+    var paths = index.paths[typeName] || [];
+    var count = index.counts[typeName] || 0;
+    if (!users.length && !count) return;
+
+    // Folded away: it answers a question that is asked now and then, and for a
+    // type used everywhere it is long. Whether it stands open is remembered
+    // for as long as the page is open, so comparing several types does not
+    // mean opening it again at each one.
+    var box = element("details", "cd-usage");
+    box.open = state.usageOpen;
+    var head = element("summary");
+    head.appendChild(element("h2", null, "Used by"));
+    box.appendChild(head);
+    box.addEventListener("toggle", function () { state.usageOpen = box.open; });
+    panel.appendChild(box);
+    panel = box;
+
+    // Where it stands in a document first: the concrete answer, and the one
+    // neither predecessor could give. The headings name the level, because
+    // both lists are elements and that is what tells them apart.
+    if (count) {
+      panel.appendChild(heading("In a dataset", count, "path"));
+      appendPathList(panel, paths, count);
+    }
+    if (!users.length) return;
+    panel.appendChild(heading("In the schema", users.length, "declaration"));
+    // A table, as the pages have it: the names would otherwise start at a
+    // different column on every line.
+    appendTable(panel, "", users.slice(0, USAGE_LIMIT), [
+      { head: "Type", cell: function (pair) { return typeCell(pair[0]); } },
+      { head: "Name", cell: function (pair) { return text(pair[1], "code"); } }
+    ]);
+    if (users.length > USAGE_LIMIT) {
+      panel.appendChild(element("p", "cd-inherited",
+        "and " + (users.length - USAGE_LIMIT) + " more"));
+    }
   }
 
   function renderBreadcrumb() {

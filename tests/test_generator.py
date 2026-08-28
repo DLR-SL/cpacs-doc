@@ -341,3 +341,62 @@ def test_a_wildcard_gets_a_row_saying_what_it_allows(model, tmp_path):
     assert "Anything from elsewhere." in children
     # The schema word carries its reading, as a compositor does.
     assert "An element the schema does not name may appear here." in children
+
+
+def test_usage_is_derived_from_what_the_model_already_holds(model):
+    """Storing it would be 8.3 MB of instance paths beside a 4.2 MB model, and
+    both facts are in there already — the references in every type, the
+    occurrences in the tree."""
+    model["tree"] = {"d": "0", "children": [{"d": "1"}, {"d": "1"}]}
+    model["declarations"] = {
+        "0": {"name": "cpacs", "type": "wingType"},
+        "1": {"name": "wing", "type": "baseType"},
+    }
+    usage = generator.usage_index(model)
+    assert usage["counts"]["wingType"] == 1
+    assert usage["counts"]["baseType"] == 2
+    # And the paths themselves, up to the cap: where a type stands in a
+    # document is the answer a reader wants first.
+    assert usage["paths"]["baseType"] == ["cpacs/wing", "cpacs/wing"]
+    assert ("wingType", "span") in usage["users"]["xsd:double"]
+    assert ("wingType", "segment") in usage["users"]["baseType"]
+    # Attributes name types too, and the list says which attribute it was.
+    assert ("wingType", "@uID") in usage["users"]["xsd:ID"]
+
+
+def test_the_used_by_section_names_the_declarations_and_counts_the_paths(model, tmp_path):
+    model["tree"] = {"d": "0", "children": [{"d": "1"}, {"d": "1"}]}
+    model["declarations"] = {
+        "0": {"name": "cpacs", "type": "wingType"},
+        "1": {"name": "wing", "type": "baseType"},
+    }
+    model["firstPaths"] = {"baseType": "cpacs/wing"}
+    generator.generate(model, tmp_path)
+    page = (tmp_path / "type" / "baseType" / "index.html").read_text(encoding="utf-8")
+    assert "<h2>Used by</h2>" in page
+    assert '<a href="../wingType/index.html"><code>wingType</code></a>' in page
+    assert "<code>segment</code>" in page
+    # Stated, not linked: a page cannot show 28,120 paths, and a link to the
+    # first would promise the count and deliver one. The way in is the
+    # "Show in tree" link at the head of the page.
+    usage = page.split('<details class="cd-usage">')[1]
+    # Folded away, and open with the keyboard on a page with no script at all.
+    assert "<summary><h2>Used by</h2></summary>" in usage
+    # The document first, then the schema: the headings name the level, since
+    # both lists are elements.
+    assert usage.index("In a dataset") < usage.index("In the schema")
+    assert "· 2 paths" in usage
+    assert '<a href="../../tree/cpacs/wing/"><code>cpacs/wing</code></a>' in usage
+    assert "<th>Type</th><th>Name</th>" in usage
+
+
+def test_a_type_used_everywhere_gets_a_count_rather_than_a_list(model, tmp_path):
+    """`doubleBaseType` is named by 673 declarations and sits at 28,120 paths.
+    A list of either says nothing a number does not."""
+    members = model["types"]["wingType"]["children"][0]["members"]
+    for i in range(30):
+        members.append({"kind": "element", "name": f"field{i}", "type": "baseType",
+                        "minOccurs": 0, "maxOccurs": 1})
+    generator.generate(model, tmp_path)
+    page = (tmp_path / "type" / "baseType" / "index.html").read_text(encoding="utf-8")
+    assert "and 6 more" in page, "31 users, 25 shown"

@@ -288,6 +288,7 @@ class Handler(BaseHTTPRequestHandler):
         html = generator.type_page(
             name, types[name], types, model.get("firstPaths", {}),
             sections=documentation.get("sections", []) if name == documentation.get("type") else (),
+            usage=generator.usage_index(model),
         )
         self._send(with_live_reload(html).encode("utf-8"), CONTENT_TYPES[".html"])
 

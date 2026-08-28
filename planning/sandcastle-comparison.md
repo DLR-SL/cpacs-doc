@@ -165,6 +165,33 @@ way back into the tree. Confirms the ToDo *"parents-list in type documentation
 could actually be useful"* as a real regression against the predecessor, not
 only a wish.
 
+> **Closed, 2026-08-28.** A *Used by* section on the type page and in the type
+> view, folded away in a `details` — it answers a question that is asked now and
+> then, and `details` opens with the keyboard and works on a page with no
+> script. It holds two lists, and the headings name the **level** rather than
+> the contents, because both lists are elements and that is what tells them
+> apart:
+>
+> - **In a dataset · N paths** — where the type stands in a document, linked
+>   into the tree. First, because it is the concrete answer and the one neither
+>   predecessor could give.
+> - **In the schema · N declarations** — a `Type`/`Name` table of the
+>   declarations that name it.
+>
+> **Derived, not stored**, for the reason 0009 gives about the search index —
+> both facts are in the model already, and a second copy would have to be kept
+> in step. Measured before deciding: storing the paths would be **+8.28 MB raw**
+> beside a 4.20 MB model (gzip +0.27 against 0.34). The generator derives them
+> at build time, the viewer on the first type view, where the whole pass —
+> 1,206 types and 54,552 tree nodes — takes **10 ms** once. Writing the capped
+> path lists into all 1,206 pages costs 0.74 MB, and only 63 types (5 %) reach
+> the cap at all.
+>
+> Both lists are capped at 25 with *and N more*, as the search shows sixty of a
+> thousand. Both walks push children in reverse so the paths come out in
+> document order: with a capped list, *and N more* has to mean the ones after
+> these.
+
 ### 7. "Inherited from" is right and reads wrong
 
 The ToDo asks why the column says `complexBaseType` for an attribute of type

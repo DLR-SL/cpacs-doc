@@ -66,10 +66,12 @@ def generate(model: dict, output: Path, *, media_root: Path | None = None) -> Ge
     result.docs = _write_docs(output, sections, model.get("types", {}), documentation.get("type"))
 
     types = model.get("types", {})
+    usage = usage_index(model)
     for name, entry in sorted(types.items()):
         html = type_page(
             name, entry, types, model.get("firstPaths", {}),
             sections=sections if name == documentation.get("type") else (),
+            usage=usage,
         )
         target = output / TYPES_DIRECTORY / slug(name) / "index.html"
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -111,6 +113,124 @@ def _copy_media(model, output, media_root, result) -> int:
         shutil.copyfile(source, target)
         copied += 1
     return copied
+
+
+# Longer lists say nothing a count does not. The search shows sixty of a
+# thousand for the same reason.
+USAGE_LIMIT = 25
+
+
+def members_of(children) -> list:
+    """Element members of a child list, groups walked through."""
+    found = []
+    stack = list(children)
+    while stack:
+        member = stack.pop()
+        if member.get("kind") == "group":
+            stack.extend(member.get("members", []))
+        elif member.get("kind") != "any":
+            found.append(member)
+    return found
+
+
+def usage_index(model: dict) -> dict:
+    """Who names each type, and how often it occurs in the tree.
+
+    Derived here rather than carried in the model, for the reason decision 0009
+    gives about the search index: both facts are already in the model — the
+    references in `types[*].children[*].type`, the occurrences in the tree —
+    and a second copy would be 8.3 MB of instance paths to keep in step with
+    the first. The viewer derives the same two facts the same way.
+    """
+    users: dict[str, list[tuple[str, str]]] = {}
+    for name, entry in model.get("types", {}).items():
+        for member in members_of(entry.get("children", [])):
+            if member.get("type"):
+                users.setdefault(member["type"], []).append((name, member["name"]))
+        for attribute in entry.get("attributes", []):
+            if attribute.get("type"):
+                users.setdefault(attribute["type"], []).append(
+                    (name, "@" + attribute["name"])
+                )
+
+    # The paths themselves, up to the cap, and how many there are in all: what
+    # a reader wants first is where the type stands in a document, and only the
+    # few types that are everywhere need the number instead.
+    paths: dict[str, list[str]] = {}
+    counts: dict[str, int] = {}
+    declarations = model.get("declarations", {})
+    stack = [(model["tree"], "")] if model.get("tree") else []
+    while stack:
+        node, prefix = stack.pop()
+        declaration = declarations.get(node.get("d"), {})
+        here = f"{prefix}/{declaration.get('name', '?')}".lstrip("/")
+        name = declaration.get("type")
+        if name:
+            counts[name] = counts.get(name, 0) + 1
+            if len(paths.setdefault(name, [])) < USAGE_LIMIT:
+                paths[name].append(here)
+        # Pushed in reverse so they come off in document order: the list is
+        # capped, and "and N more" has to mean the ones after these.
+        for child in reversed(node.get("children", [])):
+            stack.append((child, here))
+
+    return {"users": users, "paths": paths, "counts": counts}
+
+
+def _usage_section(name: str, usage: dict, first_paths: dict) -> str:
+    """Where a type is used: by which declarations, and at how many paths.
+
+    The list holds declarations because that answer stays human-sized — 84 % of
+    the types in CPACS 3.5.1 are named exactly once — while the same type can
+    sit at 28,120 instance paths, which is a number rather than a list.
+    """
+    users = sorted(set(usage.get("users", {}).get(name, [])))
+    paths = usage.get("paths", {}).get(name, [])
+    count = usage.get("counts", {}).get(name, 0)
+    if not users and not count:
+        return ""
+
+    # A table, not a list: the names would start at a different column on
+    # every line, and twenty-five of those read as a jumble. Every other pair
+    # on these pages is a table for the same reason.
+    rows = "".join(
+        f'<tr><td><a href="../{escape(slug(owner))}/index.html">'
+        f"<code>{escape(owner)}</code></a></td>"
+        f"<td><code>{escape(member)}</code></td></tr>"
+        for owner, member in users[:USAGE_LIMIT]
+    )
+    if len(users) > USAGE_LIMIT:
+        rows += (f'<tr><td colspan="2" class="cd-inherited">'
+                 f"and {len(users) - USAGE_LIMIT} more</td></tr>")
+
+    # Where it stands in a document comes first: it is the concrete answer, and
+    # the one neither predecessor could give. The two headings name the level
+    # rather than the contents — both lists are elements, and what tells them
+    # apart is that one is a document and the other is the schema.
+    where = ""
+    if count:
+        listed = "".join(
+            f'<li><a href="../../tree/{escape(path)}/"><code>{escape(path)}</code></a></li>'
+            for path in paths
+        )
+        if count > len(paths):
+            listed += f'<li class="cd-inherited">and {count - len(paths)} more</li>'
+        where = (f'<h3>In a dataset <span class="cd-inherited">· {count} '
+                 f'path{"s" if count != 1 else ""}</span></h3>'
+                 f'<ul class="cd-usage-list">{listed}</ul>')
+
+    # Folded away: it answers a question that is asked now and then, and it is
+    # long for the types that are used everywhere. `details` rather than a
+    # button of our own, because it opens with the keyboard, is announced as
+    # what it is, and works on a page with no script at all.
+    schema = ""
+    if users:
+        schema = (f'<h3>In the schema <span class="cd-inherited">· {len(users)} '
+                  f'declaration{"s" if len(users) != 1 else ""}</span></h3>'
+                  f"<table><tr><th>Type</th><th>Name</th></tr>{rows}</table>")
+
+    return (f'<details class="cd-usage"><summary><h2>Used by</h2></summary>'
+            f"{where}{schema}</details>")
 
 
 def _write_docs(output: Path, sections: list, types: dict, doc_type: str | None) -> int:
@@ -250,7 +370,8 @@ def _document(title: str, depth: int, body: str) -> str:
     )
 
 
-def type_page(name: str, entry: dict, types: dict, first_paths: dict, sections=()) -> str:
+def type_page(name: str, entry: dict, types: dict, first_paths: dict, sections=(),
+              usage=None) -> str:
     documentation = entry.get("documentation", {})
     parts = [
         _page_nav(name, first_paths),
@@ -270,6 +391,7 @@ def type_page(name: str, entry: dict, types: dict, first_paths: dict, sections=(
     parts.append(_child_table(entry.get("children", []), types))
     parts.append(_facet_table(entry.get("facets", [])))
     parts.append(_enumeration_list(entry.get("enumeration", [])))
+    parts.append(_usage_section(name, usage or {}, first_paths))
     parts.append(_source_line(entry))
 
     body = "\n".join(p for p in parts if p)

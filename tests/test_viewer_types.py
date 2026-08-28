@@ -23,7 +23,8 @@ READY = 'return document.querySelectorAll(\'[role="treeitem"]\').length > 1;'
 
 PANEL = r"""
   var panel = document.getElementById('cd-detail');
-  var rows = panel.querySelectorAll('table tr');
+  var first = panel.querySelector('table');
+  var rows = first ? first.querySelectorAll('tr') : [];
   var values = [];
   for (var i = 1; i < rows.length; i++) values.push(rows[i].children[0].textContent.trim());
   return {
@@ -259,3 +260,77 @@ def test_the_rule_a_dataset_must_satisfy_is_shown_at_the_node(browser, base):
     # The schema word carries its reading, as the compositors do.
     assert table[1][0].startswith("key")
     assert "may appear only once" in table[1][0]
+
+
+def test_a_type_says_where_it_is_used(browser, base):
+    """Built in the browser on the first type view, from the model it already
+    has — the references in every type and the occurrences in the tree."""
+    browser.open(base + "/tree/cpacs/header/")
+    browser.wait_for(READY, "the tree")
+    opened = browser.evaluate(r"""
+      var buttons = document.querySelectorAll('#cd-detail .cd-crumb');
+      for (var i = 0; i < buttons.length; i++) {
+        if (buttons[i].textContent.indexOf('headerType') !== -1) {
+          buttons[i].click();
+          return true;
+        }
+      }
+      return false;
+    """)
+    assert opened, "the type could not be opened"
+    used = browser.evaluate(r"""
+      var box = document.querySelector('#cd-detail details.cd-usage');
+      if (!box) return null;
+      // Folded until asked: what is inside is only measured once it is open.
+      var wasOpen = box.open;
+      box.open = true;
+      var table = box.querySelector('table');
+      var heads = [];
+      box.querySelectorAll('h3').forEach(function (h) {
+        heads.push(h.textContent.replace(/\s+/g, ' ').trim());
+      });
+      return { section: true, closedByDefault: !wasOpen,
+               items: table ? table.textContent.replace(/\s+/g, ' ').trim() : null,
+               heads: heads };
+    """)
+    assert used is not None, "no Used by section"
+    assert used["section"]
+    assert used["closedByDefault"], "it is not what a reader came for"
+    # `headerType` is the type of two children of the root in this fixture.
+    assert "cpacsType" in used["items"]
+    # The document first, then the schema.
+    assert used["heads"] == ["In a dataset · 2 paths", "In the schema · 2 declarations"]
+
+
+def test_the_path_count_shows_the_paths_it_counts(browser, base):
+    """It used to jump to the first of them: the line said two and delivered
+    one, choosing silently. A number that is clickable has to show what it
+    counts."""
+    browser.open(base + "/tree/cpacs/header/")
+    browser.wait_for(READY, "the tree")
+    browser.evaluate(r"""
+      var buttons = document.querySelectorAll('#cd-detail .cd-crumb');
+      for (var i = 0; i < buttons.length; i++) {
+        if (buttons[i].textContent.indexOf('headerType') !== -1) { buttons[i].click(); return true; }
+      }
+      return false;
+    """)
+    listed = browser.evaluate(r"""
+      var box = document.querySelector('#cd-detail details.cd-usage');
+      box.open = true;
+      var out = [];
+      box.querySelectorAll('.cd-usage-list button').forEach(function (b) {
+        out.push(b.textContent);
+      });
+      return out;
+    """)
+    assert listed == ["cpacs/header", "cpacs/wings"]
+
+    # And each of them stands somewhere in the tree.
+    browser.evaluate(
+        "document.querySelectorAll('#cd-detail .cd-usage-list button')[1].click();"
+        " return true;"
+    )
+    assert browser.evaluate(
+        "return document.querySelector('#cd-detail h1').textContent;"
+    ) == "wings"

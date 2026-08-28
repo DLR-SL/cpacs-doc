@@ -337,6 +337,34 @@ figcaption {
 .cd-definitions dt { font-family: var(--face-code); font-size: 0.9em; margin-top: 0.6rem; }
 .cd-definitions dd { margin: 0 0 0 1.2rem; }
 
+/* Where a type is used. The count is a line of its own — not `.cd-kind`, which
+   heads a page and carries the rule under it; here that rule read as the end of
+   the section, with the paths stranded below it. */
+/* Not what a reader came for, so it is folded until asked. The heading keeps
+   its place in the document; only the marker beside it says it can be opened. */
+.cd-usage > summary { cursor: pointer; }
+.cd-usage > summary h2 { display: inline; }
+.cd-usage[open] > summary { margin-bottom: 0.4rem; }
+
+.cd-usage-count {
+  color: var(--ink-soft);
+  font-size: var(--step-1);
+  margin: 0.7rem 0 0;
+}
+.cd-usage-count > summary { cursor: pointer; color: var(--link); width: max-content; }
+
+/* The paths the count opens, tied to it by a rule down their left, the way a
+   code block is tied to what introduces it. */
+.cd-usage-list {
+  list-style: none;
+  margin: 0.4rem 0 0.9rem;
+  padding: 0.1rem 0 0.1rem 0.9rem;
+  border-left: 2px solid var(--rule-strong);
+  font-size: var(--step-1);
+  line-height: 1.8;
+}
+.cd-usage-list .cd-crumb { overflow-wrap: anywhere; text-align: left; }
+
 .cd-type-index {
   columns: 16rem 3;
   column-gap: 2rem;
