@@ -84,6 +84,11 @@
                 </xsd:simpleType>
             </xsd:element>
             <xsd:element name="mass" type="measuredValueType" minOccurs="0"/>
+            <xsd:any minOccurs="0">
+                <xsd:annotation>
+                    <xsd:documentation>Whatever a tool puts here.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:any>
             <xsd:element name="ratio" minOccurs="0" default="0.5">
                 <xsd:simpleType>
                     <xsd:restriction base="xsd:double">

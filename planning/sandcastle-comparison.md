@@ -115,6 +115,22 @@ lists it as a child row named `Any` and carries its description, *"Wildcard for
 the root element of a toolspecific namespace"*. Our child table shows `name` and
 `version` and gives no sign that anything else may appear.
 
+> **Closed, 2026-08-28.** `content._read_wildcard` reads it with its namespace,
+> its `processContents` and its documentation, and the child table gives it a
+> row: `any · ##any · strict · 1`, the schema word carrying its reading as a
+> compositor does. Namespace and processContents carry the values XSD gives
+> them where the schema is silent, as the occurrence fields already did.
+>
+> It gets no tree node: a wildcard has no name, so it has no instance path, and
+> the tree is instance paths (0008). The node's own table is where a reader
+> meets it.
+>
+> The deeper defect was the silence. `_read_group` passed over anything that
+> was neither a compositor nor an element without a word, which is how the
+> wildcard came to be missing in the first place — so an unknown construct is
+> now reported as `CHILD_CONSTRUCT_UNSUPPORTED`. Against this schema it fires
+> **0** times: `xsd:any` was the only thing being dropped.
+
 ### 5. Identity constraints are not shown
 
 `xsd:key` and `xsd:keyref` on the `cpacs` element. Sandcastle has a *Constraints*

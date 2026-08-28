@@ -201,3 +201,31 @@ def test_the_constraints_cell_leads_to_the_values_it_counts(browser, base):
     assert panel["heading"] == "cpacsType/mode"
     assert "Allowed values" in panel["text"]
     assert panel["values"] == ["inline-only", "second"]
+
+
+def test_a_wildcard_is_visible_at_the_node_that_allows_it(browser, base):
+    """It is not in the tree — it has no name and no instance path — so the
+    node's own table is the only place a reader would meet it."""
+    browser.open(base + "/tree/cpacs/")
+    browser.wait_for(READY, "the tree")
+    row = browser.evaluate(r"""
+      var rows = document.querySelectorAll('#cd-detail table tr');
+      for (var i = 0; i < rows.length; i++) {
+        var first = rows[i].children[0];
+        if (first && first.textContent.indexOf('any') === 0) {
+          var cells = [];
+          for (var j = 0; j < rows[i].children.length; j++) {
+            cells.push(rows[i].children[j].textContent.trim());
+          }
+          return cells;
+        }
+      }
+      return null;
+    """)
+    assert row is not None, "the wildcard has no row"
+    # Its own defaults, as XSD gives them where the schema is silent.
+    assert row[1] == "##any"
+    assert row[2] == "strict"
+    assert row[5] == "Whatever a tool puts here."
+    # And the reading of the word rides along on it.
+    assert "An element the schema does not name may appear here." in row[0]

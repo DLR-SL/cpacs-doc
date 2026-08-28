@@ -93,3 +93,14 @@ def test_a_node_carries_the_default_of_its_declaration(parse):
     assert find(tree.root, "ratio").default == "0.5"
     assert find(tree.root, "unit").fixed == "m"
     assert find(tree.root, "span").default is None
+
+
+def test_a_wildcard_becomes_no_node(parse):
+    """It has no name, so it has no instance path — and the tree is instance
+    paths. The type page and the panel show it under the type that allows it."""
+    root = parse("content.xsd")
+    catalogue = catalogue_module.build(root, "content.xsd")
+    tree = tree_module.build(root, catalogue, "content.xsd")
+    names = [child.name for child in tree.root.children]
+    assert "any" not in names
+    assert "span" in names and "segment" in names

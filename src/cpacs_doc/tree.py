@@ -239,6 +239,11 @@ def _visible_members(group, compositor, in_choice=False):
             members.extend(
                 _visible_members(member, member.compositor, in_choice or member.compositor == "choice")
             )
+        elif isinstance(member, content_module.Wildcard):
+            # A wildcard has no name, so it has no instance path and no node.
+            # The type page and the panel show it where it belongs, under the
+            # type that allows it.
+            continue
         else:
             members.append((member, compositor, in_choice))
     return members

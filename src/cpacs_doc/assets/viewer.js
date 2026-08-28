@@ -105,6 +105,10 @@
     return COMPOSITOR_GLOSS[name] || "";
   }
 
+  // The one construct in the child table that is neither an element nor a
+  // group: a place where the schema allows what it does not name.
+  var ANY_GLOSS = "An element the schema does not name may appear here. The namespace beside it says which are allowed; strict means the element must be declared in a schema of its own.";
+
   // The same reading of the same words as the type pages give. Two copies of
   // the prose, as with the compositors above: the generator writes the pages in
   // Python and the viewer builds its panel here.
@@ -827,6 +831,23 @@
       var row = element("tr");
       var nameCell = element("td");
       indent(nameCell, depth);
+      if (member.kind === "any") {
+        // No name and no type of its own, so the row says what it does allow.
+        var term = element("span", "cd-facet", "any");
+        term.setAttribute("tabindex", "0");
+        var note = element("span", "cd-tip", ANY_GLOSS);
+        note.setAttribute("role", "note");
+        term.appendChild(note);
+        nameCell.appendChild(term);
+        row.appendChild(nameCell);
+        row.appendChild(text(member.namespace || "", "td", null));
+        row.appendChild(text(member.processContents || "", "td", "cd-inherited"));
+        row.appendChild(text(cardinality(member), "td"));
+        row.appendChild(element("td"));
+        row.appendChild(text(documentationText(member), "td"));
+        table.appendChild(row);
+        continue;
+      }
       nameCell.appendChild(childCell(member));
       row.appendChild(nameCell);
       var typeCellNode = element("td");

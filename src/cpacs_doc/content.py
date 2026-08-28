@@ -77,6 +77,27 @@ class ChildInfo:
 
 
 @dataclass
+class Wildcard:
+    """An `xsd:any`: a place where the schema allows what it does not name.
+
+    One in CPACS 3.5.1, in `toolType`, and it is the point of that type — the
+    root element of a toolspecific namespace goes there. Dropping it left the
+    page saying a tool holds a name and a version and nothing else.
+
+    Namespace and processContents carry the values XSD gives them when they are
+    not written, as the occurrence fields already do: a missing `namespace`
+    means `##any`, and that is a fact of the specification rather than a guess.
+    """
+
+    namespace: str
+    process_contents: str
+    min_occurs: int
+    max_occurs: int | None
+    doc: Documentation
+    line: int | None
+
+
+@dataclass
 class ChildGroup:
     """A compositor and what it contains.
 
@@ -378,7 +399,36 @@ def _read_group(node, compositor_name, info, source, content, catalogue) -> Chil
             member = _read_child(child, info, source, content, catalogue)
             if member is not None:
                 group.members.append(member)
+        elif name == "any":
+            group.members.append(_read_wildcard(child, info, source, content))
+        elif name != "annotation":
+            # Silence here is what dropped the wildcard in the first place. A
+            # construct this reader does not know is a finding, not a gap to
+            # be filled in quietly.
+            content.findings.append(
+                Finding(
+                    "warning",
+                    "CHILD_CONSTRUCT_UNSUPPORTED",
+                    f"{info.name}: xsd:{name} inside a {compositor_name} is not read",
+                    location_of(child, source),
+                )
+            )
     return group
+
+
+def _read_wildcard(node, info, source, content) -> Wildcard:
+    doc, problems = ann.read(
+        node.find(q(XSD, "annotation")), source, f"any in {info.name}"
+    )
+    content.findings.extend(problems)
+    return Wildcard(
+        namespace=node.get("namespace") or "##any",
+        process_contents=node.get("processContents") or "strict",
+        min_occurs=_occurs(node.get("minOccurs"), 1),
+        max_occurs=_occurs(node.get("maxOccurs"), 1),
+        doc=doc,
+        line=getattr(node, "sourceline", None),
+    )
 
 
 def _read_child(node, info, source, content, catalogue) -> ChildInfo | None:

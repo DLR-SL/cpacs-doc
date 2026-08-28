@@ -48,6 +48,12 @@
                         </xsd:simpleType>
                     </xsd:element>
                     <xsd:element name="segment" type="xsd:string" maxOccurs="unbounded"/>
+                    <xsd:any namespace="##other" processContents="lax" minOccurs="0">
+                        <xsd:annotation>
+                            <xsd:documentation>Anything from elsewhere.</xsd:documentation>
+                        </xsd:annotation>
+                    </xsd:any>
+                    <xsd:group ref="unreadGroup"/>
                     <xsd:element name="unit" type="xsd:string" fixed="m" minOccurs="0"/>
                     <xsd:element name="ratio" minOccurs="0" default="0.5">
                         <xsd:simpleType>
@@ -72,6 +78,13 @@
             </xsd:extension>
         </xsd:complexContent>
     </xsd:complexType>
+
+    <!-- Not read by the extractor; it is a finding, not a silent gap. -->
+    <xsd:group name="unreadGroup">
+        <xsd:sequence>
+            <xsd:element name="fromAGroup" type="xsd:string"/>
+        </xsd:sequence>
+    </xsd:group>
 
     <xsd:complexType name="emptyType"/>
 

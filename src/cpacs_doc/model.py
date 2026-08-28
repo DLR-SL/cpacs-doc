@@ -21,7 +21,7 @@ from copy import deepcopy
 
 from lxml import etree
 
-from . import renderer
+from . import content, renderer
 from .annotations import DDUE, Documentation
 
 MODEL_VERSION = "1.2"
@@ -153,6 +153,20 @@ def _enumeration_entry(value) -> dict:
 
 
 def _child_entry(member) -> dict:
+    if isinstance(member, content.Wildcard):
+        entry = {
+            "kind": "any",
+            "namespace": member.namespace,
+            "processContents": member.process_contents,
+            "minOccurs": member.min_occurs,
+            "maxOccurs": member.max_occurs,
+            "line": member.line,
+        }
+        documentation = _documentation(member.doc)
+        if documentation:
+            entry["documentation"] = documentation
+        return entry
+
     """One row of the child table: an element, or a compositor with members.
 
     `kind` distinguishes them so a consumer does not have to guess from the

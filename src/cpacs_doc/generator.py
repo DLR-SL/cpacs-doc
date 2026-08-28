@@ -471,6 +471,10 @@ def _child_table(children, types=None) -> str:
     )
 
 
+# The one construct in the child table that is not an element and not a group.
+ANY_GLOSS = "An element the schema does not name may appear here. The namespace beside it says which are allowed; strict means the element must be declared in a schema of its own."
+
+
 def _child_rows(members, depth: int, types=None) -> list[str]:
     """Rows for one level, groups as headings above their indented members.
 
@@ -500,6 +504,23 @@ def _child_rows(members, depth: int, types=None) -> list[str]:
                 f"</span></td><td></td></tr>"
             )
             rows.extend(_child_rows(member.get("members", []), depth + 1, types))
+            continue
+        if member.get("kind") == "any":
+            # A wildcard is where the schema allows what it does not name. It
+            # has no name and no type, so it borrows the row and says what it
+            # does allow: a namespace, and how strictly it is checked.
+            rows.append(
+                "<tr>"
+                f'<td{indent}><span class="cd-facet" tabindex="0">any'
+                f'<span class="cd-tip" role="note">{escape(ANY_GLOSS)}</span>'
+                "</span></td>"
+                f'<td><code>{escape(member.get("namespace", ""))}</code></td>'
+                f'<td><span class="cd-inherited">'
+                f'{escape(member.get("processContents", ""))}</span></td>'
+                f"<td>{escape(_cardinality(member))}</td><td></td>"
+                f'<td>{escape(member.get("documentation", {}).get("text", ""))}</td>'
+                "</tr>"
+            )
             continue
         rows.append(
             "<tr>"

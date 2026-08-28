@@ -323,3 +323,21 @@ def test_the_kind_line_does_not_say_the_base_twice(model, tmp_path):
     generator.generate(model, tmp_path)
     page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
     assert "value <code>" not in page
+
+
+def test_a_wildcard_gets_a_row_saying_what_it_allows(model, tmp_path):
+    """It has no name and no type, so the row says what it does allow: a
+    namespace, how strictly it is checked, and its own documentation."""
+    model["types"]["wingType"]["children"][0]["members"].append({
+        "kind": "any", "namespace": "##other", "processContents": "lax",
+        "minOccurs": 0, "maxOccurs": 1,
+        "documentation": {"text": "Anything from elsewhere."},
+    })
+    generator.generate(model, tmp_path)
+    page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    children = page.split("<h2>Child elements</h2>")[1]
+    assert "<code>##other</code>" in children
+    assert "lax" in children
+    assert "Anything from elsewhere." in children
+    # The schema word carries its reading, as a compositor does.
+    assert "An element the schema does not name may appear here." in children

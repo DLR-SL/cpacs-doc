@@ -52,12 +52,16 @@ def test_enumeration_documentation_is_read(parse):
 
 
 def flatten(members):
-    """Element members in document order, groups walked through."""
+    """Element members in document order, groups walked through.
+
+    Wildcards are not element members: they have no name and no type, and the
+    tests that walk this list ask both of them.
+    """
     out = []
     for member in members:
         if hasattr(member, "compositor"):
             out.extend(flatten(member.members))
-        else:
+        elif hasattr(member, "name"):
             out.append(member)
     return out
 
@@ -168,3 +172,25 @@ def test_a_declared_default_and_a_fixed_value_are_read_and_kept_apart(parse):
     assert children["ratio"].default == "0.5" and children["ratio"].fixed is None
     assert children["unit"].fixed == "m" and children["unit"].default is None
     assert children["span"].default is None and children["span"].fixed is None
+
+
+def test_a_wildcard_is_read_with_its_documentation(parse):
+    """`xsd:any` is where the schema allows what it does not name. In CPACS
+    3.5.1 there is one, in `toolType`, and it is the point of that type — the
+    root of a toolspecific namespace goes there. Dropped, the page said a tool
+    holds a name and a version and nothing else."""
+    groups = read(parse, "wingType").children
+    wildcards = [m for g in groups for m in g.members if isinstance(m, content.Wildcard)]
+    assert len(wildcards) == 1
+    wildcard = wildcards[0]
+    assert wildcard.namespace == "##other"
+    assert wildcard.process_contents == "lax"
+    assert wildcard.min_occurs == 0
+    assert wildcard.doc.text == "Anything from elsewhere."
+
+
+def test_a_construct_the_reader_does_not_know_is_reported(parse):
+    """Silence is what dropped the wildcard in the first place. `xsd:group` is
+    not read; that is a finding, not a gap to fill in quietly."""
+    codes = [f.code for f in read(parse, "wingType").findings]
+    assert "CHILD_CONSTRUCT_UNSUPPORTED" in codes
