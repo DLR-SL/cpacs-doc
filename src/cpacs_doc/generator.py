@@ -394,12 +394,12 @@ def router_html() -> str:
         ' autocomplete="off" spellcheck="false" aria-label="Search">'
         '<span id="cd-search-count" class="cd-search-count"></span>'
         "</div>\n"
-        '<div id="cd-tree" class="cd-pane"></div>\n'
+        '<div id="cd-tree" class="cd-pane" role="tree" aria-label="Instance tree"></div>\n'
         '<div id="cd-results" class="cd-pane" hidden></div>\n'
         "</div>\n"
         '<div id="cd-splitter" class="cd-splitter" role="separator" aria-orientation="vertical"'
         ' tabindex="0" aria-label="Resize the tree pane"></div>\n'
-        '<div id="cd-detail" class="cd-pane cd-pane-detail"></div>\n'
+        '<div id="cd-detail" class="cd-pane cd-pane-detail" tabindex="-1"></div>\n'
         "</div>\n"
         f"<script>\n{asset('viewer.js')}</script>\n"
         "</body>\n</html>\n"

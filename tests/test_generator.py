@@ -200,6 +200,15 @@ def test_router_is_written_with_stylesheet_and_script_inlined(model, tmp_path):
     assert 'id="cd-tree"' in html and 'id="cd-detail"' in html
 
 
+def test_the_panes_carry_what_keyboard_operation_needs(model, tmp_path):
+    """The tree says it is a tree before the model has loaded, and the detail
+    panel can be focused so Enter in the tree has somewhere to go (F1, N13)."""
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "404.html").read_text(encoding="utf-8")
+    assert 'role="tree"' in html
+    assert 'id="cd-detail" class="cd-pane cd-pane-detail" tabindex="-1"' in html
+
+
 def test_assets_are_written_as_files_for_the_static_pages(model, tmp_path):
     generator.generate(model, tmp_path)
     assert (tmp_path / "assets" / "styles.css").exists()

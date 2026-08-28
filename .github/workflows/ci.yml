@@ -41,7 +41,12 @@ jobs:
           UV_PYTHON: ${{ matrix.python }}
 
       - name: Test
+        # The keyboard tests drive a real browser and skip without one. Both
+        # runner images carry Chrome, so demand it here rather than let the
+        # file lapse into a silent skip.
         run: uv run pytest -q
+        env:
+          CPACS_DOC_REQUIRE_BROWSER: "1"
 
   schema:
     # The extractor is only as useful as its verdict on a real schema. This job

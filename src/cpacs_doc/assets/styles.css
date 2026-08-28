@@ -368,6 +368,14 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   border-radius: 3px;
 }
 .cd-node.cd-selected { background: var(--field); }
+/* The cursor is where the keyboard points, the selection is what the detail
+   panel shows. They are usually the same row and need not be, so they are
+   marked differently — and the cursor keeps its mark once Enter has moved the
+   focus to the panel, so the way back stays visible. */
+/* One rule for both, and the offset pulled inside the row: the cursor row is
+   normally the focused one, and two rules would draw two rings around it. */
+.cd-node.cd-cursor,
+.cd-node:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
 /* Marks a node bound to a choice. The tree is flat — indentation there means
    containment in an instance, and a compositor contains nothing — so the
    constraint rides on the node rather than on a row of its own. */
@@ -399,8 +407,11 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   visibility: hidden;
   pointer-events: none;
 }
+/* The mark is no longer a tab stop of its own — that would put one per
+   choice node into the tab order — so the row it rides on shows the
+   explanation when the keyboard reaches it. */
 .cd-alternative:hover .cd-tip,
-.cd-alternative:focus-visible .cd-tip { opacity: 1; visibility: visible; }
+.cd-node:focus .cd-alternative .cd-tip { opacity: 1; visibility: visible; }
 .cd-toggle {
   flex: 0 0 1.3rem;
   border: 0;

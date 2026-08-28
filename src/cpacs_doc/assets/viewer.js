@@ -23,6 +23,9 @@
     root: "",          // path prefix the site is deployed under
     model: null,
     path: [],          // selected instance path, without the root element
+    cursor: [],        // path the keyboard points at, apart from the selection
+    cursorIndex: null, // position of the cursor row in `rows`
+    rows: [],          // rendered rows in visual order, rebuilt with the tree
     expanded: null,    // Set of expanded paths
     nodeByPath: null,  // path -> model node
     searchEntries: null,  // built on first search, not on load
@@ -116,16 +119,23 @@
 
   function renderTree() {
     var container = document.getElementById("cd-tree");
+    // Read before the rebuild: the row holding focus is about to be destroyed,
+    // and the cursor may only take the focus back if the reader was in the
+    // tree to begin with — a click or the initial load must not steal it.
+    var hadFocus = container.contains(document.activeElement);
     container.textContent = "";
+    state.rows = [];
+    state.cursorIndex = null;
     var root = state.model.tree;
     if (!root) {
       container.appendChild(element("p", "cd-empty", "The model contains no tree."));
       return;
     }
-    container.appendChild(renderNode(root, [], 0));
+    container.appendChild(renderNode(root, [], 0, 1, 1));
+    restoreCursor(hadFocus);
   }
 
-  function renderNode(node, path, depth) {
+  function renderNode(node, path, depth, position, total) {
     var decl = declaration(node);
     var key = path.join("/");
     var children = childrenOf(node);
@@ -140,18 +150,34 @@
 
     var item = element("div", classes.join(" "));
     item.style.paddingLeft = depth * 16 + "px";
+    // The tree is flat in the DOM as it is on screen (decision 0008): every row
+    // states its own place in the hierarchy instead of being wrapped in nested
+    // groups. The row itself is the treeitem, and the cursor row is the only
+    // tab stop, so entering the tree costs one Tab and not two per row.
+    item.setAttribute("role", "treeitem");
+    item.setAttribute("aria-level", String(depth + 1));
+    item.setAttribute("aria-posinset", String(position));
+    item.setAttribute("aria-setsize", String(total));
+    item.setAttribute("aria-selected", String(isSelected));
+    if (children.length) item.setAttribute("aria-expanded", String(isExpanded));
+    item.tabIndex = -1;
 
     var toggle = element("button", "cd-toggle", children.length ? (isExpanded ? "\u2212" : "+") : "\u00B7");
     toggle.disabled = children.length === 0;
-    toggle.setAttribute("aria-expanded", String(isExpanded));
+    // The row carries aria-expanded now, and the toggle repeats nothing: it
+    // stays reachable with the pointer and out of the keyboard's way.
+    toggle.tabIndex = -1;
+    toggle.setAttribute("aria-hidden", "true");
     toggle.addEventListener("click", function (event) {
       event.stopPropagation();
       if (isExpanded) state.expanded.delete(key); else state.expanded.add(key);
+      state.cursor = path;
       renderTree();
     });
     item.appendChild(toggle);
 
     var label = element("button", "cd-label");
+    label.tabIndex = -1;
     label.appendChild(element("span", "cd-name", decl.name || "?"));
     if (depth > 0) {
       label.appendChild(element("span", "cd-cardinality", cardinality(decl)));
@@ -159,7 +185,9 @@
     if (decl.alternative) {
       // The tree stays flat; the constraint rides on the node it applies to.
       var mark = element("span", "cd-alternative", "\u2442");
-      mark.setAttribute("tabindex", "0");
+      // Reached through the row rather than as a tab stop of its own: the
+      // explanation appears when the row takes focus, see the stylesheet.
+      mark.setAttribute("tabindex", "-1");
       var tip = element("span", "cd-tip",
         "One of several alternatives: only one branch of a choice may appear. "
         + "The type page lists the combinations.");
@@ -172,21 +200,203 @@
     label.addEventListener("click", function () { select(path); });
     item.appendChild(label);
 
+    state.rows.push({
+      key: key,
+      path: path,
+      depth: depth,
+      element: item,
+      hasChildren: children.length > 0,
+      expanded: isExpanded
+    });
+
     var wrapper = element("div", "cd-subtree");
+    // The wrapper only holds a row together with its subtree and means nothing
+    // of its own, so it is skipped when the tree's items are computed.
+    wrapper.setAttribute("role", "none");
     wrapper.appendChild(item);
 
     if (isExpanded) {
       for (var i = 0; i < children.length; i++) {
         var childName = declaration(children[i]).name || "?";
-        wrapper.appendChild(renderNode(children[i], path.concat(childName), depth + 1));
+        wrapper.appendChild(renderNode(
+          children[i], path.concat(childName), depth + 1, i + 1, children.length
+        ));
       }
     }
     return wrapper;
   }
 
+  /* ---- keyboard (F1, N13) ----
+   *
+   * The cursor is where the keyboard points; the selection is what the detail
+   * panel shows and what the URL names. The two are usually the same row and
+   * need not be: arrow keys move the cursor alone, Space and Enter commit it.
+   * Were every arrow key to select, each keystroke would push a history entry
+   * and the browser's back button would be useless after a few rows.
+   *
+   * Movement itself does not re-render. `renderTree()` rebuilds the container
+   * from scratch, which is right for expanding and collapsing and far too much
+   * for a step from one row to the next: that is two attribute changes.
+   */
+
+  function moveCursor(index, focusRow) {
+    if (!state.rows.length) return;
+    index = Math.max(0, Math.min(index, state.rows.length - 1));
+    var previous = state.rows[state.cursorIndex];
+    if (previous) {
+      previous.element.classList.remove("cd-cursor");
+      previous.element.tabIndex = -1;
+    }
+    var row = state.rows[index];
+    state.cursorIndex = index;
+    state.cursor = row.path;
+    row.element.classList.add("cd-cursor");
+    row.element.tabIndex = 0;
+    if (focusRow === false) return;
+    row.element.focus();
+    if (row.element.scrollIntoView) row.element.scrollIntoView({ block: "nearest" });
+  }
+
+  function indexForPath(path) {
+    // Where two rows share a path — 860 do, through the branches of a choice —
+    // the first one wins, as it does in `indexTree()`. A cursor whose row is
+    // gone, because an ancestor was collapsed, falls back to that ancestor.
+    var segments = (path || []).slice();
+    for (;;) {
+      var key = segments.join("/");
+      for (var i = 0; i < state.rows.length; i++) {
+        if (state.rows[i].key === key) return i;
+      }
+      if (!segments.length) return 0;
+      segments.pop();
+    }
+  }
+
+  function restoreCursor(focusRow) {
+    if (!state.rows.length) return;
+    moveCursor(indexForPath(state.cursor), focusRow);
+  }
+
+  function focusCursor() {
+    var row = state.rows[state.cursorIndex];
+    if (!row) return;
+    row.element.focus();
+    if (row.element.scrollIntoView) row.element.scrollIntoView({ block: "nearest" });
+  }
+
+  function focusDetail() {
+    var panel = document.getElementById("cd-detail");
+    if (!panel) return;
+    panel.focus();
+    if (panel.scrollTo) panel.scrollTo(0, 0);
+  }
+
+  function parentIndex(index) {
+    var depth = state.rows[index].depth;
+    for (var i = index - 1; i >= 0; i--) {
+      if (state.rows[i].depth < depth) return i;
+    }
+    return index;
+  }
+
+  function setupTreeKeys() {
+    var container = document.getElementById("cd-tree");
+    if (!container) return;
+    // One listener on the container, not one per row: the rows are rebuilt on
+    // every expansion, and there are up to 54,552 of them.
+    container.addEventListener("keydown", function (event) {
+      // Alt+Left is the browser's back and Ctrl+Home the document start: the
+      // tree does not take keys that carry a modifier.
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      var index = state.cursorIndex;
+      var row = state.rows[index];
+      if (!row) return;
+
+      if (event.key === "ArrowDown") {
+        moveCursor(index + 1);
+      } else if (event.key === "ArrowUp") {
+        moveCursor(index - 1);
+      } else if (event.key === "Home") {
+        moveCursor(0);
+      } else if (event.key === "End") {
+        moveCursor(state.rows.length - 1);
+      } else if (event.key === "ArrowRight") {
+        // Open what is closed, then step inward: the first child is the next
+        // row, because the rows are held in the order they are drawn.
+        if (row.hasChildren && !row.expanded) {
+          state.expanded.add(row.key);
+          renderTree();
+        } else if (row.hasChildren) {
+          moveCursor(index + 1);
+        }
+      } else if (event.key === "ArrowLeft") {
+        if (row.expanded) {
+          state.expanded.delete(row.key);
+          renderTree();
+        } else {
+          moveCursor(parentIndex(index));
+        }
+      } else if (event.key === " " || event.key === "Spacebar") {
+        select(row.path);
+      } else if (event.key === "Enter") {
+        select(row.path);
+        focusDetail();
+      } else {
+        return;
+      }
+      event.preventDefault();
+    });
+  }
+
+  function isTextField(node) {
+    if (!node) return false;
+    return node.tagName === "INPUT" || node.tagName === "TEXTAREA"
+      || node.isContentEditable === true;
+  }
+
+  function setupGlobalKeys() {
+    document.addEventListener("keydown", function (event) {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (isTextField(event.target)) return;
+      if (event.key === "/") {
+        var field = document.getElementById("cd-search");
+        if (!field) return;
+        field.focus();
+        field.select();
+        event.preventDefault();
+        return;
+      }
+      if (event.key === "Escape") {
+        if (!document.getElementById("cd-results").hidden) {
+          closeSearch(true);
+        } else {
+          focusCursor();
+        }
+        event.preventDefault();
+      }
+    });
+  }
+
+  function setupResultKeys() {
+    var panel = document.getElementById("cd-results");
+    if (!panel) return;
+    panel.addEventListener("keydown", function (event) {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      var current = document.activeElement;
+      if (!current || current.className.indexOf("cd-result") !== 0) return;
+      var next = null;
+      if (event.key === "ArrowDown") next = current.nextSibling;
+      else if (event.key === "ArrowUp") next = current.previousSibling;
+      else return;
+      if (next && next.focus) next.focus();
+      event.preventDefault();
+    });
+  }
+
   function select(path) {
     state.shownType = null;
     state.path = path;
+    state.cursor = path;
     expandAncestors(path);
     // The root element is part of the URL: it is part of an instance path, and
     // the "show in tree" links on type pages are written that way.
@@ -633,21 +843,27 @@
       if (entry.kind === "element") {
         // F14: results navigate into the tree, expanding the path. The stored
         // path already excludes the root element, as `state.path` does.
-        closeSearch();
+        closeSearch(false);
         select(entry.path ? entry.path.split("/") : []);
+        focusCursor();
       } else {
-        closeSearch();
+        closeSearch(false);
         showType(entry.typeName);
+        focusDetail();
       }
     });
     return row;
   }
 
-  function closeSearch() {
+  // The focus has to go somewhere once the results are gone. Whoever closes
+  // the search says where: back to the tree cursor when the reader gave the
+  // search up, nowhere when a result is opened and the target takes it.
+  function closeSearch(returnFocus) {
     var field = document.getElementById("cd-search");
     if (field) field.value = "";
     showResults(false);
     document.getElementById("cd-search-count").textContent = "";
+    if (returnFocus) focusCursor();
   }
 
   function showResults(on) {
@@ -675,7 +891,14 @@
     });
 
     field.addEventListener("keydown", function (event) {
-      if (event.key === "Escape") closeSearch();
+      if (event.key === "Escape") closeSearch(true);
+      if (event.key === "ArrowDown") {
+        var first = document.getElementById("cd-results").querySelector(".cd-result");
+        if (first) {
+          first.focus();
+          event.preventDefault();
+        }
+      }
       if (event.key === "Enter") {
         var first = document.getElementById("cd-results").children[0];
         var button = first && first.children && first.children[0];
@@ -704,6 +927,9 @@
     state.root = location.root;
     setupSplitter();
     setupSearch();
+    setupTreeKeys();
+    setupResultKeys();
+    setupGlobalKeys();
 
     fetch(state.root + MODEL_FILE)
       .then(function (response) {
@@ -718,6 +944,7 @@
         // The root element is part of the URL but not of the internal path.
         if (segments.length && segments[0] === rootName) segments = segments.slice(1);
         state.path = segments;
+        state.cursor = segments;
         expandAncestors(segments);
         renderTree();
         renderDetail();
@@ -734,6 +961,7 @@
     var rootName = declaration(state.model.tree).name;
     if (segments.length && segments[0] === rootName) segments = segments.slice(1);
     state.path = segments;
+    state.cursor = segments;
     expandAncestors(segments);
     renderTree();
     renderDetail();

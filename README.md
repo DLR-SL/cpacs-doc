@@ -53,6 +53,12 @@ uv run cpacs-doc report schema/cpacs_schema.xsd
 pulls the test tooling from the `dev` dependency group. `uv.lock` pins the exact
 versions and is committed, so CI and every checkout resolve identically.
 
+The viewer's keyboard behaviour is checked in a real browser: `tests/cdp.py`
+drives an installed Chrome or Edge over the DevTools protocol, without a driver
+package and without Node. Those tests skip where no such browser is found, and
+`CPACS_DOC_BROWSER` points at one that is installed elsewhere. Everything else
+runs without a browser.
+
 Without uv, any Python 3.10 environment works:
 
 ```
