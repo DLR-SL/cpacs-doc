@@ -168,3 +168,50 @@ def test_the_watcher_rebuilds_when_the_schema_changes(site):
         stop.set()
         thread.join(timeout=5)
     assert b"A wing, changed." in site.model_bytes
+
+
+def test_a_browser_dropping_a_connection_is_not_an_error(site, capsys):
+    """A cancelled image, a reload, a navigation away — from here they all look
+    like a reset peer. `socketserver` prints a full traceback for each, and in
+    a mode whose entire output is the build report that reads like a crash.
+
+    It also matters beyond the noise: those tracebacks are written from daemon
+    threads, and one still writing when the interpreter shuts down is a fatal
+    error rather than a message.
+    """
+    server = serve_module.create_server(site, "127.0.0.1", 0)
+    try:
+        try:
+            raise ConnectionResetError("the browser went away")
+        except ConnectionResetError:
+            server.handle_error(None, ("127.0.0.1", 0))
+        assert capsys.readouterr().err == ""
+
+        # Anything else is still a finding.
+        try:
+            raise ValueError("something the server got wrong")
+        except ValueError:
+            server.handle_error(None, ("127.0.0.1", 0))
+        assert "ValueError" in capsys.readouterr().err
+    finally:
+        server.server_close()
+
+
+def test_the_access_log_can_be_turned_off(site, capsys):
+    """`serve` wants the log; the tests run browsers and want silence, because
+    what a handler thread does not write it cannot be killed in the middle of.
+    """
+    def fetch(quiet):
+        server = serve_module.create_server(site, "127.0.0.1", 0, quiet=quiet)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            get(f"http://127.0.0.1:{server.server_address[1]}", "/index.html")
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
+        return capsys.readouterr().err
+
+    assert "GET /index.html" in fetch(quiet=False)
+    assert fetch(quiet=True) == ""

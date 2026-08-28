@@ -39,7 +39,7 @@ def browser(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def base(request, tmp_path_factory):
+def base(request, tmp_path_factory, browser):
     """The viewer, served the way it is deployed (§3.4, R4).
 
     Which schema is the module's own business: it says so with a `SCHEMA`
@@ -54,12 +54,19 @@ def base(request, tmp_path_factory):
         schema, None, media_expected=False, media_root=directory / "media", limit=0
     )
     assert site.rebuild()
-    server = serve_module.create_server(site, "127.0.0.1", 0)
+    # Quiet: a browser leaves connections behind, and a daemon thread still
+    # writing to stderr when the interpreter shuts down is a fatal error
+    # rather than a test failure — Windows CI showed exactly that.
+    server = serve_module.create_server(site, "127.0.0.1", 0, quiet=True)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     address = f"http://127.0.0.1:{server.server_address[1]}"
     assert cdp.reachable(address + "/tree/cpacs/"), "the development server did not answer"
     yield address
+    # Send the browser away first. Its keep-alive connections each hold a
+    # handler thread blocked on a read, and a daemon thread that outlives the
+    # server outlives the interpreter too.
+    browser.open("about:blank")
     server.shutdown()
     server.server_close()
     thread.join(timeout=5)

@@ -219,8 +219,9 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "cpacs-doc"
     protocol_version = "HTTP/1.1"
 
-    def __init__(self, *args, site: Site, **kwargs):
+    def __init__(self, *args, site: Site, quiet: bool = False, **kwargs):
         self.site = site
+        self.quiet = quiet
         super().__init__(*args, **kwargs)
 
     def do_GET(self) -> None:  # noqa: N802 — name fixed by BaseHTTPRequestHandler
@@ -340,15 +341,38 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, format: str, *args) -> None:
         # The build poll fires once per second per tab and would bury the build
         # report, which is the output this mode exists to show (R4).
-        if getattr(self, "path", "").split("?")[0] == BUILD_ROUTE:
+        if self.quiet or getattr(self, "path", "").split("?")[0] == BUILD_ROUTE:
             return
         sys.stderr.write(f"{format % args}\n")
 
 
-def create_server(site: Site, host: str, port: int) -> ThreadingHTTPServer:
-    server = ThreadingHTTPServer((host, port), partial(Handler, site=site))
-    server.daemon_threads = True
-    return server
+class Server(ThreadingHTTPServer):
+    """The development server.
+
+    Threads are daemons so Ctrl-C ends the mode at once rather than after the
+    last keep-alive connection has timed out.
+
+    It stays quiet about the one error a browser causes as a matter of course:
+    dropping a connection mid-request, which is what a cancelled image, a
+    reload or a navigation away looks like from here. `socketserver` prints a
+    full traceback for it, and in a mode whose entire output is the build
+    report that reads like a crash. Anything else is still reported — those are
+    findings.
+    """
+
+    daemon_threads = True
+
+    EXPECTED = (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)
+
+    def handle_error(self, request, client_address) -> None:
+        kind = sys.exc_info()[0]
+        if kind is not None and issubclass(kind, self.EXPECTED):
+            return
+        super().handle_error(request, client_address)
+
+
+def create_server(site: Site, host: str, port: int, *, quiet: bool = False) -> Server:
+    return Server((host, port), partial(Handler, site=site, quiet=quiet))
 
 
 def serve(schema: Path, media_path: Path | None, *, media_expected: bool,

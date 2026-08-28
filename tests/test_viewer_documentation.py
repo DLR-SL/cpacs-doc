@@ -163,7 +163,7 @@ def test_a_schema_without_sections_shows_no_tabs(browser, tmp_path_factory):
         schema, None, media_expected=False, media_root=directory / "media", limit=0
     )
     assert site.rebuild()
-    server = serve_module.create_server(site, "127.0.0.1", 0)
+    server = serve_module.create_server(site, "127.0.0.1", 0, quiet=True)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     address = f"http://127.0.0.1:{server.server_address[1]}"
