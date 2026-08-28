@@ -26,6 +26,7 @@ from .findings import Finding
 PATH_SEPARATOR = "--"
 
 TYPES_DIRECTORY = "type"
+DOC_DIRECTORY = "doc"
 MEDIA_DIRECTORY = "media"
 ASSET_DIRECTORY = "assets"
 
@@ -46,6 +47,7 @@ def unslug(value: str) -> str:
 @dataclass
 class GeneratorResult:
     pages: int = 0
+    docs: int = 0
     assets: int = 0
     findings: list[Finding] = field(default_factory=list)
 
@@ -59,15 +61,23 @@ def generate(model: dict, output: Path, *, media_root: Path | None = None) -> Ge
     _write_assets(output / ASSET_DIRECTORY)
     _write_router(output)
 
+    documentation = model.get("documentation") or {}
+    sections = documentation.get("sections") or []
+    result.docs = _write_docs(output, sections, model.get("types", {}), documentation.get("type"))
+
     types = model.get("types", {})
     for name, entry in sorted(types.items()):
-        html = type_page(name, entry, types, model.get("firstPaths", {}))
+        html = type_page(
+            name, entry, types, model.get("firstPaths", {}),
+            sections=sections if name == documentation.get("type") else (),
+        )
         target = output / TYPES_DIRECTORY / slug(name) / "index.html"
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(html, encoding="utf-8")
         result.pages += 1
 
-    _write_index(output, types, model.get("statistics", {}), model.get("meta", {}))
+    _write_index(output, types, model.get("statistics", {}), model.get("meta", {}),
+                 has_docs=bool(sections))
     result.assets = _copy_media(model, output, media_root, result)
     return result
 
@@ -103,6 +113,59 @@ def _copy_media(model, output, media_root, result) -> int:
     return copied
 
 
+def _write_docs(output: Path, sections: list, types: dict, doc_type: str | None) -> int:
+    """The general documentation, one page per section plus an index.
+
+    Real files, like the type pages and for the same reason (G3): this is the
+    prose people cite, and a citation has to answer with 200. The viewer shows
+    the same sections in its panel and links here for the address.
+    """
+    if not sections:
+        return 0
+    for section in sections:
+        target = output / DOC_DIRECTORY / section["slug"] / "index.html"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(doc_page_html(section), encoding="utf-8")
+    (output / DOC_DIRECTORY / "index.html").write_text(
+        doc_index_html(sections, types, doc_type), encoding="utf-8"
+    )
+    return len(sections)
+
+
+def doc_page_html(section: dict) -> str:
+    body = (
+        '<nav class="cd-breadcrumb"><a href="../index.html">Documentation</a>'
+        ' · <a href="../../index.html">Types</a></nav>'
+        f'<h1>{escape(section["title"])}</h1>'
+        f'<div class="cd-remarks">{section["html"]}</div>'
+    )
+    return _substitute_root(_document(section["title"], 2, body), depth=2)
+
+
+def doc_index_html(sections: list, types: dict, doc_type: str | None) -> str:
+    # Whatever the documentation body holds besides its sections — in CPACS
+    # 3.5.1 a two-row table of version and date — heads the index rather than
+    # being dropped.
+    around = ""
+    if doc_type:
+        around = types.get(doc_type, {}).get("documentation", {}).get("remarksHtml", "")
+    items = "".join(
+        f'<li><a href="{escape(section["slug"])}/index.html">{escape(section["title"])}</a></li>'
+        for section in sections
+    )
+    body = (
+        '<nav class="cd-breadcrumb"><a href="../index.html">Types</a></nav>'
+        "<h1>Documentation</h1>"
+        f'<p class="cd-kind">{len(sections)} sections'
+        + (f' · <a href="../{TYPES_DIRECTORY}/{escape(slug(doc_type))}/index.html">'
+           f'<code>{escape(doc_type)}</code></a>' if doc_type else "")
+        + "</p>"
+        f'<div class="cd-remarks">{around}</div>'
+        f'<ul class="cd-doc-index">{items}</ul>'
+    )
+    return _substitute_root(_document("Documentation", 1, body), depth=1)
+
+
 def _document(title: str, depth: int, body: str) -> str:
     """Wrap a body in the page shell.
 
@@ -120,7 +183,7 @@ def _document(title: str, depth: int, body: str) -> str:
     )
 
 
-def type_page(name: str, entry: dict, types: dict, first_paths: dict) -> str:
+def type_page(name: str, entry: dict, types: dict, first_paths: dict, sections=()) -> str:
     documentation = entry.get("documentation", {})
     parts = [
         _page_nav(name, first_paths),
@@ -135,6 +198,7 @@ def type_page(name: str, entry: dict, types: dict, first_paths: dict) -> str:
     if remarks:
         parts.append(f'<div class="cd-remarks">{remarks}</div>')
 
+    parts.append(_documentation_list(sections))
     parts.append(_attribute_table(entry.get("attributes", [])))
     parts.append(_child_table(entry.get("children", [])))
     parts.append(_enumeration_list(entry.get("enumeration", [])))
@@ -185,6 +249,25 @@ def _type_link(type_name: str) -> str:
     if not type_name or type_name.startswith("xsd:"):
         return f"<code>{escape(type_name or '')}</code>"
     return f'<a href="../{escape(slug(type_name))}/index.html"><code>{escape(type_name)}</code></a>'
+
+
+def _documentation_list(sections) -> str:
+    """On the type the documentation hangs off, the sections it was split into.
+
+    Without it the page would look as though the documentation had been lost:
+    the sections are no longer in its remarks, they are pages of their own.
+    """
+    if not sections:
+        return ""
+    items = "".join(
+        f'<li><a href="../../{DOC_DIRECTORY}/{escape(section["slug"])}/index.html">'
+        f'{escape(section["title"])}</a></li>'
+        for section in sections
+    )
+    return (
+        '<section class="cd-documentation"><h2>Documentation</h2>'
+        f'<ul class="cd-doc-index">{items}</ul></section>'
+    )
 
 
 def _attribute_table(attributes) -> str:
@@ -340,7 +423,7 @@ def _resolve_cross_references(html: str, types: dict) -> str:
     )
 
 
-def index_html(types: dict, statistics: dict, meta: dict) -> str:
+def index_html(types: dict, statistics: dict, meta: dict, has_docs: bool = False) -> str:
     items = "".join(
         f'<li><a href="{TYPES_DIRECTORY}/{escape(slug(name))}/index.html">{escape(name)}</a></li>'
         for name in sorted(types)
@@ -352,12 +435,18 @@ def index_html(types: dict, statistics: dict, meta: dict) -> str:
         f'{statistics.get("distinctPaths", 0)} instance paths · '
         f'depth {statistics.get("maxDepth", 0)}</p>'
     )
-    body = f"<h1>{heading}</h1>{summary}<ul class=\"cd-type-index\">{items}</ul>"
+    docs = (
+        f'<p><a href="{DOC_DIRECTORY}/index.html">Documentation</a></p>' if has_docs else ""
+    )
+    body = f"<h1>{heading}</h1>{summary}{docs}<ul class=\"cd-type-index\">{items}</ul>"
     return _substitute_root(_document(heading, 0, body), depth=0)
 
 
-def _write_index(output: Path, types: dict, statistics: dict, meta: dict) -> None:
-    (output / "index.html").write_text(index_html(types, statistics, meta), encoding="utf-8")
+def _write_index(output: Path, types: dict, statistics: dict, meta: dict,
+                 has_docs: bool = False) -> None:
+    (output / "index.html").write_text(
+        index_html(types, statistics, meta, has_docs=has_docs), encoding="utf-8"
+    )
 
 
 ASSET_FILES = ("styles.css", "viewer.js")
@@ -396,8 +485,18 @@ def router_html() -> str:
         '<button id="cd-help" class="cd-help" type="button" aria-expanded="false"'
         ' title="Keyboard shortcuts" aria-label="Keyboard shortcuts">?</button>'
         "</div>\n"
-        '<div id="cd-tree" class="cd-pane" role="tree" aria-label="Instance tree"></div>\n'
+        # Two halves of the same documentation, named against each other: a
+        # lone label would have to say what it is not. Hidden until the script
+        # knows there is a second half to switch to.
+        '<div id="cd-tabs" class="cd-tabs" role="tablist" aria-label="Left column" hidden>'
+        '<button id="cd-tab-tree" class="cd-tab" type="button" role="tab"'
+        ' aria-controls="cd-tree" aria-selected="true">Tree</button>'
+        '<button id="cd-tab-docs" class="cd-tab" type="button" role="tab"'
+        ' aria-controls="cd-docs" aria-selected="false" tabindex="-1">Handbook</button>'
+        "</div>\n"
+        '<div id="cd-tree" class="cd-pane"></div>\n'
         '<div id="cd-results" class="cd-pane" hidden></div>\n'
+        '<div id="cd-docs" class="cd-pane" hidden></div>\n'
         "</div>\n"
         '<div id="cd-splitter" class="cd-splitter" role="separator" aria-orientation="vertical"'
         ' tabindex="0" aria-label="Resize the tree pane"></div>\n'

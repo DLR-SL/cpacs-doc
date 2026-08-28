@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A schema whose root type carries general documentation: titled sections
+     under one remarks body, the shape CPACS uses for its handbook. Also the
+     two cases that need reporting rather than repairing: a section with no
+     title, and two titles that resolve to the same address. -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:ddue="http://ddue.schemas.microsoft.com/authoring/2003/5"
+            xmlns:sd="http://schemas.xsddoc.codeplex.com/schemaDoc/2009/3"
+            elementFormDefault="qualified">
+
+    <xsd:complexType name="headerType">
+        <xsd:sequence>
+            <xsd:element name="name" type="xsd:string"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="cpacsType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <sd:schemaDoc>
+                    <ddue:summary><ddue:para>The root of a dataset.</ddue:para></ddue:summary>
+                    <ddue:remarks>
+                        <ddue:content>
+                            <ddue:definitionTable>
+                                <ddue:definedTerm>Version</ddue:definedTerm>
+                                <ddue:definition><ddue:para>3.5.1</ddue:para></ddue:definition>
+                            </ddue:definitionTable>
+                            <ddue:section>
+                                <ddue:title>1. Overview</ddue:title>
+                                <ddue:content>
+                                    <ddue:para>What the dataset is for.</ddue:para>
+                                </ddue:content>
+                            </ddue:section>
+                            <ddue:section>
+                                <ddue:title>2. Coordinate Systems</ddue:title>
+                                <ddue:content>
+                                    <ddue:para>Where the axes point.</ddue:para>
+                                </ddue:content>
+                            </ddue:section>
+                            <ddue:section>
+                                <ddue:content>
+                                    <ddue:para>An aside with no title of its own.</ddue:para>
+                                </ddue:content>
+                            </ddue:section>
+                            <ddue:section>
+                                <ddue:title>Units</ddue:title>
+                                <ddue:content><ddue:para>SI throughout.</ddue:para></ddue:content>
+                            </ddue:section>
+                            <ddue:section>
+                                <ddue:title>units</ddue:title>
+                                <ddue:content><ddue:para>Said twice, differently cased.</ddue:para></ddue:content>
+                            </ddue:section>
+                        </ddue:content>
+                    </ddue:remarks>
+                </sd:schemaDoc>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="header" type="headerType"/>
+            <xsd:element name="wings" type="headerType" minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:element name="cpacs" type="cpacsType"/>
+</xsd:schema>

@@ -196,7 +196,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "build":
         rendered, render_findings = model_module.render_all(
-            catalogue, media_catalogue, args.schema.name
+            catalogue, media_catalogue, args.schema.name,
+            sections_for=tree.root.type_name if tree.root else None,
         )
         report.extend(render_findings)
         model = model_module.build(
@@ -218,7 +219,8 @@ def main(argv: list[str] | None = None) -> int:
                 media_root = media_catalogue.base_dir
             site = generator_module.generate(model, args.output, media_root=media_root)
             report.extend(site.findings)
-            print(f"site: {args.output} ({site.pages} pages, {site.assets} figures)")
+            docs = f", {site.docs} documentation sections" if site.docs else ""
+            print(f"site: {args.output} ({site.pages} pages{docs}, {site.assets} figures)")
 
     _write_statistics(catalogue, tree, media_catalogue)
     report.write(sys.stdout, limit=None if args.limit == 0 else args.limit)

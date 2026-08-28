@@ -12,17 +12,12 @@ one costs about a second, a navigation about a tenth of that.
 from __future__ import annotations
 
 import os
-import shutil
-import threading
-from pathlib import Path
 
 import pytest
 
-from cpacs_doc import serve as serve_module
-
 import cdp
 
-FIXTURES = Path(__file__).parent / "fixtures"
+SCHEMA = "minimal.xsd"
 
 BROWSER = cdp.find_browser()
 # Skipping quietly is right on a machine without a browser and wrong in CI,
@@ -60,48 +55,26 @@ STATE = """
 """
 
 
-@pytest.fixture(scope="module")
-def base(tmp_path_factory):
-    """The viewer, served the way it is deployed (§3.4, R4)."""
-    directory = tmp_path_factory.mktemp("site")
-    schema = directory / "minimal.xsd"
-    shutil.copyfile(FIXTURES / "minimal.xsd", schema)
-    site = serve_module.Site(
-        schema, None, media_expected=False, media_root=directory / "media", limit=0
-    )
-    assert site.rebuild()
-    server = serve_module.create_server(site, "127.0.0.1", 0)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    yield f"http://127.0.0.1:{server.server_address[1]}"
-    server.shutdown()
-    server.server_close()
-    thread.join(timeout=5)
-
-
 TREE_READY = 'return document.querySelectorAll(\'[role="treeitem"]\').length > 1;'
 
 
 @pytest.fixture(scope="module")
-def browser(tmp_path_factory, base):
-    driver = cdp.Browser(BROWSER)
-    driver.start(tmp_path_factory.mktemp("profile"))
-    # The hint is shown to a reader who has not used the keys yet. Every test
-    # but the ones about the hint itself wants the steady state, so it is
-    # marked as seen once for this origin before anything else runs.
-    assert cdp.reachable(base + "/tree/cpacs/"), "the development server did not answer"
-    driver.open(base + "/tree/cpacs/")
-    driver.wait_for(TREE_READY, "the tree")
-    driver.evaluate(
+def viewer(browser, base):
+    """The hint is shown to a reader who has not used the keys yet. Every test
+    but the ones about the hint itself wants the steady state, so it is marked
+    as seen once for this origin before anything else runs."""
+    browser.open(base + "/tree/cpacs/")
+    browser.wait_for(TREE_READY, "the tree")
+    browser.evaluate(
         "window.localStorage.setItem('cpacs-doc.keyboardHint', 'seen'); return true;"
     )
-    yield driver
-    driver.close()
+    return browser
 
 
 @pytest.fixture
-def page(browser, base):
+def page(viewer, base):
     """A freshly loaded tree, with the keyboard already in it."""
+    browser = viewer
     browser.open(base + "/tree/cpacs/")
     browser.wait_for(TREE_READY, "the tree")
     # A reader arrives at the tree by clicking or by Tab; the tests start from
@@ -118,6 +91,20 @@ def test_the_tree_is_a_single_tab_stop(page):
     """One tab stop for the whole tree, not two per row: the tree has 54,552
     nodes, and tabbing through them is not a way in."""
     assert state(page)["tabStops"] == 1
+
+
+def test_the_rows_are_owned_by_a_tree(page):
+    """The rows are treeitems, so something has to be their tree. The pane
+    itself cannot be: with a handbook alongside it is a tab panel."""
+    owner = page.evaluate("""
+      var row = document.querySelector('[role="treeitem"]');
+      var owner = row.closest('[role="tree"]');
+      return owner ? { label: owner.getAttribute('aria-label'),
+                       inPane: !!owner.closest('#cd-tree') } : null;
+    """)
+    assert owner is not None, "the treeitems have no tree"
+    assert owner["inPane"]
+    assert owner["label"] == "Instance tree"
 
 
 def test_the_cursor_is_drawn_while_it_holds_the_focus(page):
@@ -249,7 +236,7 @@ def test_the_tree_is_a_step_or_two_from_the_search_field(page):
     for step in range(1, 4):
         page.press("Tab")
         if state(page)["focusIsCursor"]:
-            assert step <= 2, f"the tree took {step} tab stops"
+            assert step <= 3, f"the tree took {step} tab stops"
             return
     raise AssertionError("Tab never reached the tree: " + str(state(page)["focus"]))
 

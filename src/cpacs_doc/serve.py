@@ -36,6 +36,7 @@ BUILD_ROUTE = "/_cpacs-doc/build"
 ASSET_ROUTE = f"/{generator.ASSET_DIRECTORY}/"
 MEDIA_ROUTE = f"/{generator.MEDIA_DIRECTORY}/"
 TYPE_ROUTE = f"/{generator.TYPES_DIRECTORY}/"
+DOC_ROUTE = f"/{generator.DOC_DIRECTORY}/"
 
 # mimetypes consults the Windows registry, so its answers are a property of the
 # developer's machine rather than of this program. The handful of types the
@@ -149,7 +150,8 @@ class Site:
                 self.schema, self.media_path, report, media_expected=self.media_expected
             )
             rendered, render_findings = model_module.render_all(
-                catalogue, media_catalogue, self.schema.name
+                catalogue, media_catalogue, self.schema.name,
+                sections_for=tree.root.type_name if tree.root else None,
             )
             report.extend(render_findings)
             model = model_module.build(
@@ -236,13 +238,16 @@ class Handler(BaseHTTPRequestHandler):
             self._media(path[len(MEDIA_ROUTE):])
         elif path.startswith(TYPE_ROUTE):
             self._type_page(path[len(TYPE_ROUTE):])
+        elif path.startswith(DOC_ROUTE) or path == DOC_ROUTE.rstrip("/"):
+            self._doc_page(path[len(DOC_ROUTE):])
         else:
             self._router()
 
     def _index(self) -> bytes:
         _, model, _ = self.site.snapshot()
         html = generator.index_html(
-            model.get("types", {}), model.get("statistics", {}), model.get("meta", {})
+            model.get("types", {}), model.get("statistics", {}), model.get("meta", {}),
+            has_docs=bool((model.get("documentation") or {}).get("sections")),
         )
         return with_live_reload(html).encode("utf-8")
 
@@ -278,7 +283,38 @@ class Handler(BaseHTTPRequestHandler):
         if name not in types:
             self._router()
             return
-        html = generator.type_page(name, types[name], types, model.get("firstPaths", {}))
+        documentation = model.get("documentation") or {}
+        html = generator.type_page(
+            name, types[name], types, model.get("firstPaths", {}),
+            sections=documentation.get("sections", []) if name == documentation.get("type") else (),
+        )
+        self._send(with_live_reload(html).encode("utf-8"), CONTENT_TYPES[".html"])
+
+    def _doc_page(self, remainder: str) -> None:
+        """The general documentation, the same pages the build writes.
+
+        The viewer links here for a section's address, so the mode that is
+        supposed to reproduce the deployment target has to answer them.
+        """
+        slug = remainder.rstrip("/")
+        if slug.endswith("/index.html"):
+            slug = slug[: -len("/index.html")]
+        _, model, _ = self.site.snapshot()
+        documentation = model.get("documentation") or {}
+        sections = documentation.get("sections") or []
+        if not sections:
+            self._router()
+            return
+        if not slug:
+            html = generator.doc_index_html(
+                sections, model.get("types", {}), documentation.get("type")
+            )
+        else:
+            section = next((s for s in sections if s["slug"] == slug), None)
+            if section is None:
+                self._router()
+                return
+            html = generator.doc_page_html(section)
         self._send(with_live_reload(html).encode("utf-8"), CONTENT_TYPES[".html"])
 
     def _router(self) -> None:

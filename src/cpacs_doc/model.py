@@ -16,12 +16,15 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+import re
+from copy import deepcopy
+
 from lxml import etree
 
 from . import renderer
 from .annotations import DDUE, Documentation
 
-MODEL_VERSION = "1.0"
+MODEL_VERSION = "1.1"
 
 
 def flatten(node: etree._Element | None) -> str:
@@ -193,12 +196,109 @@ def _node_entry(node) -> dict:
 
 
 @dataclass(frozen=True)
+class Section:
+    """One titled `ddue:section`, addressable on its own."""
+
+    title: str
+    slug: str
+    html: str
+    text: str
+
+
+@dataclass(frozen=True)
 class RenderedDocumentation:
     summary: str = ""
     remarks: str = ""
+    sections: tuple[Section, ...] = ()
 
 
-def render_all(catalogue, media_catalogue, source: str) -> tuple[dict[str, RenderedDocumentation], list]:
+_SLUG = re.compile(r"[^a-z0-9]+")
+
+
+def section_slug(title: str) -> str:
+    """A file-safe address for a section, from its title and nothing else.
+
+    Mechanical on purpose. Dropping the chapter number would leave the tool
+    deciding what part of a heading is meaningful, and the number could then
+    change without the address noticing.
+    """
+    return _SLUG.sub("-", title.lower()).strip("-") or "section"
+
+
+def _named(node, name: str):
+    """Direct children of `node` with that local name, comments skipped."""
+    return [child for child in node
+            if isinstance(child.tag, str) and etree.QName(child).localname == name]
+
+
+def _split_sections(remarks, context) -> tuple[str, tuple[Section, ...]]:
+    """Render a remarks body as its titled sections plus what surrounds them.
+
+    The general documentation of a schema is a document: 31 sections in CPACS
+    3.5.1, 5,720 words, all direct children of one `content`. Rendered as one
+    fragment it can only be read by scrolling the node it hangs off. Split, each
+    section has an address, a page and a place in a list.
+
+    A section that is not titled stays where it is: it has no name to be listed
+    under, and removing it from the body would lose it.
+    """
+    if remarks is None:
+        return "", ()
+    content = _named(remarks, "content")
+    container = content[0] if content else remarks
+    nodes = _named(container, "section")
+    if not nodes:
+        return renderer.render(remarks, context), ()
+
+    sections: list[Section] = []
+    taken: set[str] = set()
+    lifted: set[int] = set()
+    for node in nodes:
+        titles = _named(node, "title")
+        title = flatten(titles[0]) if titles else ""
+        if not title:
+            context.report(
+                "warning",
+                "SECTION_WITHOUT_TITLE",
+                "ddue:section without a title; it stays in the body and gets no page",
+                node,
+            )
+            continue
+        name = section_slug(title)
+        if name in taken:
+            context.report(
+                "warning",
+                "SECTION_ADDRESS_TAKEN",
+                f"two sections resolve to the address {name!r}: {title!r}",
+                node,
+            )
+            suffix = 2
+            while f"{name}-{suffix}" in taken:
+                suffix += 1
+            name = f"{name}-{suffix}"
+        taken.add(name)
+        lifted.add(container.index(node))
+
+        # The title heads the page and the list entry, so it is not repeated
+        # inside the body.
+        body = deepcopy(node)
+        for child in _named(body, "title"):
+            body.remove(child)
+        sections.append(
+            Section(title=title, slug=name,
+                    html=renderer.render(body, context), text=flatten(node))
+        )
+
+    rest = deepcopy(remarks)
+    rest_content = _named(rest, "content")
+    rest_container = rest_content[0] if rest_content else rest
+    for index in sorted(lifted, reverse=True):
+        del rest_container[index]
+    return renderer.render(rest, context), tuple(sections)
+
+
+def render_all(catalogue, media_catalogue, source: str, *,
+               sections_for: str | None = None) -> tuple[dict[str, RenderedDocumentation], list]:
     """Render every type's documentation once, for both the pages and the model.
 
     Rendering here rather than in the viewer keeps one implementation of the
@@ -217,10 +317,38 @@ def render_all(catalogue, media_catalogue, source: str) -> tuple[dict[str, Rende
     for name, info in catalogue.types.items():
         context.owner = f"{info.kind} {name}"
         summary = renderer.render(info.doc.summary, context)
-        remarks = renderer.render(info.doc.remarks, context)
-        if summary or remarks:
-            rendered[name] = RenderedDocumentation(summary=summary, remarks=remarks)
+        # Only the type the documentation hangs off is split. Eleven other types
+        # carry two to four sections apiece, where they are headings within a
+        # description rather than chapters of a document.
+        if name == sections_for:
+            remarks, sections = _split_sections(info.doc.remarks, context)
+        else:
+            remarks, sections = renderer.render(info.doc.remarks, context), ()
+        if summary or remarks or sections:
+            rendered[name] = RenderedDocumentation(
+                summary=summary, remarks=remarks, sections=sections
+            )
     return rendered, context.findings
+
+
+def _documentation_entry(tree, rendered) -> dict:
+    """The general documentation: the sections of the root element's type.
+
+    A top-level key rather than something to be dug out of `types`, because
+    neither the generator nor the viewer should have to know which type that is
+    to find the handbook.
+    """
+    name = tree.root.type_name if tree.root else None
+    entry = rendered.get(name) if name else None
+    if entry is None or not entry.sections:
+        return {}
+    return {
+        "type": name,
+        "sections": [
+            {"title": s.title, "slug": s.slug, "html": s.html, "text": s.text}
+            for s in entry.sections
+        ],
+    }
 
 
 def _first_paths(tree) -> dict[str, str]:
@@ -287,6 +415,7 @@ def build(
             for name, info in sorted(catalogue.types.items())
         },
         "declarations": declarations,
+        "documentation": _documentation_entry(tree, rendered),
         "firstPaths": _first_paths(tree),
         "tree": _node_entry(tree.root) if tree.root else None,
         "media": {

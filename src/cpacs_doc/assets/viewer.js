@@ -29,7 +29,9 @@
     expanded: null,    // Set of expanded paths
     nodeByPath: null,  // path -> model node
     searchEntries: null,  // built on first search, not on load
-    shownType: null    // type displayed in place of the selected node's detail
+    shownType: null,   // type displayed in place of the selected node's detail
+    shownSection: null, // documentation section displayed in its place
+    tab: "tree"        // half of the left column the reader last chose
   };
 
   function parseLocation() {
@@ -131,7 +133,13 @@
       container.appendChild(element("p", "cd-empty", "The model contains no tree."));
       return;
     }
-    container.appendChild(renderNode(root, [], 0, 1, 1));
+    // The pane is the tab panel; the tree proper is inside it, so the rows
+    // have something that owns them either way.
+    var group = element("div", "cd-treeroot");
+    group.setAttribute("role", "tree");
+    group.setAttribute("aria-label", "Instance tree");
+    group.appendChild(renderNode(root, [], 0, 1, 1));
+    container.appendChild(group);
     restoreCursor(hadFocus);
   }
 
@@ -469,6 +477,9 @@
           closeSearch(true);
         } else if (document.getElementById("cd-hint")) {
           hideHint();
+        } else if (docsAreOpen()) {
+          showPane("tree");
+          focusCursor();
         } else {
           focusCursor();
         }
@@ -490,8 +501,8 @@
     });
   }
 
-  function setupResultKeys() {
-    var panel = document.getElementById("cd-results");
+  function setupListKeys(id) {
+    var panel = document.getElementById(id);
     if (!panel) return;
     panel.addEventListener("keydown", function (event) {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
@@ -508,6 +519,7 @@
 
   function select(path) {
     state.shownType = null;
+    state.shownSection = null;
     state.path = path;
     state.cursor = path;
     expandAncestors(path);
@@ -534,6 +546,11 @@
   function renderDetail() {
     var panel = document.getElementById("cd-detail");
     panel.textContent = "";
+
+    if (state.shownSection) {
+      renderSectionDetail(panel, state.shownSection);
+      return;
+    }
 
     if (state.shownType) {
       renderTypeDetail(panel, state.shownType);
@@ -769,6 +786,38 @@
     appendTypeBody(panel, type);
   }
 
+  function renderSectionDetail(panel, slug) {
+    var section = sectionBySlug(slug);
+    if (!section) {
+      panel.appendChild(element("h1", null, "Not found"));
+      panel.appendChild(element("p", "cd-kind", "No section at " + slug + "."));
+      return;
+    }
+
+    var nav = element("nav", "cd-breadcrumb");
+    var back = element("button", "cd-crumb", "\u2190 back to the tree");
+    back.addEventListener("click", function () {
+      state.shownSection = null;
+      showPane("tree");
+      select(state.path);
+    });
+    nav.appendChild(back);
+    panel.appendChild(nav);
+
+    panel.appendChild(element("h1", null, section.title));
+
+    var meta = element("p", "cd-kind");
+    var page = element("a", null, "citable page");
+    page.href = state.root + "/doc/" + section.slug + "/index.html";
+    meta.appendChild(page);
+    panel.appendChild(meta);
+
+    var body = element("div", "cd-remarks");
+    // Rendered once, by the generator, as everything else here is.
+    body.innerHTML = withRoot(section.html);
+    panel.appendChild(body);
+  }
+
   function renderBreadcrumb() {
     var nav = element("nav", "cd-breadcrumb");
     var rootLink = element("button", "cd-crumb", "cpacs");
@@ -971,17 +1020,135 @@
   // The focus has to go somewhere once the results are gone. Whoever closes
   // the search says where: back to the tree cursor when the reader gave the
   // search up, nowhere when a result is opened and the target takes it.
+  /* ---- the general documentation ----
+   *
+   * The prose that belongs to the schema as a whole hangs off the root
+   * element's type, where the viewer would only ever show it as one scroll
+   * behind one node — 31 sections and 5,720 words in CPACS 3.5.1. Split by the
+   * extractor, each section is an entry here, opens in the detail panel like a
+   * type, and has a page of its own to cite.
+   *
+   * The list is the document's own table of contents, in document order and
+   * with the titles as written. Grouping the twenty version entries under a
+   * heading of our own would mean deciding from a title what a section is
+   * about; when a title stops matching the guess, the grouping breaks quietly.
+   * If they belong together, the schema can say so by nesting them.
+   */
+
+  function sections() {
+    return (state.model.documentation && state.model.documentation.sections) || [];
+  }
+
+  function sectionBySlug(slug) {
+    var list = sections();
+    for (var i = 0; i < list.length; i++) {
+      if (list[i].slug === slug) return list[i];
+    }
+    return null;
+  }
+
+  function renderDocs() {
+    var pane = document.getElementById("cd-docs");
+    pane.textContent = "";
+    var list = sections();
+    var box = element("div", "cd-result-list");
+    for (var i = 0; i < list.length; i++) {
+      box.appendChild(docEntry(list[i]));
+    }
+    pane.appendChild(box);
+  }
+
+  function docEntry(section) {
+    var row = element("button", "cd-result");
+    if (section.slug === state.shownSection) row.className += " cd-selected";
+    row.appendChild(element("span", "cd-result-label", section.title));
+    row.addEventListener("click", function () { showSection(section.slug); });
+    return row;
+  }
+
+  function showSection(slug) {
+    state.shownType = null;
+    state.shownSection = slug;
+    renderDocs();
+    renderDetail();
+    var panel = document.getElementById("cd-detail");
+    if (panel && panel.scrollTo) panel.scrollTo(0, 0);
+  }
+
+  function setupDocs() {
+    var tabs = document.getElementById("cd-tabs");
+    if (!tabs) return;
+    // No sections, no tabs: one half is not a choice, and a strip naming only
+    // what is already on screen says nothing.
+    if (!sections().length) return;
+    tabs.hidden = false;
+
+    // Only now are the panes halves of something; until the tabs exist there
+    // is nothing for a tab panel to belong to.
+    label("cd-tree", "cd-tab-tree");
+    label("cd-docs", "cd-tab-docs");
+
+    tabs.addEventListener("click", function (event) {
+      var tab = event.target;
+      if (tab.id === "cd-tab-docs") { renderDocs(); showPane("docs"); }
+      else if (tab.id === "cd-tab-tree") { showPane("tree"); focusCursor(); }
+    });
+
+    // A tab strip is one tab stop; the arrow keys move within it.
+    tabs.addEventListener("keydown", function (event) {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      var other = document.getElementById(
+        document.activeElement.id === "cd-tab-docs" ? "cd-tab-tree" : "cd-tab-docs"
+      );
+      if (!other) return;
+      other.focus();
+      other.click();
+      event.preventDefault();
+    });
+  }
+
+  function label(paneId, tabId) {
+    var pane = document.getElementById(paneId);
+    if (!pane) return;
+    pane.setAttribute("role", "tabpanel");
+    pane.setAttribute("aria-labelledby", tabId);
+  }
+
   function closeSearch(returnFocus) {
     var field = document.getElementById("cd-search");
     if (field) field.value = "";
-    showResults(false);
+    // Back to whichever half the reader was in, not always the tree.
+    showPane(state.tab);
     document.getElementById("cd-search-count").textContent = "";
-    if (returnFocus) focusCursor();
+    if (returnFocus && state.tab === "tree") focusCursor();
   }
 
-  function showResults(on) {
-    document.getElementById("cd-results").hidden = !on;
-    document.getElementById("cd-tree").hidden = on;
+  // One slot, three occupants: the tree, the search results, and the
+   // documentation. A second navigation area for eleven chapters would cost
+   // more room than the chapters are worth, and the reader is never reading
+   // two of the three at once.
+  function showPane(name) {
+    document.getElementById("cd-tree").hidden = name !== "tree";
+    document.getElementById("cd-results").hidden = name !== "results";
+    document.getElementById("cd-docs").hidden = name !== "docs";
+    if (name !== "results") state.tab = name;
+    // Search results are the third occupant of the slot and have no tab of
+    // their own: while they are up, neither half is the current one.
+    markTab("cd-tab-tree", name === "tree");
+    markTab("cd-tab-docs", name === "docs");
+  }
+
+  function markTab(id, current) {
+    var tab = document.getElementById(id);
+    if (!tab) return;
+    tab.setAttribute("aria-selected", String(current));
+    tab.tabIndex = current ? 0 : -1;
+  }
+
+  function docsAreOpen() {
+    var pane = document.getElementById("cd-docs");
+    return !!pane && !pane.hidden;
   }
 
   function setupSearch() {
@@ -994,12 +1161,12 @@
       timer = window.setTimeout(function () {
         var hits = search(field.value);
         if (hits === null) {
-          showResults(false);
+          showPane("tree");
           document.getElementById("cd-search-count").textContent = "";
           return;
         }
         renderResults(hits, field.value.trim());
-        showResults(true);
+        showPane("results");
       }, SEARCH_DELAY);
     });
 
@@ -1041,7 +1208,8 @@
     setupSplitter();
     setupSearch();
     setupTreeKeys();
-    setupResultKeys();
+    setupListKeys("cd-results");
+    setupListKeys("cd-docs");
     setupGlobalKeys();
     setupHelp();
 
@@ -1062,6 +1230,7 @@
         expandAncestors(segments);
         renderTree();
         renderDetail();
+        setupDocs();
         setupHint();
       })
       .catch(function (error) {
