@@ -212,6 +212,24 @@ def test_the_panes_carry_what_keyboard_operation_needs(model, tmp_path):
     assert 'id="cd-help"' in html
 
 
+def test_every_page_can_set_the_palette_before_it_is_painted(model, tmp_path):
+    """The choice is stored per browser and applied by a script inline in the
+    page. It has to come before the stylesheet, or the wrong palette is painted
+    first and corrected afterwards."""
+    generator.generate(model, tmp_path)
+    # The router inlines its stylesheet, the pages link theirs.
+    for name, sheet in (("404.html", "<style>"),
+                        ("index.html", "styles.css"),
+                        ("type/wingType/index.html", "styles.css")):
+        html = (tmp_path / name).read_text(encoding="utf-8")
+        assert "cpacs-doc.theme" in html, name
+        assert html.index("cpacs-doc.theme") < html.index(sheet), name
+    # The control itself sits on the pages as well as in the viewer, so a
+    # reader who arrives by citation is not stuck with what the system says.
+    page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert 'id="cd-theme"' in page
+
+
 def test_assets_are_written_as_files_for_the_static_pages(model, tmp_path):
     generator.generate(model, tmp_path)
     assert (tmp_path / "assets" / "styles.css").exists()

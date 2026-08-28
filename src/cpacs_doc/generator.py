@@ -166,6 +166,66 @@ def doc_index_html(sections: list, types: dict, doc_type: str | None) -> str:
     return _substitute_root(_document("Documentation", 1, body), depth=1)
 
 
+# The reader's choice of palette, applied before anything is painted and
+# carried between the viewer and the static pages, which share neither a script
+# nor a document. Inline in every page rather than a file of its own: a linked
+# script either blocks the render or lets the wrong palette flash first, and
+# this is four hundred bytes.
+#
+# Three states, cycled in this order. "system" is the absence of an attribute,
+# so a reader who never touches it keeps following the operating system, and a
+# browser with no storage or no script gets the same.
+THEME_SCRIPT = """<script>
+(function () {
+  var KEY = "cpacs-doc.theme";
+  var ORDER = ["system", "light", "dark"];
+  var root = document.documentElement;
+
+  function read() {
+    try { return window.localStorage.getItem(KEY) || "system"; } catch (e) { return "system"; }
+  }
+  function apply(mode) {
+    if (mode === "light" || mode === "dark") root.setAttribute("data-theme", mode);
+    else root.removeAttribute("data-theme");
+  }
+  apply(read());
+
+  function label(mode) {
+    return "Colour theme: " + mode + ". Switch to "
+      + ORDER[(ORDER.indexOf(mode) + 1) % ORDER.length] + ".";
+  }
+  function dress(button, mode) {
+    button.setAttribute("data-mode", mode);
+    button.setAttribute("aria-label", label(mode));
+    button.setAttribute("title", label(mode));
+  }
+  function ready() {
+    var button = document.getElementById("cd-theme");
+    if (!button) return;
+    dress(button, read());
+    button.addEventListener("click", function () {
+      var next = ORDER[(ORDER.indexOf(read()) + 1) % ORDER.length];
+      try { window.localStorage.setItem(KEY, next); } catch (e) { /* private mode */ }
+      apply(next);
+      dress(button, next);
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", ready);
+  } else {
+    ready();
+  }
+})();
+</script>
+"""
+
+THEME_BUTTON = (
+    '<button id="cd-theme" class="cd-theme" type="button" data-mode="system"'
+    ' aria-label="Colour theme"><span class="cd-theme-mark" aria-hidden="true"></span>'
+    "</button>"
+)
+
+
 def _document(title: str, depth: int, body: str) -> str:
     """Wrap a body in the page shell.
 
@@ -178,8 +238,9 @@ def _document(title: str, depth: int, body: str) -> str:
         '<html lang="en">\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         f"<title>{escape(title)}</title>\n"
+        f"{THEME_SCRIPT}"
         f'<link rel="stylesheet" href="{up}{ASSET_DIRECTORY}/{STYLESHEET}">\n'
-        f"<body>\n{body}\n</body>\n</html>\n"
+        f'<body>\n<div class="cd-chrome">{THEME_BUTTON}</div>\n{body}\n</body>\n</html>\n'
     )
 
 
@@ -475,6 +536,7 @@ def router_html() -> str:
         '<html lang="en">\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         "<title>CPACS schema</title>\n"
+        f"{THEME_SCRIPT}"
         f"<style>\n{asset('styles.css')}</style>\n"
         '<body class="cd-viewer">\n<div id="cd-app" class="cd-app">\n'
         '<div class="cd-column">\n'
@@ -482,6 +544,7 @@ def router_html() -> str:
         '<input id="cd-search" type="search" placeholder="Search elements, types, attributes"'
         ' autocomplete="off" spellcheck="false" aria-label="Search">'
         '<span id="cd-search-count" class="cd-search-count"></span>'
+        f"{THEME_BUTTON}"
         '<button id="cd-help" class="cd-help" type="button" aria-expanded="false"'
         ' title="Keyboard shortcuts" aria-label="Keyboard shortcuts">?</button>'
         "</div>\n"

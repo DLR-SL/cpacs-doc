@@ -37,8 +37,22 @@
   --face-code: ui-monospace, "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
+/* The reader may override the system. `data-theme` on the root element says
+   so, set by the one inline script every page carries; absent means "follow
+   the system", which is what a first visit gets.
+
+   The dark palette is therefore written twice: once for a system that asks for
+   it where the reader has not said otherwise, once for a reader who asked for
+   it outright. CSS cannot give one declaration block two conditions, and
+   `light-dark()` would do it in one place at the price of failing outright
+   where it is unknown — a documentation site cannot trade its whole palette
+   for tidiness. The duplication is sixteen lines and it is the interface, so
+   the two blocks are kept adjacent and identical. */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --ink: #e3e6ea;
     --ink-soft: #99a2ad;
     --rule: #31363c;
@@ -55,6 +69,22 @@
     --tip-bg: #f2f4f6;
     --tip-ink: #1a1d21;
   }
+}
+
+:root[data-theme="dark"] {
+  --ink: #e3e6ea;
+  --ink-soft: #99a2ad;
+  --rule: #31363c;
+  --rule-strong: #5c646d;
+  --field: rgba(150, 160, 172, 0.11);
+  --link: #74b3f0;
+  --alarm: #e8837b;
+  --plate: #edeff1;
+  --plate-edge: rgba(255, 255, 255, 0.14);
+  --guide: rgba(255, 255, 255, 0.17);
+  --group-tint: rgba(255, 255, 255, 0.045);
+  --tip-bg: #f2f4f6;
+  --tip-ink: #1a1d21;
 }
 
 body {
@@ -360,6 +390,45 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-pane-detail > * { max-width: 44rem; }
 .cd-pane-detail table, .cd-pane-detail img, .cd-pane-detail pre { max-width: 100%; }
 .cd-pane-detail h1 { font-size: var(--step-4); }
+
+/* Three states, not two: a reader who has expressed no preference follows the
+   system, and that has to remain reachable — otherwise the first click spends
+   a setting that cannot be given back. The mark is masked rather than drawn so
+   it takes the surrounding ink in either palette. */
+.cd-theme {
+  flex: 0 0 auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.cd-theme:hover { border-color: var(--ink); }
+.cd-theme-mark {
+  width: 0.85rem;
+  height: 0.85rem;
+  background-color: var(--ink-soft);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+.cd-theme:hover .cd-theme-mark { background-color: var(--ink); }
+.cd-theme[data-mode="system"] .cd-theme-mark { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.4%22%3E%3Ccircle%20cx%3D%228%22%20cy%3D%228%22%20r%3D%225.5%22%2F%3E%3Cpath%20d%3D%22M8%202.5a5.5%205.5%200%200%201%200%2011z%22%20fill%3D%22black%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.4%22%3E%3Ccircle%20cx%3D%228%22%20cy%3D%228%22%20r%3D%225.5%22%2F%3E%3Cpath%20d%3D%22M8%202.5a5.5%205.5%200%200%201%200%2011z%22%20fill%3D%22black%22%20stroke%3D%22none%22%2F%3E%3C%2Fsvg%3E"); }
+.cd-theme[data-mode="light"] .cd-theme-mark { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%228%22%20cy%3D%228%22%20r%3D%223.1%22%2F%3E%3Cpath%20d%3D%22M8%201.2v1.5M8%2013.3v1.5M1.2%208h1.5M13.3%208h1.5M3.2%203.2l1.1%201.1M11.7%2011.7l1.1%201.1M12.8%203.2l-1.1%201.1M4.3%2011.7l-1.1%201.1%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.4%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%228%22%20cy%3D%228%22%20r%3D%223.1%22%2F%3E%3Cpath%20d%3D%22M8%201.2v1.5M8%2013.3v1.5M1.2%208h1.5M13.3%208h1.5M3.2%203.2l1.1%201.1M11.7%2011.7l1.1%201.1M12.8%203.2l-1.1%201.1M4.3%2011.7l-1.1%201.1%22%2F%3E%3C%2Fsvg%3E"); }
+.cd-theme[data-mode="dark"] .cd-theme-mark { -webkit-mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22black%22%3E%3Cpath%20d%3D%22M13.4%2010.3A5.7%205.7%200%200%201%205.7%202.6a5.7%205.7%200%201%200%207.7%207.7z%22%2F%3E%3C%2Fsvg%3E"); mask-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22black%22%3E%3Cpath%20d%3D%22M13.4%2010.3A5.7%205.7%200%200%201%205.7%202.6a5.7%205.7%200%201%200%207.7%207.7z%22%2F%3E%3C%2Fsvg%3E"); }
+
+/* On a page rather than in the viewer the control has no chrome to sit in, so
+   it gets a line of its own above the heading. */
+.cd-chrome { display: flex; justify-content: flex-end; margin: -1rem 0 0.4rem; }
 
 /* Two halves of the same documentation: the schema as a tree, and the prose
    that belongs to no instance path and therefore to no node in it. They share
