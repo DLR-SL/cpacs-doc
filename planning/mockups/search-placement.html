@@ -1,0 +1,1187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- A design study, not part of the build. One self-contained file: open it
+     in any browser, no server and no build step. See README.md next to it. -->
+<style>
+:root { color-scheme: light dark; }
+html { font-size: 16px; }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<title>Where the Results Go</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* ------------------------------------------------------------------
+   Two type systems on purpose. The apparatus around the frame is set in
+   Archivo and IBM Plex; everything inside the frame keeps the viewer's own
+   system faces and its own palette, so what is shown there is the product
+   and not a drawing of it.
+   ------------------------------------------------------------------ */
+:root {
+  color-scheme: light dark;
+  --paper: #eff1f3;
+  --card: #ffffff;
+  --ink: #14181d;
+  --ink2: #5a636d;
+  --ink3: #8b949d;
+  --rule: #d6dade;
+  --rule2: #e6e9ec;
+  /* Dimension-line teal: every measured number on this page is set in it,
+     and nothing else is. */
+  --dim: #0c6d64;
+  --dim-fill: rgba(12, 109, 100, 0.09);
+  --dim-line: rgba(12, 109, 100, 0.42);
+  --flag: #a3241c;
+  --flag-fill: rgba(163, 36, 28, 0.08);
+  --vw-bg: #ffffff;
+  --vw-edge: rgba(20, 24, 29, 0.16);
+  --shadow: 0 1px 2px rgba(20, 24, 29, 0.05), 0 10px 30px rgba(20, 24, 29, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #131619;
+    --card: #191d21;
+    --ink: #e4e7eb;
+    --ink2: #98a1ab;
+    --ink3: #6d767f;
+    --rule: #2c3238;
+    --rule2: #23282d;
+    --dim: #4cc4b6;
+    --dim-fill: rgba(76, 196, 182, 0.12);
+    --dim-line: rgba(76, 196, 182, 0.45);
+    --flag: #e8837b;
+    --flag-fill: rgba(232, 131, 123, 0.12);
+    --vw-bg: #1a1c1e;
+    --vw-edge: rgba(255, 255, 255, 0.14);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 34px rgba(0, 0, 0, 0.42);
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #131619;
+  --card: #191d21;
+  --ink: #e4e7eb;
+  --ink2: #98a1ab;
+  --ink3: #6d767f;
+  --rule: #2c3238;
+  --rule2: #23282d;
+  --dim: #4cc4b6;
+  --dim-fill: rgba(76, 196, 182, 0.12);
+  --dim-line: rgba(76, 196, 182, 0.45);
+  --flag: #e8837b;
+  --flag-fill: rgba(232, 131, 123, 0.12);
+  --vw-bg: #1a1c1e;
+  --vw-edge: rgba(255, 255, 255, 0.14);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 34px rgba(0, 0, 0, 0.42);
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 15px/1.6 "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--dim); outline-offset: 2px; border-radius: 2px; }
+
+.wrap { max-width: 1240px; margin: 0 auto; padding: 40px 24px 96px; }
+
+/* ---- masthead ---- */
+.mast { display: flex; flex-direction: column; gap: 10px; margin-bottom: 34px; }
+.eyebrow {
+  font-family: "Archivo", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink3);
+}
+h1 {
+  font-family: "Archivo", sans-serif;
+  font-weight: 700;
+  font-size: clamp(30px, 4.4vw, 46px);
+  line-height: 1.04;
+  letter-spacing: -0.022em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lede { margin: 0; max-width: 62ch; color: var(--ink2); font-size: 16px; }
+.mast-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 6px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  color: var(--ink3);
+  font-variant-numeric: tabular-nums;
+}
+.mast-meta b { color: var(--dim); font-weight: 500; }
+
+/* ---- the four options ---- */
+.options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.opt {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 13px 14px 14px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-top: 3px solid var(--rule);
+  border-radius: 3px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.opt:hover { border-color: var(--ink3); }
+.opt[aria-selected="true"] {
+  border-top-color: var(--dim);
+  border-color: var(--rule);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.opt-key {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11px;
+  color: var(--ink3);
+}
+.opt-key i {
+  font-style: normal;
+  display: inline-grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  font-size: 10px;
+}
+.opt[aria-selected="true"] .opt-key i { border-color: var(--dim); color: var(--dim); }
+.opt-name {
+  font-family: "Archivo", sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.opt-fig {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 12px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+.opt-fig { line-height: 1.5; }
+.opt-fig span { color: var(--ink3); }
+
+/* ---- the stage ---- */
+.stage {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--rule2);
+  background: var(--card);
+}
+.bar-label {
+  font-family: "Archivo", sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin-right: 2px;
+}
+.qchip, .toggle {
+  font: 400 12px/1 "IBM Plex Mono", monospace;
+  padding: 6px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink2);
+  cursor: pointer;
+}
+.qchip:hover, .toggle:hover { border-color: var(--ink3); color: var(--ink); }
+.qchip[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); }
+.toggle { margin-left: auto; }
+.toggle[aria-pressed="true"] {
+  border-color: var(--dim);
+  color: var(--dim);
+  background: var(--dim-fill);
+}
+.viewport { overflow-x: auto; padding: 18px 18px 0; }
+.fit { position: relative; overflow: hidden; margin: 0 auto; }
+
+/* ---- measurement strip ---- */
+.gauges {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--rule2);
+  margin-top: 18px;
+}
+.gauge { padding: 13px 16px; border-left: 1px solid var(--rule2); }
+.gauge:first-child { border-left: 0; }
+.gauge-k {
+  font-family: "Archivo", sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink3);
+}
+.gauge-v {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
+}
+.gauge-n { font-size: 12px; color: var(--ink3); font-family: "IBM Plex Mono", monospace; }
+.gauge-n b { color: var(--flag); font-weight: 400; }
+
+/* ---- dossier ---- */
+.dossier {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr 1fr;
+  gap: 0;
+  margin-top: 26px;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+.cell { padding: 20px 22px 22px; border-left: 1px solid var(--rule2); }
+.cell:first-child { border-left: 0; }
+.cell-k {
+  font-family: "Archivo", sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin-bottom: 9px;
+}
+.cell-k.for { color: var(--dim); }
+.cell-k.against { color: var(--flag); }
+.thesis {
+  font-family: "Archivo", sans-serif;
+  font-weight: 500;
+  font-size: 19px;
+  line-height: 1.34;
+  letter-spacing: -0.012em;
+  margin: 0;
+  text-wrap: balance;
+}
+.cell p { margin: 0; color: var(--ink2); font-size: 14.5px; }
+.cell code, .thesis code, .lede code {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.9em;
+  background: var(--rule2);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+
+.closing {
+  margin-top: 26px;
+  padding: 20px 22px;
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--dim);
+  border-radius: 3px;
+  background: var(--card);
+}
+.closing h2 {
+  font-family: "Archivo", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin: 0 0 8px;
+}
+.closing p { margin: 0 0 10px; max-width: 78ch; color: var(--ink2); }
+.closing p:last-child { margin-bottom: 0; }
+.closing b { color: var(--ink); font-weight: 500; }
+
+.foot {
+  margin-top: 30px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11.5px;
+  color: var(--ink3);
+  line-height: 1.75;
+}
+
+/* ==================================================================
+   THE FRAME — the viewer's own tokens, shadowing the page's inside it.
+   Sizes are the real ones: 1174 x 807 CSS px, a 28rem tree column,
+   step-0 through step-4. The frame is scaled to fit, so every width
+   read off it is the width a reader gets.
+   ================================================================== */
+.vw {
+  width: 1174px;
+  height: 807px;
+  transform-origin: top left;
+  position: relative;
+  overflow: hidden;
+  background: var(--vw-bg);
+  border: 1px solid var(--vw-edge);
+  --ink: #16191d;
+  --ink-soft: #5b6570;
+  --rule: #dcdfe3;
+  --rule-strong: #9aa2ab;
+  --field: rgba(120, 130, 140, 0.09);
+  --link: #1d5fa8;
+  --group-tint: rgba(0, 0, 0, 0.035);
+  --pop-shadow: 0 2px 6px rgba(0, 0, 0, 0.10), 0 14px 40px rgba(0, 0, 0, 0.18);
+  --step-0: 0.82rem;
+  --step-1: 0.94rem;
+  --step-2: 1rem;
+  --step-3: 1.19rem;
+  --step-4: 1.42rem;
+  --face-text: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --face-code: ui-monospace, "Cascadia Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  font: var(--step-2) / 1.62 var(--face-text);
+  color: var(--ink);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .vw {
+    --ink: #e3e6ea;
+    --ink-soft: #99a2ad;
+    --rule: #31363c;
+    --rule-strong: #5c646d;
+    --field: rgba(150, 160, 172, 0.11);
+    --link: #74b3f0;
+    --group-tint: rgba(255, 255, 255, 0.045);
+    --pop-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), 0 14px 40px rgba(0, 0, 0, 0.55);
+  }
+}
+:root[data-theme="dark"] .vw {
+  --ink: #e3e6ea;
+  --ink-soft: #99a2ad;
+  --rule: #31363c;
+  --rule-strong: #5c646d;
+  --field: rgba(150, 160, 172, 0.11);
+  --link: #74b3f0;
+  --group-tint: rgba(255, 255, 255, 0.045);
+  --pop-shadow: 0 2px 6px rgba(0, 0, 0, 0.5), 0 14px 40px rgba(0, 0, 0, 0.55);
+}
+
+.vw-page { position: relative; height: 100%; padding: 1.1rem 1.4rem; }
+.vw-app {
+  display: grid;
+  grid-template-columns: 28rem 0.4rem 1fr;
+  gap: 0 1rem;
+  align-items: start;
+}
+.vw-col { display: flex; flex-direction: column; min-width: 0; position: relative; }
+.vw-split {
+  align-self: stretch;
+  width: 0.4rem;
+  border-radius: 2px;
+  background: var(--field);
+  min-height: 60vh;
+  height: 700px;
+}
+.vw-right { min-width: 0; }
+.vw-pane { max-height: 727px; overflow: auto; }
+
+.vw-fieldrow { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 0.6rem; }
+.vw-fieldrow input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font: inherit;
+  font-size: var(--step-1);
+  padding: 0.35rem 0.55rem;
+  color: inherit;
+  background: var(--field);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+.vw-count {
+  color: var(--ink-soft);
+  font-size: var(--step-0);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.vw-round {
+  align-self: center;
+  flex: 0 0 auto;
+  width: 1.45rem;
+  height: 1.45rem;
+  padding: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--step-0);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.vw-tabs { display: flex; gap: 1.2rem; margin: 0 0 0.6rem; border-bottom: 1px solid var(--rule); }
+.vw-tabs[hidden] { display: none; }
+.vw-tab {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  font: inherit;
+  font-size: var(--step-1);
+  color: var(--ink-soft);
+  padding: 0.15rem 0.1rem 0.4rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.vw-tab[aria-selected="true"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--ink); }
+.vw-tab .n { font-variant-numeric: tabular-nums; font-weight: 400; color: var(--ink-soft); }
+
+/* the tree */
+.vw-node {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  white-space: nowrap;
+  min-width: max-content;
+  border-radius: 3px;
+  padding: 0.1rem 0.3rem;
+  font-family: var(--face-code);
+  font-size: var(--step-1);
+  cursor: default;
+}
+.vw-node .tw { color: var(--ink-soft); width: 0.8rem; display: inline-block; }
+.vw-node .oc { font-size: var(--step-0); color: var(--ink-soft); font-family: var(--face-code); }
+.vw-node.sel { background: var(--field); outline: 2px solid var(--link); outline-offset: -2px; }
+
+/* the detail panel */
+.vw-detail { padding-right: 1rem; }
+.vw-crumb { font-family: var(--face-code); font-size: var(--step-0); color: var(--link); }
+.vw-detail h1 { font-size: var(--step-4); margin: 0.35rem 0 0.5rem; font-weight: 600; }
+.vw-detail .line { font-size: var(--step-1); color: var(--ink); margin: 0 0 0.7rem; }
+.vw-detail .line code, .vw-crumb { font-family: var(--face-code); }
+.vw-detail hr { border: 0; border-top: 1px solid var(--rule); margin: 0.9rem 0; }
+.vw-detail h2 { font-size: var(--step-3); margin: 1.1rem 0 0.5rem; font-weight: 600; }
+.vw-table { width: 100%; border-collapse: collapse; font-size: var(--step-1); }
+.vw-table th {
+  text-align: left;
+  font-size: var(--step-0);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  font-weight: 500;
+  padding: 0.3rem 0.6rem 0.3rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.vw-table td {
+  padding: 0.32rem 0.6rem 0.32rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--face-code);
+  white-space: nowrap;
+}
+.vw-table td.desc { font-family: var(--face-text); color: var(--ink-soft); white-space: normal; }
+.vw-table a { color: var(--link); }
+.vw-table tr.grp td { background: var(--group-tint); color: var(--ink-soft); font-family: var(--face-code); }
+
+/* results — one element, moved between the four hosts */
+.vw-results { display: flex; flex-direction: column; min-height: 0; }
+.vw-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 0 0 0.6rem;
+  padding: 0.15rem 0.1rem calc(0.4rem + 1px);
+  border-bottom: 1px solid var(--rule);
+}
+.vw-head-t { font-size: var(--step-1); font-weight: 600; color: var(--ink); }
+.vw-head-q { font-size: var(--step-0); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.vw-head-x {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--step-2);
+  line-height: 1;
+  padding: 0 0.15rem;
+}
+.vw-filters { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0 0 0.6rem; }
+.vw-chip {
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: var(--step-0);
+  color: var(--ink-soft);
+  padding: 0.1rem 0.55rem;
+  cursor: pointer;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.vw-chip[aria-pressed="true"] { color: var(--ink); border-color: var(--ink); font-weight: 600; }
+.vw-list { display: flex; flex-direction: column; overflow: auto; min-height: 0; }
+.vw-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  padding: 0.28rem 0.3rem;
+  cursor: pointer;
+  border-radius: 3px;
+  position: relative;
+}
+.vw-row:hover { background: var(--field); }
+.vw-row-l { font-family: var(--face-code); font-size: var(--step-1); flex: 0 0 auto; }
+.vw-row-l.ty { font-style: italic; }
+.vw-row-d {
+  color: var(--ink-soft);
+  font-size: var(--step-0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* the ruler: what the row cannot show, said in the page's dimension colour */
+.vw-cut {
+  display: none;
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 2px;
+  color: var(--dim);
+  background: var(--dim-fill);
+  border: 1px solid var(--dim-line);
+  font-variant-numeric: tabular-nums;
+}
+.vw.ruler .vw-cut { display: inline-block; }
+.vw-cut:empty { display: none; }
+.vw.ruler .vw-row.iscut .vw-row-d { box-shadow: inset 0 -1px 0 var(--dim-line); }
+
+/* the four placements */
+.vw-hostPop {
+  position: absolute;
+  top: 2.55rem;
+  left: 0;
+  width: 23.3rem;
+  max-height: 26rem;
+  display: flex;
+  flex-direction: column;
+  background: var(--vw-bg);
+  border: 1px solid var(--rule-strong);
+  border-radius: 5px;
+  box-shadow: var(--pop-shadow);
+  padding: 0.5rem 0.55rem;
+  z-index: 5;
+}
+#hostTop {
+  padding-bottom: 0.55rem;
+  margin-bottom: 0.55rem;
+  border-bottom: 1px solid var(--rule);
+}
+.vw[data-opt="D"] #fieldrow input { flex: 0 1 34rem; }
+/* page chrome: the two round buttons go to the far edge, as a header's do */
+.vw[data-opt="D"] #fieldrow .vw-round:nth-of-type(1) { margin-left: auto; }
+.vw-hostSheet {
+  position: absolute;
+  left: 1.4rem;
+  right: 1.4rem;
+  top: 4.1rem;
+  bottom: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  background: var(--vw-bg);
+  border-top: 1px solid var(--rule);
+  z-index: 4;
+}
+.vw-hostCol, .vw-hostDetail { display: flex; flex-direction: column; min-height: 0; }
+.vw-hostCol { max-height: 727px; }
+.vw-hostDetail { max-height: 727px; padding-right: 1rem; }
+[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .vw-hostPop { animation: pop 110ms ease-out; }
+  @keyframes pop { from { opacity: 0; transform: translateY(-4px); } }
+}
+
+@media (max-width: 900px) {
+  .options { grid-template-columns: repeat(2, 1fr); }
+  .dossier { grid-template-columns: 1fr; }
+  .cell { border-left: 0; border-top: 1px solid var(--rule2); }
+  .cell:first-child { border-top: 0; }
+  .gauges { grid-template-columns: repeat(2, 1fr); }
+  .gauge:nth-child(3) { border-left: 0; }
+}
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="eyebrow">CPACS viewer · search placement</div>
+    <h1>Where the results go</h1>
+    <p class="lede">Four positions for the search results, each drawn at the viewer's real scale — a 1174&nbsp;×&nbsp;807 window, a 28&nbsp;rem tree column, the rows the real schema actually returns. Type in the field, press a result, run the ruler. What the frame shows is what a reader gets.</p>
+    <div class="mast-meta">
+      <span>CPACS <b>3.5.1-RC</b></span>
+      <span>corpus <b>58,919</b> entries</span>
+      <span><b>53,691</b> instance paths</span>
+      <span>median path <b>140</b> chars</span>
+      <span>measured <b>2026-08-29</b></span>
+    </div>
+  </header>
+
+  <div class="options" role="tablist" aria-label="Placement options"></div>
+
+  <div class="stage">
+    <div class="bar">
+      <span class="bar-label">Query</span>
+      <button class="qchip" type="button" data-q="segment">segment</button>
+      <button class="qchip" type="button" data-q="wing">wing</button>
+      <button class="qchip" type="button" data-q="uid">uid</button>
+      <button class="toggle" type="button" id="ruler" aria-pressed="false">Ruler — show what is cut off</button>
+    </div>
+    <div class="viewport">
+      <div class="fit" id="fit">
+        <div class="vw" id="vw">
+          <div class="vw-page">
+            <div id="hostTop" hidden></div>
+            <div class="vw-app">
+              <div class="vw-col">
+                <div id="hostField"></div>
+                <div class="vw-tabs" id="tabs">
+                  <button class="vw-tab" type="button" id="tabTree" aria-selected="true">Tree</button>
+                  <button class="vw-tab" type="button" id="tabDocs" aria-selected="false">Handbook</button>
+                  <button class="vw-tab" type="button" id="tabRes" aria-selected="false" hidden>Results <span class="n">60</span></button>
+                </div>
+                <div class="vw-pane" id="tree"></div>
+                <div class="vw-hostCol" id="hostCol" hidden></div>
+                <div class="vw-hostPop" id="hostPop" hidden></div>
+              </div>
+              <div class="vw-split"></div>
+              <div class="vw-right">
+                <div class="vw-pane vw-detail" id="detail"></div>
+                <div class="vw-hostDetail" id="hostDetail" hidden></div>
+              </div>
+            </div>
+            <div class="vw-hostSheet" id="hostSheet" hidden></div>
+          </div>
+
+          <!-- one field row, one result panel; both are moved, never copied -->
+          <div class="vw-fieldrow" id="fieldrow">
+            <input id="field" type="search" placeholder="Search elements, types, attributes" autocomplete="off" spellcheck="false" aria-label="Search">
+            <span class="vw-count" id="count"></span>
+            <button class="vw-round" type="button" tabindex="-1" aria-hidden="true">◐</button>
+            <button class="vw-round" type="button" tabindex="-1" aria-hidden="true">?</button>
+          </div>
+          <div class="vw-results" id="results" hidden>
+            <div class="vw-head" id="head">
+              <span class="vw-head-t">Results</span>
+              <span class="vw-head-q" id="headq"></span>
+              <button class="vw-head-x" type="button" id="headx" aria-label="Close the results">×</button>
+            </div>
+            <div class="vw-filters" id="chips"></div>
+            <div class="vw-list" id="list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="gauges">
+      <div class="gauge">
+        <div class="gauge-k">Room for the path</div>
+        <div class="gauge-v" id="g1">—</div>
+        <div class="gauge-n">in one result row</div>
+      </div>
+      <div class="gauge">
+        <div class="gauge-k">Paths cut off</div>
+        <div class="gauge-v" id="g2">—</div>
+        <div class="gauge-n">of the rows on screen</div>
+      </div>
+      <div class="gauge">
+        <div class="gauge-k">Whole paths in the schema</div>
+        <div class="gauge-v" id="g3">—</div>
+        <div class="gauge-n">of 53,691 — <b>0.9&nbsp;% today</b></div>
+      </div>
+      <div class="gauge">
+        <div class="gauge-k">Rows without scrolling</div>
+        <div class="gauge-v" id="g4">—</div>
+        <div class="gauge-n">of the 60 shown</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dossier">
+    <div class="cell">
+      <div class="cell-k" id="dTag">Option</div>
+      <p class="thesis" id="dThesis"></p>
+    </div>
+    <div class="cell">
+      <div class="cell-k for">For</div>
+      <p id="dFor"></p>
+    </div>
+    <div class="cell">
+      <div class="cell-k against">Against</div>
+      <p id="dAgainst"></p>
+    </div>
+  </div>
+
+  <div class="closing">
+    <h2>The decision underneath</h2>
+    <p>Placement cannot be settled on its own. A row that carries an instance path needs about <b>1,030 px</b> before three paths in four fit whole — the tree column will never have that, which is why <b>0.9 %</b> fit there today. A row that carries a name and a count of its places needs <b>a fraction of it</b>: 2,223 distinct element names stand behind 53,691 entries, and <code>ToDos.md</code> already asks whether the results should be grouped that way.</p>
+    <p>So: <b>if the results stay path-carrying, A is cosmetic and D is the only real answer. If they become name-carrying, A is enough and D is overbuilt.</b> The grouping decision comes first; this page is here to make its consequence visible.</p>
+  </div>
+
+  <p class="foot">
+    Click A–D or press 1–4 · type in the field, or press / to reach it · Esc closes the results · R runs the ruler<br>
+    Counts and rows are the real ones for the three sample queries, taken from CPACS 3.5.1-RC. Anything else typed searches the rows on this page only.
+  </p>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var DATA = {"q":{"segment":{"t":21496,"k":[21434,61,1],"r":[[0,"segment","vehicles/aircraft/model/ducts/duct/segments/segment"],[0,"segment","vehicles/aircraft/model/fuselages/fuselage/segments/segment"],[0,"segment","vehicles/aircraft/model/wings/wing/segments/segment"],[0,"segment","vehicles/aircraft/model/enginePylons/enginePylon/segments/segment"],[0,"segment","vehicles/aircraft/model/fuelTanks/fuelTank/vessels/vessel/segments/segment"],[0,"segment","vehicles/aircraft/model/analyses/loadAnalysis/loadCases/aeroCases/aeroCase/aeroData/vehicle/coefficientsBreakdown/wings/wing/segments/segment"],[0,"segment","vehicles/aircraft/model/performanceRequirements/flightPerformanceRequirements/flightPerformanceRequirement/configurations/specificConfigurationUIDs/specificConfigurationsUID/segments/segment"],[0,"segment","vehicles/aircraft/model/performanceRequirements/controllabilityRequirements/controllabilityRequirement/configurations/specificConfigurationUIDs/specificConfigurationsUID/segments/segment"],[0,"segment","vehicles/aircraft/model/performanceRequirements/trimRequirements/trimRequirement/configurations/specificConfigurationUIDs/specificConfigurationsUID/segments/segment"],[0,"segment","vehicles/rotorcraft/model/fuselages/fuselage/segments/segment"],[0,"segment","vehicles/rotorcraft/model/wings/wing/segments/segment"],[0,"segment","vehicles/rotorcraft/model/rotorBlades/rotorBlade/segments/segment"],[0,"segment","vehicles/rotorcraft/model/analyses/loadAnalysis/loadCases/aeroCases/aeroCase/aeroData/vehicle/coefficientsBreakdown/wings/wing/segments/segment"],[0,"segment","vehicles/performanceCases/missionDefinitions/segments/segment"],[0,"segment","vehicles/deckElements/ceilingPanelElements/ceilingPanelElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/deckElements/classDividerElements/classDividerElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/deckElements/galleyElements/galleyElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/deckElements/genericFloorElements/genericFloorElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/deckElements/lavatoryElements/lavatoryElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/deckElements/luggageCompartmentElements/luggageCompartmentElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/deckElements/seatElements/seatElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/deckElements/sidewallPanelElements/sidewallPanelElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/deckElements/cargoContainerElements/cargoContainerElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/genericElements/genericElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/genericElectricalElements/genericElectricalElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/storageElements/genericStorageElements/genericStorageElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/storageElements/batteries/battery/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/storageElements/capacitors/capacitor/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/storageElements/inductors/inductor/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/storageElements/superCapacitors/superCapacitor/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/conversionElements/genericConversionElements/genericConversionElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/conversionElements/generators/generator/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/conversionElements/acGenerators/acGenerator/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/conversionElements/dcGenerators/dcGenerator/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/conversionElements/fuelCellStacks/fuelCellStack/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/conversionElements/converters/converter/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/conversionElements/acdcConverters/acdcConverter/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/conversionElements/dcacConverters/dcacConverter/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/conversionElements/dcdcConverters/dcdcConverter/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/conversionElements/acacConverters/acacConverter/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/distributionElements/genericDistributionElements/genericDistributionElement/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/distributionElements/powerDistributionUnits/powerDistributionUnit/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/distributionElements/cables/cable/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[0,"segment","vehicles/systemElements/electricalElements/distributionElements/groundConnectors/groundConnector/geometry/multiSegmentShapes/multiSegmentShape/segments/segment"],[1,"skinSegmentType","complexType"],[1,"sparSegmentType","complexType"],[1,"wallSegmentType","complexType"],[1,"wingSegmentType","complexType"],[1,"skinSegmentsType","complexType"],[1,"sparSegmentsType","complexType"],[1,"wallSegmentsType","complexType"],[1,"wingSegmentsType","complexType"],[1,"missionSegmentType","complexType"],[1,"fuselageSegmentType","complexType"],[1,"missionSegmentsType","complexType"],[1,"variableSegmentType","complexType"],[1,"wallSegmentType/phi","complexType"],[1,"componentSegmentType","complexType"],[1,"fuselageSegmentsType","complexType"],[2,"@smooth","multiSegmentShapeType"]]},"wing":{"t":8218,"k":[8125,92,1],"r":[[0,"wing","vehicles/aircraft/model/wings/wing"],[0,"wing","vehicles/aircraft/model/analyses/loadAnalysis/loadCases/aeroCases/aeroCase/aeroData/vehicle/coefficientsBreakdown/wings/wing"],[0,"wing","vehicles/aircraft/model/analyses/monetaryValues/recurringCost/components/wings/wing"],[0,"wing","vehicles/rotorcraft/model/wings/wing"],[0,"wing","vehicles/rotorcraft/model/analyses/loadAnalysis/loadCases/aeroCases/aeroCase/aeroData/vehicle/coefficientsBreakdown/wings/wing"],[0,"wings","vehicles/aircraft/model/wings"],[0,"wings","vehicles/aircraft/model/analyses/loadAnalysis/loadCases/aeroCases/aeroCase/aeroData/vehicle/coefficientsBreakdown/wings"],[0,"wings","vehicles/aircraft/model/analyses/monetaryValues/recurringCost/components/wings"],[0,"wings","vehicles/rotorcraft/model/wings"],[0,"wings","vehicles/rotorcraft/model/analyses/loadAnalysis/loadCases/aeroCases/aeroCase/aeroData/vehicle/coefficientsBreakdown/wings"],[0,"wingUID","vehicles/aircraft/model/analyses/loadAnalysis/loadCases/aeroCases/aeroCase/aeroData/vehicle/coefficientsBreakdown/wings/wing/wingUID"],[0,"wingUID","vehicles/rotorcraft/model/analyses/aeroPerformance/wingsAeroPerformance/wingAeroPerformance/wingUID"],[0,"wingUID","vehicles/rotorcraft/model/analyses/loadAnalysis/loadCases/aeroCases/aeroCase/aeroData/vehicle/coefficientsBreakdown/wings/wing/wingUID"],[0,"wingSpan","vehicles/aircraft/model/global/airportCompatibility/wingSpan"],[1,"wingType","complexType"],[1,"wingsType","complexType"],[0,"wingCutOut","vehicles/aircraft/model/wings/wing/componentSegments/componentSegment/controlSurfaces/leadingEdgeDevices/leadingEdgeDevice/wingCutOut"],[0,"wingCutOut","vehicles/aircraft/model/wings/wing/componentSegments/componentSegment/controlSurfaces/trailingEdgeDevices/trailingEdgeDevice/wingCutOut"],[0,"wingCutOut","vehicles/aircraft/model/wings/wing/componentSegments/componentSegment/controlSurfaces/spoilers/spoiler/wingCutOut"],[0,"wingCutOut","vehicles/rotorcraft/model/wings/wing/componentSegments/componentSegment/controlSurfaces/leadingEdgeDevices/leadingEdgeDevice/wingCutOut"],[0,"wingCutOut","vehicles/rotorcraft/model/wings/wing/componentSegments/componentSegment/controlSurfaces/trailingEdgeDevices/trailingEdgeDevice/wingCutOut"],[0,"wingCutOut","vehicles/rotorcraft/model/wings/wing/componentSegments/componentSegment/controlSurfaces/spoilers/spoiler/wingCutOut"],[0,"wingCutOut","vehicles/rotorcraft/model/rotorBlades/rotorBlade/componentSegments/componentSegment/controlSurfaces/leadingEdgeDevices/leadingEdgeDevice/wingCutOut"],[0,"wingCutOut","vehicles/rotorcraft/model/rotorBlades/rotorBlade/componentSegments/componentSegment/controlSurfaces/trailingEdgeDevices/trailingEdgeDevice/wingCutOut"],[0,"wingCutOut","vehicles/rotorcraft/model/rotorBlades/rotorBlade/componentSegments/componentSegment/controlSurfaces/spoilers/spoiler/wingCutOut"],[0,"wingAirfoil","vehicles/profiles/wingAirfoils/wingAirfoil"],[0,"wingCutOuts","vehicles/aircraft/model/wings/wing/componentSegments/componentSegment/structure/wingCutOuts"],[0,"wingCutOuts","vehicles/aircraft/model/wings/wing/componentSegments/componentSegment/controlSurfaces/leadingEdgeDevices/leadingEdgeDevice/structure/wingCutOuts"],[0,"wingCutOuts","vehicles/aircraft/model/wings/wing/componentSegments/componentSegment/controlSurfaces/trailingEdgeDevices/trailingEdgeDevice/structure/wingCutOuts"],[0,"wingCutOuts","vehicles/aircraft/model/wings/wing/componentSegments/componentSegment/controlSurfaces/spoilers/spoiler/structure/wingCutOuts"],[0,"wingCutOuts","vehicles/rotorcraft/model/wings/wing/componentSegments/componentSegment/structure/wingCutOuts"],[0,"wingCutOuts","vehicles/rotorcraft/model/wings/wing/componentSegments/componentSegment/controlSurfaces/leadingEdgeDevices/leadingEdgeDevice/structure/wingCutOuts"],[0,"wingCutOuts","vehicles/rotorcraft/model/wings/wing/componentSegments/componentSegment/controlSurfaces/trailingEdgeDevices/trailingEdgeDevice/structure/wingCutOuts"],[0,"wingCutOuts","vehicles/rotorcraft/model/wings/wing/componentSegments/componentSegment/controlSurfaces/spoilers/spoiler/structure/wingCutOuts"],[0,"wingCutOuts","vehicles/rotorcraft/model/rotorBlades/rotorBlade/componentSegments/componentSegment/structure/wingCutOuts"],[0,"wingCutOuts","vehicles/rotorcraft/model/rotorBlades/rotorBlade/componentSegments/componentSegment/controlSurfaces/leadingEdgeDevices/leadingEdgeDevice/structure/wingCutOuts"],[0,"wingCutOuts","vehicles/rotorcraft/model/rotorBlades/rotorBlade/componentSegments/componentSegment/controlSurfaces/trailingEdgeDevices/trailingEdgeDevice/structure/wingCutOuts"],[0,"wingCutOuts","vehicles/rotorcraft/model/rotorBlades/rotorBlade/componentSegments/componentSegment/controlSurfaces/spoilers/spoiler/structure/wingCutOuts"],[0,"wingAirfoils","vehicles/profiles/wingAirfoils"],[1,"wingCellType","complexType"],[0,"wingFuelTank","vehicles/aircraft/model/wings/wing/componentSegments/componentSegment/wingFuelTanks/wingFuelTank"],[0,"wingFuelTank","vehicles/rotorcraft/model/wings/wing/componentSegments/componentSegment/wingFuelTanks/wingFuelTank"],[0,"wingFuelTank","vehicles/rotorcraft/model/rotorBlades/rotorBlade/componentSegments/componentSegment/wingFuelTanks/wingFuelTank"],[1,"wingSkinType","complexType"],[1,"wingSparType","complexType"],[1,"wingCellsType","complexType"],[0,"wingFuelTanks","vehicles/aircraft/model/wings/wing/componentSegments/componentSegment/wingFuelTanks"],[0,"wingFuelTanks","vehicles/rotorcraft/model/wings/wing/componentSegments/componentSegment/wingFuelTanks"],[0,"wingFuelTanks","vehicles/rotorcraft/model/rotorBlades/rotorBlade/componentSegments/componentSegment/wingFuelTanks"],[1,"wingShellType","complexType"],[0,"wingAttachment","vehicles/aircraft/model/wings/wing/componentSegments/componentSegment/wingFuselageAttachments/wingFuselageAttachment/actuators/actuator/wingAttachment"],[1,"wingCutOutType","complexType"],[1,"wingCutOutsType","complexType"],[1,"wingElementType","complexType"],[1,"wingRibCellType","complexType"],[1,"wingSectionType","complexType"],[1,"wingSegmentType","complexType"],[1,"wingAirfoilsType","complexType"],[1,"wingElementsType","complexType"],[2,"@errorComputationMethod","approximationSettingsType"]]},"uid":{"t":15187,"k":[14912,27,248],"r":[[0,"uID","vehicles/aircraft/model/ducts/ductAssembly/excludeObjectUIDs/uID"],[0,"uID","vehicles/aircraft/model/ducts/ductAssembly/ductUIDs/uID"],[0,"uID","vehicles/aircraft/model/landingGears/landingGear/componentAssembly/dragStrut/attachment/structuralMountUIDs/uID"],[0,"uID","vehicles/aircraft/model/landingGears/landingGear/componentAssembly/pintleStruts/pintleStrut/attachment/structuralMountUIDs/uID"],[0,"uID","vehicles/aircraft/model/landingGears/landingGear/componentAssembly/sideStruts/sideStrut/attachment/structuralMountUIDs/uID"],[0,"uID","vehicles/aircraft/model/systems/genericSystems/genericSystem/components/component/structuralMountUIDs/uID"],[0,"uID","vehicles/aircraft/model/analyses/loadAnalysis/loadEnvelopes/loadEnvelope/loadCaseUIDs/uID"],[0,"uID","vehicles/aircraft/model/analyses/weightAndBalance/operationalCases/operationalCase/configurations/configuration/uID"],[0,"uID","vehicles/aircraft/model/analyses/weightAndBalance/certificationCases/certificationCase/configurations/configuration/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/flightPerformanceRequirements/flightPerformanceRequirement/pointPerformanceUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/flightPerformanceRequirements/flightPerformanceRequirement/configurations/specificConfigurationUIDs/specificConfigurationsUID/segments/segment/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/flightPerformanceRequirements/flightPerformanceRequirement/configurations/specificConfigurationUIDs/specificConfigurationsUID/pointPerformanceUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/flightPerformanceRequirements/flightPerformanceRequirement/performanceMaps/engine/specificPerformanceMaps/specificPerformanceMap/segmentUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/flightPerformanceRequirements/flightPerformanceRequirement/performanceMaps/engine/specificPerformanceMaps/specificPerformanceMap/pointPerformanceUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/flightPerformanceRequirements/flightPerformanceRequirement/performanceMaps/aerodynamic/specificPerformanceMaps/specificPerformanceMap/segmentUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/flightPerformanceRequirements/flightPerformanceRequirement/performanceMaps/aerodynamic/specificPerformanceMaps/specificPerformanceMap/pointPerformanceUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/controllabilityRequirements/controllabilityRequirement/configurations/specificConfigurationUIDs/specificConfigurationsUID/segments/segment/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/controllabilityRequirements/controllabilityRequirement/configurations/specificConfigurationUIDs/specificConfigurationsUID/pointPerformanceUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/controllabilityRequirements/controllabilityRequirement/performanceMaps/engine/specificPerformanceMaps/specificPerformanceMap/segmentUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/controllabilityRequirements/controllabilityRequirement/performanceMaps/engine/specificPerformanceMaps/specificPerformanceMap/pointPerformanceUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/controllabilityRequirements/controllabilityRequirement/performanceMaps/aerodynamic/specificPerformanceMaps/specificPerformanceMap/segmentUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/controllabilityRequirements/controllabilityRequirement/performanceMaps/aerodynamic/specificPerformanceMaps/specificPerformanceMap/pointPerformanceUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/trimRequirements/trimRequirement/configurations/specificConfigurationUIDs/specificConfigurationsUID/segments/segment/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/trimRequirements/trimRequirement/configurations/specificConfigurationUIDs/specificConfigurationsUID/pointPerformanceUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/trimRequirements/trimRequirement/performanceMaps/engine/specificPerformanceMaps/specificPerformanceMap/segmentUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/trimRequirements/trimRequirement/performanceMaps/engine/specificPerformanceMaps/specificPerformanceMap/pointPerformanceUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/trimRequirements/trimRequirement/performanceMaps/aerodynamic/specificPerformanceMaps/specificPerformanceMap/segmentUIDs/uID"],[0,"uID","vehicles/aircraft/model/performanceRequirements/trimRequirements/trimRequirement/performanceMaps/aerodynamic/specificPerformanceMaps/specificPerformanceMap/pointPerformanceUIDs/uID"],[0,"uID","vehicles/rotorcraft/model/landingGear/noseGears/noseGear/componentAssembly/dragStrut/attachment/structuralMountUIDs/uID"],[0,"uID","vehicles/rotorcraft/model/landingGear/noseGears/noseGear/componentAssembly/pintleStruts/pintleStrut/attachment/structuralMountUIDs/uID"],[0,"uID","vehicles/rotorcraft/model/landingGear/noseGears/noseGear/componentAssembly/sideStruts/sideStrut/attachment/structuralMountUIDs/uID"],[0,"uID","vehicles/rotorcraft/model/landingGear/mainGears/mainGear/componentAssembly/dragStrut/attachment/structuralMountUIDs/uID"],[0,"uID","vehicles/rotorcraft/model/landingGear/mainGears/mainGear/componentAssembly/pintleStruts/pintleStrut/attachment/structuralMountUIDs/uID"],[0,"uID","vehicles/rotorcraft/model/landingGear/mainGears/mainGear/componentAssembly/sideStruts/sideStrut/attachment/structuralMountUIDs/uID"],[0,"uID","vehicles/rotorcraft/model/landingGear/skidGears/skidGear/componentAssembly/dragStrut/attachment/structuralMountUIDs/uID"],[0,"uID","vehicles/rotorcraft/model/landingGear/skidGears/skidGear/componentAssembly/pintleStruts/pintleStrut/attachment/structuralMountUIDs/uID"],[0,"uID","vehicles/rotorcraft/model/landingGear/skidGears/skidGear/componentAssembly/sideStruts/sideStrut/attachment/structuralMountUIDs/uID"],[0,"uID","vehicles/rotorcraft/model/systems/genericSystems/genericSystem/components/component/structuralMountUIDs/uID"],[0,"uID","vehicles/rotorcraft/model/analyses/loadAnalysis/loadEnvelopes/loadEnvelope/loadCaseUIDs/uID"],[0,"uID","vehicles/rotorcraft/model/analyses/weightAndBalance/operationalCases/operationalCase/configurations/configuration/uID"],[1,"uIDSequenceType","complexType"],[1,"uIDGroupDefinitionType","complexType"],[1,"uIDGroupDefinitionsType","complexType"],[1,"guideCurveType","complexType"],[1,"guideCurvesType","complexType"],[1,"mToiletFluidsType","complexType"],[1,"stringUIDBaseType","complexType"],[1,"sparPositionUIDsType","complexType"],[1,"wallPositionUIDsType","complexType"],[1,"nacelleGuideCurveType","complexType"],[1,"guideCurveProfilesType","complexType"],[1,"nacelleGuideCurvesType","complexType"],[1,"boundingElementUIDsType","complexType"],[1,"guideCurveType/continuity","complexType"],[1,"stringUIDBaseType/symmetry","simpleType"],[2,"@uID","actuatorFuselageWingType"],[2,"@uID","aeroCaseType"],[2,"@uID","aeroLimitsIncrementMapType"],[2,"@uID","aeroMapType"],[2,"@uID","aeroPerformanceIncrementMapType"]]}},"paths":{"n":53691,"cum":[0,0,0,0,0,0,1,3,6,6,6,7,8,8,10,10,13,16,19,22,22,27,29,35,36,42,45,48,55,61,66,77,84,94,103,111,121,126,141,155,163,177,197,219,232,247,264,292,321,347,373,404,434,463,501,525,562,607,677,721,818,868,930,985,1042,1086,1159,1235,1310,1389,1470,1576,1660,1757,1883,1985,2106,2238,2404,2535,2702,2846,3024,3184,3346,3509,3702,3861,4065,4245,4454,4645,4849,5096,5346,5631,5912,6207,6517,6830,7229,7552,7909,8287,8676,9070,9479,9983,10475,11010,11488,12099,12590,13072,13629,14170,14667,15195,15762,16247,16743,17210,17760,18268,18713,19271,19810,20310,20884,21494,21953,22547,23106,23673,24258,24781,25356,25904,26358,26908,27407,27882,28390,28873,29383,29865,30357,30884,31346,31844,32346,32836,33292,33700,34136,34587,35007,35405,35836,36208,36583,36940,37329,37682,38038,38453,38853,39212,39596,39970,40326,40737,41088,41474,41871,42243,42617,42990,43360,43741,44087,44457,44861,45173,45520,45851,46232,46540,46893,47219,47531,47815,48062,48368,48633,48938,49179,49454,49695,49942,50180,50372,50618,50817,50980,51140,51303,51479,51650,51843,51975,52114,52230,52336,52425,52531,52624,52720,52801,52859,52929,52987,53051,53104,53162,53208,53243,53291,53312,53357,53377,53398,53417,53428,53443,53454,53465,53475,53483,53496,53509,53524,53531,53538,53546,53553,53567,53577,53583,53589,53598,53606,53614,53616,53619,53621,53628,53635,53640,53651,53652,53667,53667,53674,53675,53678,53681,53682,53685,53685,53691]}};
+
+  var OPTIONS = [
+    {
+      id: "A", name: "Third tab",
+      fig: "352 px for the path<br><span>0.9 % of paths shown whole</span>",
+      tag: "A · Third tab",
+      thesis: "The results stay in the tree column and take a name in the strip, so exactly one tab is marked at every moment.",
+      pro: "The smallest change there is: the slot's third occupant becomes visible chrome, and nothing moves on screen. It reuses the tab machinery the column already has.",
+      con: "“Results” is not a peer of “Tree” and “Handbook” — two are places, one is transient, and the strip changes width as it comes and goes. The 448 px column stays, so 41 of the 60 rows still lose the front of their path."
+    },
+    {
+      id: "B", name: "Right pane",
+      fig: "529 px for the path<br><span>5.6 % of paths shown whole</span>",
+      tag: "B · Right pane",
+      thesis: "The tree stays put and visible; the results become a document in the reading pane, like a type page.",
+      pro: "Nothing disappears, so the overlay reading has nothing left to feed on. The path column grows from 352 px to 529, and the splitter is already the reader's to drag it wider.",
+      con: "It displaces the type page being read — which comes back the moment a result is opened, but is gone while the list is up. And 5.6 % of paths fit whole against 0.9 %: six times better, and still nowhere."
+    },
+    {
+      id: "C", name: "Popover",
+      fig: "257 px for the path<br><span>0.3 % of paths shown whole</span>",
+      tag: "C · Popover under the field",
+      thesis: "Make the illusion true: a floating panel under the field, with the tree visible around and behind it.",
+      pro: "It is what readers already believe is happening, and it is the right shape for a jump — where three or four hits are the whole answer and the panel is gone a keystroke later.",
+      con: "Sixty rows are 1,999 px, and nine of them fit. A floating layer you scroll inside is the worst place for a result set of 21,496 — and anchored to the field the panel leaves 257 px for a path, less than the column it covers. Only viable if the list is cut to about eight."
+    },
+    {
+      id: "D", name: "Full-width sheet",
+      fig: "1,031 px for the path<br><span>71 % of paths shown whole</span>",
+      tag: "D · Header and full-width sheet",
+      thesis: "Search leaves the tree column for the page header, and the results open as a sheet across the whole window.",
+      pro: "71 % of paths fit whole against 0.9 % today — the only option that actually repairs the truncation. And it is honest about what search is: it finds types and attributes, which are the right pane's subject, not the tree column's.",
+      con: "It costs a header band on every page, and it separates the field from the <code>?</code> and the keyboard strip, which belong to the tree. Right-aligning the field would put it 640 px from the column its hits lead into."
+    }
+  ];
+
+  var TREE_ROOT = [
+    ["header", "1"], ["vehicles", "0..1"], ["airports", "0..1"], ["flights", "0..1"],
+    ["airlines", "0..1"], ["studies", "0..1"], ["toolspecific", "0..1"]
+  ];
+  var KIND = ["element", "type", "attribute"];
+  var KIND_LABEL = ["Elements", "Types", "Attributes"];
+  var LIMIT = 60;
+
+  var el = {};
+  ["vw", "fit", "field", "count", "results", "list", "chips", "head", "headq", "headx",
+   "tree", "detail", "tabs", "tabTree", "tabDocs", "tabRes", "fieldrow", "ruler",
+   "hostTop", "hostField", "hostCol", "hostPop", "hostDetail", "hostSheet",
+   "g1", "g2", "g3", "g4", "dTag", "dThesis", "dFor", "dAgainst"].forEach(function (id) {
+    el[id] = document.getElementById(id);
+  });
+
+  var state = { opt: "A", query: "", filter: "all", open: false, ruler: false, selected: null };
+
+  function make(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined && text !== null) node.textContent = text;
+    return node;
+  }
+  function group(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+
+  /* ---- the option strip ---- */
+  function renderOptions() {
+    var strip = document.querySelector(".options");
+    OPTIONS.forEach(function (opt) {
+      var card = make("button", "opt");
+      card.type = "button";
+      card.setAttribute("role", "tab");
+      card.setAttribute("aria-selected", String(opt.id === state.opt));
+      card.dataset.opt = opt.id;
+      var key = make("div", "opt-key");
+      key.appendChild(make("i", null, opt.id));
+      key.appendChild(make("span", null, "press " + (OPTIONS.indexOf(opt) + 1)));
+      card.appendChild(key);
+      card.appendChild(make("div", "opt-name", opt.name));
+      var fig = make("div", "opt-fig");
+      fig.innerHTML = opt.fig;
+      card.appendChild(fig);
+      card.addEventListener("click", function () { choose(opt.id); });
+      strip.appendChild(card);
+    });
+  }
+
+  function current() {
+    for (var i = 0; i < OPTIONS.length; i++) if (OPTIONS[i].id === state.opt) return OPTIONS[i];
+    return OPTIONS[0];
+  }
+
+  function choose(id) {
+    state.opt = id;
+    document.querySelectorAll(".opt").forEach(function (card) {
+      card.setAttribute("aria-selected", String(card.dataset.opt === id));
+    });
+    var opt = current();
+    el.dTag.textContent = opt.tag;
+    el.dThesis.textContent = opt.thesis;
+    el.dFor.innerHTML = opt.pro;
+    el.dAgainst.innerHTML = opt.con;
+    place();
+    gauge();
+  }
+
+  /* ---- placement: one field row and one result panel, moved ---- */
+  function place() {
+    var opt = state.opt;
+    el.vw.dataset.opt = opt;
+    var top = opt === "D";
+    el.hostTop.hidden = !top;
+    (top ? el.hostTop : el.hostField).appendChild(el.fieldrow);
+
+    var hosts = { A: el.hostCol, B: el.hostDetail, C: el.hostPop, D: el.hostSheet };
+    Object.keys(hosts).forEach(function (key) {
+      hosts[key].hidden = !(key === opt && state.open);
+    });
+    if (state.open) hosts[opt].appendChild(el.results);
+    el.results.hidden = !state.open;
+
+    // What each option does to the rest of the column while the list is up.
+    // A takes the slot from the tree; D covers both panes with an opaque
+    // sheet, so what is under it is not drawn.
+    el.tree.hidden = state.open && (opt === "A" || opt === "D");
+    el.detail.hidden = state.open && (opt === "B" || opt === "D");
+    el.tabs.hidden = state.open && opt === "D";
+    el.tabRes.hidden = !(state.open && opt === "A");
+    el.tabTree.setAttribute("aria-selected", String(!(state.open && opt === "A")));
+    el.tabRes.setAttribute("aria-selected", String(state.open && opt === "A"));
+
+    // The head names a region and carries the way out of it. In A the tab
+    // above does both, and a popover is left by looking away from it.
+    el.head.hidden = opt === "A" || opt === "C";
+    el.headq.textContent = state.open && opt !== "A" ? "for “" + state.query + "”" : "";
+
+    fit();
+  }
+
+  /* ---- the tree ---- */
+  function renderTree() {
+    el.tree.textContent = "";
+    var rows = [];
+    // name, occurrence, depth, selected, expanded
+    if (state.selected) {
+      var parts = state.selected.split("/");
+      rows.push(["cpacs", "", 0, false, true]);
+      parts.forEach(function (name, i) {
+        var last = i === parts.length - 1;
+        rows.push([name, last ? "1..∞" : "0..1", i + 1, last, !last]);
+      });
+    } else {
+      rows.push(["cpacs", "", 0, true, true]);
+      TREE_ROOT.forEach(function (pair) { rows.push([pair[0], pair[1], 1, false, false]); });
+    }
+    rows.forEach(function (row) {
+      var node = make("div", "vw-node" + (row[3] ? " sel" : ""));
+      node.style.marginLeft = (row[2] * 1.05) + "rem";
+      node.appendChild(make("span", "tw", row[4] ? "−" : "+"));
+      node.appendChild(make("span", "nm", row[0]));
+      if (row[1]) node.appendChild(make("span", "oc", row[1]));
+      el.tree.appendChild(node);
+    });
+  }
+
+  /* ---- the detail panel ---- */
+  function renderDetail() {
+    el.detail.textContent = "";
+    var name = state.selected ? state.selected.split("/").pop() : "cpacs";
+    var path = state.selected ? "cpacs/" + state.selected : "cpacs";
+    el.detail.appendChild(make("div", "vw-crumb", path.split("/").join(" / ")));
+    el.detail.appendChild(make("h1", null, name));
+    var occ = make("p", "line");
+    occ.appendChild(document.createTextNode("Occurrence: "));
+    occ.appendChild(make("code", null, state.selected ? "[1..∞]" : "[1..1]"));
+    occ.appendChild(document.createTextNode(state.selected ? " one or more" : " must appear exactly once"));
+    el.detail.appendChild(occ);
+    el.detail.appendChild(make("hr"));
+    var type = make("p", "line");
+    type.appendChild(document.createTextNode("Type: "));
+    var link = make("a", null, state.selected ? name + "Type" : "cpacsType");
+    link.href = "#";
+    link.addEventListener("click", function (e) { e.preventDefault(); });
+    type.appendChild(link);
+    el.detail.appendChild(type);
+    el.detail.appendChild(make("hr"));
+    if (state.selected) {
+      el.detail.appendChild(make("p", "line", "Opened from the results: F14 has the search expand the path and select the node."));
+      return;
+    }
+    el.detail.appendChild(make("h2", null, "CPACS root element"));
+    var table = make("table", "vw-table");
+    var head = make("tr");
+    ["Name", "Type", "Occurrence", "Description"].forEach(function (title) {
+      head.appendChild(make("th", null, title));
+    });
+    table.appendChild(head);
+    var grp = make("tr", "grp");
+    var cell = make("td", null, "≡ all");
+    cell.colSpan = 4;
+    grp.appendChild(cell);
+    table.appendChild(grp);
+    TREE_ROOT.forEach(function (pair) {
+      var row = make("tr");
+      var first = make("td");
+      var anchor = make("a", null, pair[0]);
+      anchor.href = "#";
+      anchor.addEventListener("click", function (e) { e.preventDefault(); });
+      first.appendChild(anchor);
+      row.appendChild(first);
+      var second = make("td");
+      var typeLink = make("a", null, pair[0] + "Type");
+      typeLink.href = "#";
+      typeLink.addEventListener("click", function (e) { e.preventDefault(); });
+      second.appendChild(typeLink);
+      row.appendChild(second);
+      row.appendChild(make("td", null, "[" + (pair[1] === "1" ? "1..1] required" : "0..1] optional")));
+      row.appendChild(make("td", "desc", ""));
+      table.appendChild(row);
+    });
+    el.detail.appendChild(table);
+  }
+
+  /* ---- search ---- */
+  function lookup(raw) {
+    var q = raw.trim().toLowerCase();
+    if (q.length < 2) return null;
+    if (DATA.q[q]) return DATA.q[q];
+    // Anything else searches the rows this page carries, and says so by its
+    // counts rather than by borrowing the schema's.
+    var pool = [];
+    Object.keys(DATA.q).forEach(function (key) {
+      DATA.q[key].r.forEach(function (row) { pool.push(row); });
+    });
+    var hit = [], kinds = [0, 0, 0], seen = {};
+    pool.forEach(function (row) {
+      var key = row[0] + row[1] + row[2];
+      if (seen[key]) return;
+      if ((row[1] + " " + row[2]).toLowerCase().indexOf(q) === -1) return;
+      seen[key] = 1;
+      kinds[row[0]] += 1;
+      hit.push(row);
+    });
+    if (!hit.length) return { t: 0, k: [0, 0, 0], r: [] };
+    return { t: hit.length, k: kinds, r: hit.slice(0, LIMIT) };
+  }
+
+  function run() {
+    var found = lookup(state.query);
+    if (!found) {
+      state.open = false;
+      el.count.textContent = "";
+      place();
+      gauge();
+      return;
+    }
+    state.open = true;
+    var rows = found.r.filter(function (row) {
+      return state.filter === "all" || KIND[row[0]] === state.filter;
+    }).slice(0, LIMIT);
+    var total = state.filter === "all" ? found.t : found.k[KIND.indexOf(state.filter)];
+    el.count.textContent = total > rows.length ? rows.length + " of " + group(total) : group(total);
+    el.tabRes.querySelector(".n").textContent = String(rows.length);
+    renderChips(found);
+    renderRows(rows);
+    place();
+    gauge();
+  }
+
+  function renderChips(found) {
+    el.chips.textContent = "";
+    var all = found.k[0] + found.k[1] + found.k[2];
+    var choices = [["all", "All", all]];
+    KIND.forEach(function (kind, i) { choices.push([kind, KIND_LABEL[i], found.k[i]]); });
+    choices.forEach(function (choice) {
+      var chip = make("button", "vw-chip", choice[1] + " " + group(choice[2]));
+      chip.type = "button";
+      chip.setAttribute("aria-pressed", String(state.filter === choice[0]));
+      chip.disabled = choice[2] === 0 && state.filter !== choice[0];
+      chip.addEventListener("click", function () { state.filter = choice[0]; run(); });
+      el.chips.appendChild(chip);
+    });
+  }
+
+  function renderRows(rows) {
+    el.list.textContent = "";
+    rows.forEach(function (row) {
+      var button = make("button", "vw-row");
+      button.type = "button";
+      var label = make("span", "vw-row-l" + (row[0] === 1 ? " ty" : ""), row[1]);
+      button.appendChild(label);
+      button.appendChild(make("span", "vw-row-d", row[2]));
+      button.appendChild(make("span", "vw-cut", ""));
+      button.addEventListener("click", function () {
+        if (row[0] === 0) state.selected = row[2];
+        close();
+      });
+      el.list.appendChild(button);
+    });
+  }
+
+  function close() {
+    state.open = false;
+    state.query = "";
+    el.field.value = "";
+    el.count.textContent = "";
+    renderTree();
+    renderDetail();
+    place();
+    gauge();
+  }
+
+  /* ---- the ruler, and the four gauges it feeds ---- */
+  function gauge() {
+    var rows = el.list.querySelectorAll(".vw-row");
+    if (!state.open || !rows.length) {
+      el.g1.textContent = "—";
+      el.g2.textContent = "—";
+      el.g3.textContent = "—";
+      el.g4.textContent = "—";
+      return;
+    }
+    var room = 0, cut = 0, widest = 0, perChar = 6.2;
+    rows.forEach(function (row) {
+      var detail = row.querySelector(".vw-row-d");
+      var shown = detail.clientWidth;
+      var needed = detail.scrollWidth;
+      room = Math.max(room, shown);
+      if (needed > shown + 1) {
+        cut += 1;
+        row.classList.add("iscut");
+        widest = Math.max(widest, needed - shown);
+        if (detail.textContent.length) perChar = needed / detail.textContent.length;
+        row.querySelector(".vw-cut").textContent = "−" + Math.round(needed - shown) + " px";
+      } else {
+        row.classList.remove("iscut");
+        row.querySelector(".vw-cut").textContent = "";
+      }
+    });
+    el.g1.textContent = group(Math.round(room)) + " px";
+    el.g2.textContent = cut + " of " + rows.length;
+    var chars = Math.max(0, Math.floor(room / perChar));
+    var cum = DATA.paths.cum;
+    var whole = cum[Math.min(chars, cum.length - 1)];
+    el.g3.textContent = (whole / DATA.paths.n * 100).toFixed(whole / DATA.paths.n < 0.1 ? 1 : 0) + " %";
+    var rowH = rows[0].getBoundingClientRect().height / scale();
+    var visible = Math.max(0, Math.floor(el.list.clientHeight / rowH));
+    el.g4.textContent = Math.min(visible, rows.length) + " of " + rows.length;
+  }
+
+  /* ---- fitting the 1174 px frame into whatever room there is ---- */
+  var factor = 1;
+  function scale() { return factor; }
+  function fit() {
+    var room = el.fit.parentNode.clientWidth - 36;
+    factor = Math.max(0.42, Math.min(1, room / 1174));
+    el.vw.style.transform = "scale(" + factor + ")";
+    el.fit.style.height = Math.ceil(807 * factor) + "px";
+    el.fit.style.width = Math.ceil(1174 * factor) + "px";
+  }
+
+  /* ---- wiring ---- */
+  var timer = null;
+  el.field.addEventListener("input", function () {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(function () {
+      state.query = el.field.value;
+      run();
+    }, 120);
+  });
+  el.headx.addEventListener("click", close);
+  el.ruler.addEventListener("click", function () {
+    state.ruler = !state.ruler;
+    el.ruler.setAttribute("aria-pressed", String(state.ruler));
+    el.vw.classList.toggle("ruler", state.ruler);
+    gauge();
+  });
+  document.querySelectorAll(".qchip").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      document.querySelectorAll(".qchip").forEach(function (other) {
+        other.setAttribute("aria-pressed", String(other === chip));
+      });
+      state.filter = "all";
+      state.query = chip.dataset.q;
+      el.field.value = chip.dataset.q;
+      run();
+      el.field.focus();
+    });
+  });
+  document.addEventListener("keydown", function (event) {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    var typing = event.target === el.field;
+    if (event.key === "Escape" && state.open) { close(); event.preventDefault(); return; }
+    if (typing) return;
+    if (event.key === "/") { el.field.focus(); event.preventDefault(); return; }
+    if (event.key === "r" || event.key === "R") { el.ruler.click(); return; }
+    if (["1", "2", "3", "4"].indexOf(event.key) !== -1) {
+      choose(OPTIONS[Number(event.key) - 1].id);
+      event.preventDefault();
+    }
+  });
+  window.addEventListener("resize", function () { fit(); gauge(); });
+
+  renderOptions();
+  renderTree();
+  renderDetail();
+  choose("A");
+  fit();
+  // Open on the query the whole page is measured against.
+  document.querySelector('.qchip[data-q="segment"]').click();
+  el.field.blur();
+})();
+</script>
+
+</body>
+</html>
