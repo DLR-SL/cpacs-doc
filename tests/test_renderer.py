@@ -1,4 +1,6 @@
 import json
+import re
+from html import unescape
 
 import pytest
 from lxml import etree
@@ -37,14 +39,52 @@ def test_indentation_collapses_outside_code():
     assert html == "<p>one two</p>"
 
 
+def plain(html: str) -> str:
+    """The block's text, with the marks the highlighter added taken back off."""
+    return unescape(re.sub(r"</?span[^>]*>", "", html))
+
+
 def test_code_keeps_its_own_indentation():
     html, _ = render(
         '<ddue:code language="XML" title="Example">'
         "\n    &lt;wing&gt;\n        &lt;uID/&gt;\n    &lt;/wing&gt;\n</ddue:code>"
     )
-    assert "&lt;wing&gt;\n    &lt;uID/&gt;" in html
+    assert "<wing>\n    <uID/>" in plain(html)
     assert 'data-language="XML"' in html
     assert "<figcaption>Example</figcaption>" in html
+
+
+def test_the_parts_of_an_xml_example_are_marked():
+    """An example is read for which words are elements, which are attributes
+    and which are values. Set in one colour they are a wall of text."""
+    html, _ = render(
+        '<ddue:code language="XML">'
+        "&lt;wing uID=&quot;w1&quot;&gt;text&lt;/wing&gt; &lt;!-- a note --&gt;"
+        "</ddue:code>"
+    )
+    assert '<span class="cd-tag">wing</span>' in html
+    assert '<span class="cd-attr">uID</span>' in html
+    assert '<span class="cd-value">&quot;w1&quot;</span>' in html
+    assert '<span class="cd-comment">&lt;!-- a note --&gt;</span>' in html
+    # Text between the tags is text, and the marks add nothing to it.
+    assert "&gt;text&lt;" in html.replace('<span class="cd-punct">', "").replace(
+        "</span>", ""
+    )
+
+
+def test_highlighting_changes_no_character_of_the_source():
+    """The block is the schema's own words. 13 of the 50 in CPACS 3.5.1 are
+    excerpts with `...` in them and would not parse; marking them must not
+    repair, reorder or drop anything."""
+    source = '<a b="1" c=\'2\'>x &amp; y</a>\n<?pi?>\n<!-- open'
+    assert plain(renderer._highlight_xml(source)) == source
+
+
+def test_an_unrecognised_language_is_left_alone():
+    html, _ = render(
+        '<ddue:code language="Python">print(1)</ddue:code>'
+    )
+    assert "<span" not in html and "print(1)" in html
 
 
 def test_list_class_selects_the_tag():

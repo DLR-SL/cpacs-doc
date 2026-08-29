@@ -143,10 +143,73 @@ def _list(node, context):
     return _wrap(tag, node, context, css="list")
 
 
+# All 50 code blocks in CPACS 3.5.1 are `language="XML"`, and every one of them
+# is an excerpt of an instance document. What a reader has to pick out of them
+# is which words are element names, which are attributes and which are values —
+# the same distinction the rest of the page draws between schema vocabulary and
+# prose about it. Marked here, in the one renderer, because the viewer inserts
+# these fragments as they are.
+#
+# A tokeniser, not a parser: 13 of the 50 carry `...` where the document goes
+# on, and all but 3 begin in the middle of a document rather than at its root,
+# so a parser would reject them. Whatever is not recognised stays text,
+# escaped, rather than being guessed at.
+_XML_TOKEN = re.compile(
+    r"(?P<comment><!--.*?(?:-->|\Z))"
+    r"|(?P<meta><[?!][^>]*(?:>|\Z))"
+    r"""|(?P<tag></?[A-Za-z_][\w.:-]*(?:"[^"]*"|'[^']*'|[^<>"'])*>)""",
+    re.DOTALL,
+)
+_XML_ATTRIBUTE = re.compile(r"""([A-Za-z_][\w.:-]*)(\s*=\s*)("[^"]*"|'[^']*')""")
+_XML_NAME = re.compile(r"</?[A-Za-z_][\w.:-]*")
+
+
+def _mark(kind: str, text: str) -> str:
+    return f'<span class="{CLASS_PREFIX}{kind}">{escape(text)}</span>'
+
+
+def _highlight_xml(text: str) -> str:
+    """XML source with its parts marked. What is not recognised stays text."""
+    out = []
+    position = 0
+    for match in _XML_TOKEN.finditer(text):
+        out.append(escape(text[position:match.start()]))
+        if match.lastgroup == "tag":
+            out.append(_highlight_tag(match.group()))
+        else:
+            out.append(_mark(match.lastgroup, match.group()))
+        position = match.end()
+    out.append(escape(text[position:]))
+    return "".join(out)
+
+
+def _highlight_tag(tag: str) -> str:
+    name = _XML_NAME.match(tag).group()
+    bracket = 2 if name.startswith("</") else 1
+    parts = [_mark("punct", name[:bracket]), _mark("tag", name[bracket:])]
+    rest = tag[len(name):]
+    position = 0
+    for attribute in _XML_ATTRIBUTE.finditer(rest):
+        parts.append(escape(rest[position:attribute.start()]))
+        parts.append(_mark("attr", attribute.group(1)))
+        parts.append(_mark("punct", attribute.group(2)))
+        parts.append(_mark("value", attribute.group(3)))
+        position = attribute.end()
+    if rest[position:]:
+        parts.append(_mark("punct", rest[position:]))
+    return "".join(parts)
+
+
 def _code(node, context):
     language = node.get("language")
     title = node.get("title")
-    body = dedent("".join(_children(node, context))).strip("\n")
+    # Highlighted only where the block is text through and through. A code
+    # block holding markup of its own keeps the path that renders that markup;
+    # none in this schema does (measured: 0 of 50).
+    if language == "XML" and len(node) == 0:
+        body = _highlight_xml(dedent(node.text or "").strip("\n"))
+    else:
+        body = dedent("".join(_children(node, context))).strip("\n")
     attributes = f' data-language="{escape(language)}"' if language else ""
     block = f'<pre class="{CLASS_PREFIX}code"{attributes}><code>{body}</code></pre>'
     if title:
