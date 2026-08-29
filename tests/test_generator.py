@@ -150,7 +150,7 @@ def test_an_optional_group_states_its_own_occurrence(model, tmp_path):
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
     assert "Exactly one of the alternatives" in html
-    assert "· 0…1" in html
+    assert "[0..1]</span> optional" in html
 
 
 def test_nested_members_carry_their_depth(model, tmp_path):
@@ -168,10 +168,40 @@ def test_bare_schema_line_is_not_shown(model, tmp_path):
     assert "Schema line" not in html
 
 
-def test_unbounded_cardinality_is_shown(model, tmp_path):
+def test_occurrence_states_the_bounds_and_reads_them(model, tmp_path):
+    """`0…1` alone was neither the schema's own words nor anybody's plain
+    reading, and 3,184 of the 3,663 declarations in CPACS 3.5.1 say one of two
+    things. Both are here: the bounds for whoever reads them faster than a
+    sentence, the reading for whoever does not."""
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
-    assert "0…∞" in html
+    assert "[0..∞]</span> any number" in html
+    assert "[1..1]</span> required" in html
+    # and the column heading says where the schema writes the same thing
+    assert "minOccurs and maxOccurs" in html
+
+
+def test_a_bounded_range_keeps_its_numbers(model, tmp_path):
+    """20 of the 3,663 declarations are neither of the four common cases; a
+    vocabulary that swallowed their bounds would be a lie, not a reading."""
+    words = generator._occurrence_words
+    assert words({"minOccurs": 2, "maxOccurs": None}) == "2 or more"
+    assert words({"minOccurs": 1, "maxOccurs": 2}) == "1 to 2"
+    assert words({"minOccurs": 0, "maxOccurs": 2}) == "up to 2"
+    assert words({"minOccurs": 3, "maxOccurs": 3}) == "exactly 3"
+    # the declaration that says nothing means exactly one
+    assert words({}) == "required"
+
+
+def test_bounds_nobody_has_a_phrase_for_are_left_to_the_notation(model, tmp_path):
+    """The schema may grow a combination this file has no English for. The
+    bounds are exact whatever they are; a phrase invented to fill the gap would
+    not be, so the cell then carries the notation alone."""
+    assert generator._occurrence_words({"minOccurs": 0, "maxOccurs": 0}) == ""
+    assert generator._occurrence({"minOccurs": 0, "maxOccurs": 0}) == (
+        '<span class="cd-bounds">[0..0]</span>'
+    )
+    assert generator._notation({"minOccurs": 7, "maxOccurs": None}) == "[7..∞]"
 
 
 def test_attribute_table_does_not_name_the_declaring_type(model, tmp_path):

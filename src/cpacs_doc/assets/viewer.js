@@ -176,11 +176,77 @@
     return term;
   }
 
+  // The compact form the tree rows carry, where a word per row would crowd out
+  // the names. The pages and the panel spell it out; this is the index.
   function cardinality(decl) {
-    var min = decl.minOccurs === undefined ? 1 : decl.minOccurs;
-    var max = decl.maxOccurs === undefined ? 1 : decl.maxOccurs;
+    var min = bound(decl.minOccurs);
+    var max = bound(decl.maxOccurs);
     var upper = max === null ? "\u221E" : String(max);
-    return String(min) === upper ? String(min) : min + "\u2026" + upper;
+    return String(min) === upper ? String(min) : min + ".." + upper;
+  }
+
+  // The bounds themselves, exact for any pair the schema can hold. Always
+  // shown, and always first: a reader who knows the notation takes it in
+  // faster than a sentence, and it is the part that cannot run out of words.
+  function notation(decl) {
+    var max = bound(decl.maxOccurs);
+    return "[" + bound(decl.minOccurs) + ".." + (max === null ? "\u221E" : max) + "]";
+  }
+
+  function bound(value) {
+    return value === undefined ? 1 : value;
+  }
+
+  function occursOnce(decl) {
+    return bound(decl.minOccurs) === 1 && bound(decl.maxOccurs) === 1;
+  }
+
+  // The same words the generator writes into the pages. Two implementations of
+  // one vocabulary, as with the glosses above: the pages are built in Python
+  // and this panel here.
+  function occurrenceWords(decl) {
+    var min = bound(decl.minOccurs);
+    var max = bound(decl.maxOccurs);
+    // Nothing plain to say about a bound that forbids the element.
+    if (max !== null && (max < min || max === 0)) return "";
+    if (max === null) {
+      if (min === 0) return "any number";
+      return min === 1 ? "one or more" : min + " or more";
+    }
+    if (min === max) return min === 1 ? "required" : "exactly " + min;
+    if (min === 0) return max === 1 ? "optional" : "up to " + max;
+    return min + " to " + max;
+  }
+
+  // Bounds first, then the reading of them where there is one.
+  function occurrenceCell(decl) {
+    var cell = element("span");
+    cell.appendChild(element("span", "cd-bounds", notation(decl)));
+    var words = occurrenceWords(decl);
+    if (words) cell.appendChild(document.createTextNode(" " + words));
+    return cell;
+  }
+
+  function times(count) {
+    if (count === 1) return "once";
+    if (count === 2) return "twice";
+    return count + " times";
+  }
+
+  // A whole sentence, because the node line is read rather than scanned, and
+  // because "occurs 1" read as a count of what is in a dataset instead of what
+  // the schema permits. The modal is the part that says it is a rule.
+  function occurrenceSentence(decl) {
+    var min = bound(decl.minOccurs);
+    var max = bound(decl.maxOccurs);
+    if (max !== null && (max < min || max === 0)) return "";
+    var modal = min >= 1 ? "must appear " : "may appear ";
+    if (max === null) {
+      return modal + (min === 0 ? "any number of times" : "at least " + times(min));
+    }
+    if (min === max) return modal + "exactly " + times(min);
+    if (min === 0) return modal + "at most " + times(max);
+    return modal + "between " + min + " and " + max + " times";
   }
 
   function element(tag, className, text) {
@@ -644,7 +710,10 @@
     panel.appendChild(element("h1", null, decl.name || "?"));
 
     var meta = element("p", "cd-kind");
-    meta.appendChild(element("span", null, "occurs " + cardinality(decl)));
+    meta.appendChild(document.createTextNode("Occurrence: "));
+    meta.appendChild(element("span", "cd-bounds", notation(decl)));
+    var sentence = occurrenceSentence(decl);
+    if (sentence) meta.appendChild(document.createTextNode(" " + sentence));
     // Nowhere else would a reader learn it: the predecessor never wrote a
     // declared default out, and the schema is what it exists to replace.
     var declared = declaredValue(decl);
@@ -858,10 +927,28 @@
     var table = element("table");
     var head = element("tr");
     var headings = ["Name", "Type", "Constraints", "Occurrence", "Default", "Description"];
-    for (var h = 0; h < headings.length; h++) head.appendChild(element("th", null, headings[h]));
+    for (var h = 0; h < headings.length; h++) {
+      var cell = element("th", null, headings[h]);
+      if (headings[h] === "Occurrence") occurrenceNote(cell);
+      head.appendChild(cell);
+    }
     table.appendChild(head);
     appendChildRows(table, members, 0);
     panel.appendChild(table);
+  }
+
+  // The column says how often in words; the schema says it in two attributes,
+  // and a reader with the schema open needs the bridge between them.
+  function occurrenceNote(cell) {
+    cell.textContent = "";
+    var term = element("span", "cd-note-term", "Occurrence");
+    term.setAttribute("tabindex", "0");
+    var tip = element("span", "cd-tip", "How often the element may appear at this"
+      + " place. The schema writes it as minOccurs and maxOccurs on the"
+      + " declaration.");
+    tip.setAttribute("role", "note");
+    term.appendChild(tip);
+    cell.appendChild(term);
   }
 
   // A compositor governs a set of children, not each child on its own, so it
@@ -887,9 +974,10 @@
         term.appendChild(tip);
         label.appendChild(term);
 
-        var occurrence = cardinality(member);
-        if (occurrence !== "1") {
-          label.appendChild(element("span", "cd-group-occurs", "\u00B7 " + occurrence));
+        if (!occursOnce(member)) {
+          var occurs = element("span", "cd-group-occurs", "\u00B7 ");
+          occurs.appendChild(occurrenceCell(member));
+          label.appendChild(occurs);
         }
         groupCell.appendChild(label);
         groupRow.appendChild(groupCell);
@@ -912,7 +1000,9 @@
         row.appendChild(nameCell);
         row.appendChild(text(member.namespace || "", "td", null));
         row.appendChild(text(member.processContents || "", "td", "cd-inherited"));
-        row.appendChild(text(cardinality(member), "td"));
+        var occursCell = element("td", "cd-occurs");
+        occursCell.appendChild(occurrenceCell(member));
+        row.appendChild(occursCell);
         row.appendChild(element("td"));
         row.appendChild(text(documentationText(member), "td"));
         table.appendChild(row);
@@ -926,7 +1016,9 @@
       var holdsTd = element("td");
       holdsTd.appendChild(constraintsCell(member));
       row.appendChild(holdsTd);
-      row.appendChild(text(cardinality(member), "td"));
+      var cell = element("td", "cd-occurs");
+      cell.appendChild(occurrenceCell(member));
+      row.appendChild(cell);
       var valueTd = element("td");
       valueTd.appendChild(valueCell(member));
       row.appendChild(valueTd);

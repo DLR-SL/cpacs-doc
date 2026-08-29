@@ -113,7 +113,16 @@ def test_the_node_says_what_it_is_worth_unwritten(constrained):
     """`occurs` alone leaves the reader to guess what omitting the element
     means. The schema says it; nothing showed it before."""
     panel = constrained.evaluate(PANEL)
-    assert "occurs 0…1 · default 0.5" in panel["text"]
+    assert "Occurrence: [0..1] may appear at most once · default 0.5" in panel["text"]
+
+
+def test_the_node_line_says_whether_it_is_a_rule(browser, base):
+    """`occurs 1` read as a count of what is in a dataset. The modal is the
+    part that says the schema is demanding it, and the node line is read
+    rather than scanned, so it can afford the sentence."""
+    browser.open(base + "/tree/cpacs/header/")
+    browser.wait_for(READY, "the tree")
+    assert "Occurrence: [1..1] must appear exactly once" in browser.evaluate(PANEL)["text"]
 
 
 def test_a_column_headed_default_does_not_repeat_the_word(browser, base):

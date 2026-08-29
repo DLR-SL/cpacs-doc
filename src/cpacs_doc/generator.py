@@ -586,11 +586,21 @@ def _child_table(children, types=None) -> str:
         return ""
     return (
         '<section class="cd-children"><h2>Child elements</h2><table>'
-        "<tr><th>Name</th><th>Type</th><th>Constraints</th><th>Occurrence</th>"
+        "<tr><th>Name</th><th>Type</th><th>Constraints</th>"
+        f"<th>{OCCURRENCE_HEAD}</th>"
         "<th>Default</th><th>Description</th></tr>"
         + "".join(rows)
         + "</table></section>"
     )
+
+
+# The column says how often in words; the schema says it in two attributes, and
+# a reader who has the schema open needs the bridge between them.
+OCCURRENCE_GLOSS = ("How often the element may appear at this place. "
+                    "The schema writes it as minOccurs and maxOccurs on the declaration.")
+OCCURRENCE_HEAD = ('<span class="cd-note-term" tabindex="0">Occurrence'
+                   f'<span class="cd-tip" role="note">{escape(OCCURRENCE_GLOSS)}</span>'
+                   "</span>")
 
 
 # The one construct in the child table that is not an element and not a group.
@@ -610,11 +620,10 @@ def _child_rows(members, depth: int, types=None) -> list[str]:
         indent = f' class="cd-indent" style="--depth:{depth}"' if depth else ""
         if member.get("kind") == "group":
             compositor = member.get("compositor") or ""
-            occurrence = _cardinality(member)
             suffix = (
-                f'<span class="cd-group-occurs">· {escape(occurrence)}</span>'
-                if occurrence != "1"
-                else ""
+                ""
+                if _occurs_once(member)
+                else f'<span class="cd-group-occurs">· {_occurrence(member)}</span>'
             )
             rows.append(
                 f'<tr class="cd-group cd-group-{escape(compositor)}"><td{indent} colspan="5">'
@@ -639,7 +648,7 @@ def _child_rows(members, depth: int, types=None) -> list[str]:
                 f'<td><code>{escape(member.get("namespace", ""))}</code></td>'
                 f'<td><span class="cd-inherited">'
                 f'{escape(member.get("processContents", ""))}</span></td>'
-                f"<td>{escape(_cardinality(member))}</td><td></td>"
+                f'<td class="cd-occurs">{_occurrence(member)}</td><td></td>'
                 f'<td>{escape(member.get("documentation", {}).get("text", ""))}</td>'
                 "</tr>"
             )
@@ -649,7 +658,7 @@ def _child_rows(members, depth: int, types=None) -> list[str]:
             f'<td{indent}><code>{escape(member["name"])}</code></td>'
             f'<td>{_type_link(member.get("type"), types)}</td>'
             f'<td>{_constraints_cell(member.get("type"), types)}</td>'
-            f"<td>{escape(_cardinality(member))}</td>"
+            f'<td class="cd-occurs">{_occurrence(member)}</td>'
             f"<td>{_value_cell(member)}</td>"
             f'<td>{escape(member.get("documentation", {}).get("text", ""))}</td>'
             "</tr>"
@@ -657,11 +666,51 @@ def _child_rows(members, depth: int, types=None) -> list[str]:
     return rows
 
 
-def _cardinality(child) -> str:
-    minimum = child.get("minOccurs", 1)
-    maximum = child.get("maxOccurs", 1)
-    upper = "∞" if maximum is None else str(maximum)
-    return f"{minimum}…{upper}" if str(minimum) != upper else str(minimum)
+def _bounds(child) -> tuple[int, int | None]:
+    return child.get("minOccurs", 1), child.get("maxOccurs", 1)
+
+
+def _notation(child) -> str:
+    """The bounds themselves, exact for any pair the schema can hold.
+
+    Always shown, and always first: a reader who knows the notation takes it in
+    faster than a sentence, and it is the part that cannot run out of words. A
+    combination this file has no phrase for still says exactly what it is.
+    """
+    minimum, maximum = _bounds(child)
+    return f"[{minimum}..{'∞' if maximum is None else maximum}]"
+
+
+# 3,663 element declarations, and 3,184 of them say one of two things: 1,527
+# exactly once, 1,657 at most once. `0…1` alone said it in a notation that is
+# neither XSD's own words nor anybody's plain reading. These words are the
+# reading; where there is none to be had, the notation stands on its own rather
+# than being padded out with a phrase nobody would write.
+def _occurrence_words(child) -> str:
+    minimum, maximum = _bounds(child)
+    if maximum is not None and (maximum < minimum or maximum == 0):
+        return ""  # nothing plain to say about a bound that forbids the element
+    if maximum is None:
+        if minimum == 0:
+            return "any number"
+        return "one or more" if minimum == 1 else f"{minimum} or more"
+    if minimum == maximum:
+        return "required" if minimum == 1 else f"exactly {minimum}"
+    if minimum == 0:
+        return "optional" if maximum == 1 else f"up to {maximum}"
+    return f"{minimum} to {maximum}"
+
+
+def _occurrence(child) -> str:
+    """Bounds first, then the reading of them where there is one."""
+    words = _occurrence_words(child)
+    notation = f'<span class="cd-bounds">{escape(_notation(child))}</span>'
+    return f"{notation} {escape(words)}" if words else notation
+
+
+def _occurs_once(child) -> bool:
+    """Whether the declaration says what a declaration says when it is silent."""
+    return _bounds(child) == (1, 1)
 
 
 # The schema word carries the row, as it does for a compositor, with the plain
