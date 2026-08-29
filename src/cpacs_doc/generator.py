@@ -534,11 +534,6 @@ def _attribute_table(attributes, types=None) -> str:
         return ""
     rows = []
     for attribute in attributes:
-        origin = (
-            f'<span class="cd-inherited">{escape(attribute["declaredIn"])}</span>'
-            if attribute.get("inherited")
-            else ""
-        )
         value = _value_cell(attribute)
         rows.append(
             "<tr>"
@@ -548,13 +543,12 @@ def _attribute_table(attributes, types=None) -> str:
             f'<td>{escape(attribute.get("use", ""))}</td>'
             f"<td>{value}</td>"
             f'<td>{escape(attribute.get("documentation", {}).get("text", ""))}</td>'
-            f"<td>{origin}</td>"
             "</tr>"
         )
     return (
         '<section class="cd-attributes"><h2>Attributes</h2><table>'
         "<tr><th>Name</th><th>Type</th><th>Constraints</th><th>Use</th><th>Default</th>"
-        "<th>Description</th><th>Inherited from</th></tr>"
+        "<th>Description</th></tr>"
         + "".join(rows)
         + "</table></section>"
     )

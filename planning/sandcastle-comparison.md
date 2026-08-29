@@ -200,6 +200,21 @@ The ToDo asks why the column says `complexBaseType` for an attribute of type
 different questions. Sandcastle has no such column at all, so there is nothing to
 copy — this is a labelling decision, not a defect.
 
+> **Closed, 2026-08-29.** The column is gone from both tables, the static page
+> and the detail panel. It answered a question no reader had asked — where the
+> attribute was declared — right next to the one they had, and read as a
+> contradiction of the Type column. 1,051 of 1,206 types derive from
+> `complexBaseType`, so the column said the same word on nearly every page.
+> `inherited` and `declaredIn` stay in the model, and inherited attributes are
+> still listed first (ADR 0005), so nothing is lost that a later marker could
+> not use.
+>
+> Open against this: requirement D2 asks that inherited content be *visually set
+> apart* and hideable. With the column gone, nothing in the output says which
+> attributes are inherited. Either D2 is amended, or the mark returns without a
+> column of its own — a quiet word on the name cell, the declaring type on
+> hover.
+
 ### 8. The union is empty on both sides
 
 `systemTypeType` unions `individualSystemCategoriesType` and

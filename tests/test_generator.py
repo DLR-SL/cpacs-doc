@@ -167,10 +167,15 @@ def test_unbounded_cardinality_is_shown(model, tmp_path):
     assert "0…∞" in html
 
 
-def test_inherited_attributes_name_their_origin(model, tmp_path):
+def test_attribute_table_does_not_name_the_declaring_type(model, tmp_path):
+    """The column answered a question the reader was not asking.
+
+    `inherited` and `declaredIn` stay in the model; only the column is gone.
+    """
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
-    assert "cd-inherited" in html and "baseType" in html
+    section = html.split('<section class="cd-attributes"')[1].split("</section>")[0]
+    assert "Inherited from" not in html and "baseType" not in section
 
 
 def test_missing_media_root_is_reported_not_silent(model, tmp_path):

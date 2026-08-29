@@ -701,9 +701,7 @@
           { head: "Constraints", cell: constraintsCell },
           { head: "Use", cell: function (a) { return text(a.use || ""); } },
           { head: "Default", cell: valueCell },
-          { head: "Description", cell: function (a) { return text(documentationText(a)); } },
-          { head: "Inherited from", cell: function (a) {
-              return text(a.inherited ? a.declaredIn : "", null, "cd-inherited"); } }
+          { head: "Description", cell: function (a) { return text(documentationText(a)); } }
         ]);
         appendChildTable(panel, type.children);
         appendTable(panel, "Value constraints", type.facets, [

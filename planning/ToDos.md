@@ -14,15 +14,17 @@
     - if no element description, but type summary, then use this? (open discussion; what can go wrong? Is the the wanted behavior?)
 
 - Attributes table:
-    - Why "Inherited from" is "complexBaseType", if attribute is of simple XSD type (e.g., `xsd:string`)
     - description: use type documentation, if element-description is missing (see above)
+
+- Decide requirement D2: with the "Inherited from" column gone, nothing marks
+  inherited attributes. Amend D2, or bring the mark back without a column.
 
 
 
 ### Closed
 
-Written up with numbers in `planning/sandcastle-comparison.md`, findings 1, 2
-and 6.
+Written up with numbers in `planning/sandcastle-comparison.md`, findings 1, 2,
+6 and 7.
 
 - enumeration items not listed
 - inline type-specifications not displayed correctly
