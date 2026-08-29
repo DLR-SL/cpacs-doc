@@ -30,6 +30,18 @@
         </xsd:simpleContent>
     </xsd:complexType>
 
+    <xsd:simpleType name="ataChapterType">
+        <xsd:restriction base="xsd:string">
+            <xsd:enumeration value="21"/>
+            <xsd:enumeration value="27"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <!-- Neither values nor facets of its own: they are in the members. -->
+    <xsd:simpleType name="systemTypeType">
+        <xsd:union memberTypes="ataChapterType xsd:string"/>
+    </xsd:simpleType>
+
     <xsd:complexType name="cpacsType">
         <xsd:annotation>
             <xsd:appinfo>
@@ -84,6 +96,7 @@
                 </xsd:simpleType>
             </xsd:element>
             <xsd:element name="mass" type="measuredValueType" minOccurs="0"/>
+            <xsd:element name="systemType" type="systemTypeType" minOccurs="0"/>
             <xsd:any minOccurs="0">
                 <xsd:annotation>
                     <xsd:documentation>Whatever a tool puts here.</xsd:documentation>

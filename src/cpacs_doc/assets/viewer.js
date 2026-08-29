@@ -151,6 +151,8 @@
   // The same reading of the same words as the type pages give. Two copies of
   // the prose, as with the compositors above: the generator writes the pages in
   // Python and the viewer builds its panel here.
+  var UNION_GLOSS = "A value must be valid against one of these types. Any one of them is enough, and the instance does not say which one was meant.";
+
   var FACET_GLOSS = {
     minInclusive: "The value must be this or greater.",
     maxInclusive: "The value must be this or less.",
@@ -704,6 +706,7 @@
           { head: "Description", cell: function (a) { return text(documentationText(a)); } }
         ]);
         appendChildTable(panel, type.children);
+        appendUnion(panel, type.union);
         appendTable(panel, "Value constraints", type.facets, [
           { head: "Constraint", cell: facetTerm },
           { head: "Value", cell: function (f) { return text(f.value, "code"); } }
@@ -750,12 +753,34 @@
   // What a type holds that its name does not show. The count says there is
   // something to open and names the section it leads to; children are left out
   // because nearly every type has some.
+  // The members of a union, under a heading that carries the schema word.
+  // The values are in the members, one link on, which is what the table shows.
+  function appendUnion(panel, union) {
+    if (!union || !union.length) return;
+    var head = element("h2", null, "Allowed types ");
+    var term = element("span", "cd-facet", "union");
+    term.setAttribute("tabindex", "0");
+    var tip = element("span", "cd-tip", UNION_GLOSS);
+    tip.setAttribute("role", "note");
+    term.appendChild(tip);
+    head.appendChild(term);
+    panel.appendChild(head);
+    appendTable(panel, "", union, [
+      { head: "Type", cell: function (name) { return typeCell(name); } },
+      { head: "Constraints", cell: function (name) { return constraintsCell({ type: name }); } }
+    ]);
+  }
+
   function holdings(typeName) {
     var type = state.model.types[typeName];
     if (!type) return "";
     var parts = [];
     var values = (type.enumeration || []).length;
     if (values) parts.push(values + (values === 1 ? " value" : " values"));
+    // A union holds neither values nor facets: without this the row that
+    // points at one looks like a plain string with nothing behind it.
+    var members = (type.union || []).length;
+    if (members) parts.push("one of " + members + " types");
     var seen = {};
     (type.facets || []).forEach(function (facet) {
       if (seen[facet.name]) return;

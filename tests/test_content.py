@@ -194,3 +194,18 @@ def test_a_construct_the_reader_does_not_know_is_reported(parse):
     not read; that is a finding, not a gap to fill in quietly."""
     codes = [f.code for f in read(parse, "wingType").findings]
     assert "CHILD_CONSTRUCT_UNSUPPORTED" in codes
+
+
+def test_the_members_of_a_union_are_read(parse):
+    """A union has no facets and no values of its own, so a reader that knows
+    only restrictions finds nothing to say about it. `systemTypeType` is the
+    one union in CPACS 3.5.1, and both this tool and Sandcastle showed the word
+    `simpleType` and stopped. The values are in the members."""
+    assert read(parse, "markingType").union == ["symmetryType", "xsd:string"]
+
+
+def test_a_list_is_reported_rather_than_passed_over(parse):
+    """The schema uses none today. If one appears, the page must not claim to
+    describe a type nothing has read."""
+    codes = [f.code for f in read(parse, "codeListType").findings]
+    assert codes == ["VALUE_CONSTRUCT_UNSUPPORTED"]

@@ -24,7 +24,7 @@
 ### Closed
 
 Written up with numbers in `planning/sandcastle-comparison.md`, findings 1, 2,
-6 and 7.
+6, 7 and 8.
 
 - enumeration items not listed
 - inline type-specifications not displayed correctly

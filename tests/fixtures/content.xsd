@@ -19,6 +19,16 @@
         </xsd:restriction>
     </xsd:simpleType>
 
+    <!-- A union: the values are in the members, none of them here. -->
+    <xsd:simpleType name="markingType">
+        <xsd:union memberTypes="symmetryType xsd:string"/>
+    </xsd:simpleType>
+
+    <!-- Not read by the extractor; it is a finding, not a silent gap. -->
+    <xsd:simpleType name="codeListType">
+        <xsd:list itemType="xsd:string"/>
+    </xsd:simpleType>
+
     <xsd:complexType name="valueBaseType">
         <xsd:simpleContent>
             <xsd:extension base="xsd:double">

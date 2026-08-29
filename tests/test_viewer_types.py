@@ -334,3 +334,16 @@ def test_the_path_count_shows_the_paths_it_counts(browser, base):
     assert browser.evaluate(
         "return document.querySelector('#cd-detail h1').textContent;"
     ) == "wings"
+
+
+def test_a_union_shows_its_members_where_the_node_stands(browser, base):
+    """`systemTypeType` is the one union in CPACS 3.5.1, and the panel said
+    `simpleType` and nothing else — the values sit in the members, one link on,
+    and nothing pointed at them."""
+    browser.open(base + "/tree/cpacs/systemType/")
+    browser.wait_for(READY, "the tree")
+    panel = browser.evaluate(PANEL)
+    assert "Allowed types" in panel["text"]
+    assert panel["values"] == ["ataChapterType", "xsd:string"]
+    # The column beside them says what is behind the link before it is followed.
+    assert "2 values" in panel["text"]

@@ -24,7 +24,7 @@ from lxml import etree
 from . import content, renderer
 from .annotations import DDUE, Documentation
 
-MODEL_VERSION = "1.2"
+MODEL_VERSION = "1.3"
 
 
 def flatten(node: etree._Element | None) -> str:
@@ -120,6 +120,8 @@ def _type_entry(info, content, html, content_type=None) -> dict:
             entry["facets"] = [
                 {"name": f.name, "value": f.value, "line": f.line} for f in content.facets
             ]
+        if content.union:
+            entry["union"] = list(content.union)
         if content.children:
             entry["children"] = [_child_entry(c) for c in content.children]
     return entry

@@ -50,6 +50,13 @@ def model():
                 "documentation": {},
                 "enumeration": [{"value": "0012", "documentation": {"text": "symmetric"}}],
             },
+            "markingType": {
+                "name": "markingType",
+                "kind": "simpleType",
+                "line": 7,
+                "documentation": {},
+                "union": ["nacaType/code", "xsd:string"],
+            },
             "baseType": {"name": "baseType", "kind": "complexType", "line": 1, "documentation": {}},
         },
         "media": {},
@@ -58,7 +65,7 @@ def model():
 
 def test_a_page_is_written_per_type(model, tmp_path):
     result = generator.generate(model, tmp_path)
-    assert result.pages == 3
+    assert result.pages == 4
     assert (tmp_path / "type" / "wingType" / "index.html").exists()
     assert (tmp_path / "index.html").exists()
 
@@ -176,6 +183,26 @@ def test_attribute_table_does_not_name_the_declaring_type(model, tmp_path):
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
     section = html.split('<section class="cd-attributes"')[1].split("</section>")[0]
     assert "Inherited from" not in html and "baseType" not in section
+
+
+def test_a_union_lists_its_members_and_what_they_hold(model, tmp_path):
+    """The page of a union carries nothing of its own; what may be written
+    there is a link further on, and the reader has to be told there is one."""
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "type" / "markingType" / "index.html").read_text(encoding="utf-8")
+    assert "Allowed types" in html and ">union<" in html
+    assert f'href="../{generator.slug("nacaType/code")}/index.html"' in html
+    assert "1 value" in html
+    assert "<code>xsd:string</code>" in html
+
+
+def test_a_row_pointing_at_a_union_says_there_is_one(model, tmp_path):
+    """Without this the row reads as a plain string with nothing behind it —
+    which is what hid the values in the first place."""
+    model["types"]["wingType"]["children"][0]["members"][0]["type"] = "markingType"
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert "one of 2 types" in html
 
 
 def test_missing_media_root_is_reported_not_silent(model, tmp_path):

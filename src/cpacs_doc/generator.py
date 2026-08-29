@@ -389,6 +389,7 @@ def type_page(name: str, entry: dict, types: dict, first_paths: dict, sections=(
     parts.append(_documentation_list(sections))
     parts.append(_attribute_table(entry.get("attributes", []), types))
     parts.append(_child_table(entry.get("children", []), types))
+    parts.append(_union_table(entry.get("union", []), types))
     parts.append(_facet_table(entry.get("facets", [])))
     parts.append(_enumeration_list(entry.get("enumeration", [])))
     parts.append(_usage_section(name, usage or {}, first_paths))
@@ -457,6 +458,11 @@ def _holdings(entry) -> str:
     values = len(entry.get("enumeration", []))
     if values:
         parts.append(f"{values} value" + ("s" if values != 1 else ""))
+    # A union holds neither values nor facets, so without this the one row that
+    # points at one looks like a plain string with nothing behind it.
+    members = len(entry.get("union", []))
+    if members:
+        parts.append(f"one of {members} types")
     parts.extend(dict.fromkeys(f["name"] for f in entry.get("facets", [])))
     return ", ".join(parts)
 
@@ -675,6 +681,36 @@ FACET_GLOSS = {
     "fractionDigits": "The value must have at most this many digits after the point.",
     "whiteSpace": "How whitespace is treated before the value is checked.",
 }
+
+
+UNION_GLOSS = ("A value must be valid against one of these types. Any one of them is enough, and the instance does not say which one was meant.")
+
+
+def _union_table(union, types) -> str:
+    """The members of a union, with what each of them holds.
+
+    A union type carries no values and no facets of its own, so a page built
+    from restrictions has nothing to say about it and said nothing — for
+    `systemTypeType` neither this tool nor Sandcastle showed more than the word
+    `simpleType`. What a reader may write sits one link further on, in the
+    members, so the members are what the page carries; the Constraints column
+    is the child table's, and says how many values are behind each of them
+    before the click.
+    """
+    if not union:
+        return ""
+    rows = "".join(
+        f"<tr><td>{_type_link(name, types)}</td>"
+        f"<td>{_constraints_cell(name, types)}</td></tr>"
+        for name in union
+    )
+    return (
+        '<section class="cd-union"><h2>Allowed types '
+        '<span class="cd-facet" tabindex="0">union'
+        f'<span class="cd-tip" role="note">{escape(UNION_GLOSS)}</span>'
+        "</span></h2><table>"
+        "<tr><th>Type</th><th>Constraints</th></tr>" + rows + "</table></section>"
+    )
 
 
 def _facet_table(facets) -> str:

@@ -221,6 +221,25 @@ copy — this is a labelling decision, not a defect.
 `ataChapterListType`. Our page shows `simpleType` and nothing else; the
 Sandcastle page shows nothing either. A gap against the schema, not a regression.
 
+> **Closed, 2026-08-29.** `xsd:union` is read (model version 1.3, key `union`)
+> and the members are a table of their own — *Allowed types*, with the schema
+> word `union` beside the heading carrying the plain reading on hover. The
+> Constraints column is the child table's, so the page says what is behind each
+> member before the click: `individualSystemCategoriesType` 1 value,
+> `ataChapterListType` 15. Those 16 values were reachable from nowhere near
+> this type before.
+>
+> The row that points at the union says `one of 2 types` in the same column —
+> a union carries neither values nor facets, so without it the one row in the
+> schema that references one (`systemType` in `systemArchitectureType`) looked
+> like a plain type with nothing behind it. This is finding 1's defect in
+> another guise.
+>
+> `xsd:list` and a union that declares a member type inline are reported as
+> `VALUE_CONSTRUCT_UNSUPPORTED` rather than passed over. The schema uses
+> neither — one union, no list, no inline member — so the count of warnings
+> against CPACS 3.5.1 is unchanged at 64.
+
 ### 9. A declared default is invisible on both sides
 
 Twelve element declarations carry `default` — `controlPointNumber` 12,

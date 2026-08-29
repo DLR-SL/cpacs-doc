@@ -120,12 +120,14 @@ class TypeContent:
     attributes: list[AttributeInfo] = field(default_factory=list)
     enumeration: list[EnumerationValue] = field(default_factory=list)
     facets: list[Facet] = field(default_factory=list)
+    union: list[str] = field(default_factory=list)  # types a value may satisfy instead
     children: list[ChildInfo] = field(default_factory=list)
     findings: list[Finding] = field(default_factory=list)
 
     @property
     def is_empty(self) -> bool:
-        return not (self.attributes or self.enumeration or self.facets or self.children)
+        return not (self.attributes or self.enumeration or self.facets
+                    or self.union or self.children)
 
 
 def inline_reference(node, catalogue) -> str | None:
@@ -192,6 +194,7 @@ def read(info, catalogue, source: str) -> TypeContent:
     _attributes(info, catalogue, source, content)
     _enumeration(info, source, content)
     _facets(info, source, content)
+    _union(info, source, content)
     content.children = content_groups(info.node, catalogue, source, content.findings)
     return content
 
@@ -359,6 +362,56 @@ def _facets(info, source, content) -> None:
                 continue
             content.facets.append(
                 Facet(name=name, value=value, line=getattr(node, "sourceline", None))
+            )
+
+
+def _value_constructs(node):
+    """`xsd:union` and `xsd:list`, where a restriction would otherwise sit.
+
+    The same two places as a restriction: directly under the simpleType, or
+    under one an element or attribute declares inline.
+    """
+    for holder in (node, node.find(q(XSD, "simpleType"))):
+        if holder is None:
+            continue
+        for kind in ("union", "list"):
+            found = holder.find(q(XSD, kind))
+            if found is not None:
+                yield kind, found
+
+
+def _union(info, source, content) -> None:
+    """The types a value may satisfy, where the type is a union of them.
+
+    A union type has no facets and no values of its own, so a page that only
+    knows restrictions has nothing to say about it and says nothing — which is
+    what both this tool and Sandcastle did for `systemTypeType`. The members
+    are where the values are, so the members are what the page carries.
+
+    `xsd:list` and inline member types are reported rather than skipped. The
+    schema uses neither today (measured: one union, no list, no inline member),
+    and a reader must not be told a type is fully described when it is not.
+    """
+    for kind, node in _value_constructs(info.node):
+        if kind == "list":
+            content.findings.append(
+                Finding(
+                    "warning",
+                    "VALUE_CONSTRUCT_UNSUPPORTED",
+                    f"{info.name}: xsd:list is not read",
+                    location_of(node, source),
+                )
+            )
+            continue
+        content.union.extend((node.get("memberTypes") or "").split())
+        if node.find(q(XSD, "simpleType")) is not None:
+            content.findings.append(
+                Finding(
+                    "warning",
+                    "VALUE_CONSTRUCT_UNSUPPORTED",
+                    f"{info.name}: xsd:union declaring a member type inline is not read",
+                    location_of(node, source),
+                )
             )
 
 
