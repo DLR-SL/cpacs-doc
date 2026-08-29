@@ -887,7 +887,12 @@ def router_html() -> str:
         '<body class="cd-viewer">\n<div id="cd-app" class="cd-app">\n'
         '<div class="cd-column">\n'
         '<div class="cd-search">'
+        # The syntax has one teaching surface of its own — the line under the
+        # chips, shown to whoever has just narrowed by hand — and this, which
+        # is where a reader looks for what a field accepts.
         '<input id="cd-search" type="search" placeholder="Search elements, types, attributes"'
+        ' title="Narrow it: type: element: attribute: a leading @ for an attribute,'
+        ' or a path with a slash in it"'
         ' autocomplete="off" spellcheck="false" aria-label="Search">'
         '<span id="cd-search-count" class="cd-search-count"></span>'
         f"{THEME_BUTTON}"

@@ -29,6 +29,7 @@
     expanded: null,    // Set of expanded paths
     nodeByPath: null,  // path -> model node
     searchEntries: null,  // built on first search, not on load
+    searchFilter: "all",  // which kind the results are narrowed to, page-lifetime
     usage: null,          // reverse index, built on first type view
     usageOpen: false,     // whether "Used by" stands open, page-lifetime
     shownType: null,   // type displayed in place of the selected node's detail
@@ -1333,6 +1334,50 @@
   var SEARCH_LIMIT = 60;
   var SEARCH_DELAY = 120;
 
+  // Of the 58,920 entries 53,692 are elements, so on a broad query the whole
+  // list was elements: `segment` matched 21,496 entries and every one of the
+  // sixty shown was an element, while 55 types went unmentioned. Reserving
+  // slots is what makes the other two kinds reachable without asking the
+  // reader to do anything first. Whatever a kind cannot fill goes back.
+  var KIND_SLOTS = { type: 15, attribute: 5 };
+  var KINDS = ["element", "type", "attribute"];
+  var KIND_LABEL = { element: "Elements", type: "Types", attribute: "Attributes" };
+
+  // The same switch as the chips, spelled in the field. Whoever knows what
+  // they are looking for should not have to reach for the mouse to say so;
+  // whoever does not never has to meet this. `@` needs no colon — an attribute
+  // is written that way in the schema, and the labels carry it.
+  var KIND_PREFIX = { "type:": "type", "element:": "element", "attribute:": "attribute" };
+
+  // A query with a slash in it is a path and nothing else: someone who types
+  // `wings/wing` is not looking for the word in a description.
+  function parseQuery(raw) {
+    var text = raw.trim().toLowerCase();
+    var kind = null;
+    var names = Object.keys(KIND_PREFIX);
+    for (var i = 0; i < names.length; i++) {
+      if (text.indexOf(names[i]) !== 0) continue;
+      kind = KIND_PREFIX[names[i]];
+      text = text.slice(names[i].length).replace(/^\s+/, "");
+      break;
+    }
+    if (kind === null && text.charAt(0) === "@") kind = "attribute";
+    return { text: text, kind: kind, paths: text.indexOf("/") !== -1 };
+  }
+
+  // What is left in the field once the prefix is taken off it. Clicking a chip
+  // has to remove one, or the field and the chips would say different things.
+  function withoutPrefix(raw) {
+    var names = Object.keys(KIND_PREFIX);
+    var text = raw.replace(/^\s+/, "");
+    for (var i = 0; i < names.length; i++) {
+      if (text.toLowerCase().indexOf(names[i]) === 0) {
+        return text.slice(names[i].length).replace(/^\s+/, "");
+      }
+    }
+    return raw;
+  }
+
   var RANK = {
     exactName: 0,
     prefixName: 1,
@@ -1378,7 +1423,11 @@
     return entries;
   }
 
-  function scoreEntry(entry, query) {
+  function scoreEntry(entry, query, asPath) {
+    if (asPath) {
+      return entry.path && entry.path.toLowerCase().indexOf(query) !== -1
+        ? RANK.path : -1;
+    }
     var label = entry.label.toLowerCase();
     if (label === query) return RANK.exactName;
     if (label.indexOf(query) === 0) return RANK.prefixName;
@@ -1390,42 +1439,153 @@
     return -1;
   }
 
-  function search(query) {
-    query = query.trim().toLowerCase();
-    if (query.length < 2) return null;
+  // How many of the sixty places each kind gets. Elements keep whatever the
+  // other two do not claim, and a kind with nothing to show claims nothing —
+  // a query matching eight types and nine elements still shows all seventeen.
+  function shareOut(kinds, filter) {
+    var room = {};
+    if (filter !== "all") {
+      KINDS.forEach(function (kind) { room[kind] = kind === filter ? SEARCH_LIMIT : 0; });
+      return room;
+    }
+    room.type = Math.min(kinds.type, KIND_SLOTS.type);
+    room.attribute = Math.min(kinds.attribute, KIND_SLOTS.attribute);
+    room.element = Math.min(kinds.element, SEARCH_LIMIT - room.type - room.attribute);
+    var spare = SEARCH_LIMIT - room.element - room.type - room.attribute;
+    KINDS.forEach(function (kind) {
+      var more = Math.max(0, Math.min(spare, kinds[kind] - room[kind]));
+      room[kind] += more;
+      spare -= more;
+    });
+    return room;
+  }
+
+  // The shortest name first, because a short name is the whole of what was
+  // asked for and a long one merely contains it.
+  function byLabel(x, y) {
+    if (x.label.length !== y.label.length) return x.label.length - y.label.length;
+    return x.label < y.label ? -1 : x.label > y.label ? 1 : 0;
+  }
+
+  // For a path the same argument runs along the path instead: `wings/wing`
+  // should answer with the wing, not with the 5,838 things standing under one.
+  function byPath(x, y) {
+    var a = x.path || "";
+    var b = y.path || "";
+    if (a.length !== b.length) return a.length - b.length;
+    return a < b ? -1 : a > b ? 1 : 0;
+  }
+
+  function search(raw) {
+    var asked = parseQuery(raw);
+    var query = asked.text;
+    // Two characters, unless a prefix has already said what is wanted: `type:`
+    // on its own is a fair question and the answer is every type there is.
+    if (query.length < 2 && !(asked.kind && query.length === 0)) return null;
     if (!state.searchEntries) state.searchEntries = buildSearchEntries();
 
     // Collected into one bucket per rank rather than sorted as a whole: a
     // broad query matches tens of thousands of the 58,920 entries, and sorting
     // all of them to show sixty is where the time would go.
     var buckets = [[], [], [], [], [], []];
-    var total = 0;
+    var kinds = { element: 0, type: 0, attribute: 0 };
     for (var i = 0; i < state.searchEntries.length; i++) {
-      var rank = scoreEntry(state.searchEntries[i], query);
+      var entry = state.searchEntries[i];
+      var rank = scoreEntry(entry, query, asked.paths);
       if (rank === -1) continue;
-      buckets[rank].push(state.searchEntries[i]);
-      total += 1;
+      buckets[rank].push(entry);
+      kinds[entry.kind] += 1;
     }
 
+    // The prefix wins while it stands there: it is the more recent word from
+    // the reader, and it is visible in the field, which the chip alone is not.
+    var filter = asked.kind || state.searchFilter;
+    var room = shareOut(kinds, filter);
+    var total = filter === "all"
+      ? kinds.element + kinds.type + kinds.attribute
+      : kinds[filter];
+
+    // Still in rank order across the kinds, so an exact name comes first
+    // whatever kind it is; the quota only decides who is left out at the end.
     var shown = [];
     for (var b = 0; b < buckets.length && shown.length < SEARCH_LIMIT; b++) {
-      buckets[b].sort(function (x, y) {
-        if (x.label.length !== y.label.length) return x.label.length - y.label.length;
-        return x.label < y.label ? -1 : x.label > y.label ? 1 : 0;
-      });
-      shown = shown.concat(buckets[b].slice(0, SEARCH_LIMIT - shown.length));
+      buckets[b].sort(asked.paths ? byPath : byLabel);
+      for (var k = 0; k < buckets[b].length && shown.length < SEARCH_LIMIT; k++) {
+        var candidate = buckets[b][k];
+        if (room[candidate.kind] <= 0) continue;
+        room[candidate.kind] -= 1;
+        shown.push(candidate);
+      }
     }
-    return { shown: shown, total: total };
+    return { shown: shown, total: total, kinds: kinds, filter: filter,
+             fromPrefix: asked.kind !== null };
   }
 
-  function renderResults(result, query) {
+  // The counts the quota is computed from, made visible. Two readers are
+  // served by the same row: one sees that 55 types exist before clicking, the
+  // other narrows to them once and stays there.
+  function renderFilters(result, apply) {
+    var kinds = result.kinds;
+    var row = element("div", "cd-filters");
+    row.setAttribute("role", "group");
+    row.setAttribute("aria-label", "Narrow the results");
+    var all = kinds.element + kinds.type + kinds.attribute;
+    var choices = [["all", "All", all]];
+    KINDS.forEach(function (kind) {
+      choices.push([kind, KIND_LABEL[kind], kinds[kind]]);
+    });
+    choices.forEach(function (choice) {
+      var chosen = result.filter === choice[0];
+      var chip = element("button", "cd-filter", choice[1] + " ");
+      chip.type = "button";
+      chip.appendChild(element("span", "cd-filter-count", String(choice[2])));
+      chip.setAttribute("aria-pressed", chosen ? "true" : "false");
+      chip.tabIndex = chosen ? 0 : -1;
+      chip.disabled = choice[2] === 0 && !chosen;
+      chip.addEventListener("click", function () { apply(choice[0]); });
+      row.appendChild(chip);
+    });
+    // One tab stop for the row; the arrow keys move inside it, as on the tabs.
+    row.addEventListener("keydown", function (event) {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      var step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+      if (!step) return;
+      var chips = row.querySelectorAll(".cd-filter");
+      for (var i = 0; i < chips.length; i++) {
+        if (chips[i] !== document.activeElement) continue;
+        for (var j = i + step; j >= 0 && j < chips.length; j += step) {
+          if (chips[j].disabled) continue;
+          chips[j].focus();
+          chips[j].click();
+          break;
+        }
+        event.preventDefault();
+        return;
+      }
+    });
+    return row;
+  }
+
+  function renderResults(result, query, apply) {
     var panel = document.getElementById("cd-results");
     var count = document.getElementById("cd-search-count");
     panel.textContent = "";
+    panel.appendChild(renderFilters(result, apply));
+    // Said only to the reader who has just shown they want one kind, and only
+    // until they take the shortcut: with the prefix in the field it is gone.
+    if (result.filter !== "all" && !result.fromPrefix) {
+      var note = element("p", "cd-filter-note", "same as typing ");
+      note.appendChild(element("code", null, result.filter + ":"));
+      note.appendChild(document.createTextNode(" in the field"));
+      panel.appendChild(note);
+    }
 
     if (!result.total) {
       count.textContent = "no matches";
-      panel.appendChild(element("p", "cd-empty", "Nothing matches " + query + "."));
+      panel.appendChild(element("p", "cd-empty",
+        state.searchFilter === "all"
+          ? "Nothing matches " + query + "."
+          : "Nothing of that kind matches " + query + "."));
       return;
     }
 
@@ -1442,6 +1602,9 @@
 
   function renderResult(entry) {
     var row = element("button", "cd-result");
+    // Named on the row: the quota above decides how many of each kind are
+    // here, and nothing else in the markup says which one a row is.
+    row.setAttribute("data-kind", entry.kind);
     var label = element("span", "cd-result-label", entry.label);
     if (entry.kind === "type") label.className += " cd-result-type";
     row.appendChild(label);
@@ -1601,18 +1764,29 @@
     if (!field) return;
     var timer = null;
 
+    function run() {
+      var hits = search(field.value);
+      if (hits === null) {
+        showPane("tree");
+        document.getElementById("cd-search-count").textContent = "";
+        return;
+      }
+      renderResults(hits, parseQuery(field.value).text, apply);
+      showPane("results");
+    }
+
+    // A chip and a prefix are the same switch, so choosing with one clears the
+    // other: a field reading `type:` under a pressed "All" would be a lie.
+    function apply(kind) {
+      state.searchFilter = kind;
+      var stripped = withoutPrefix(field.value);
+      if (stripped !== field.value) field.value = stripped;
+      run();
+    }
+
     field.addEventListener("input", function () {
       window.clearTimeout(timer);
-      timer = window.setTimeout(function () {
-        var hits = search(field.value);
-        if (hits === null) {
-          showPane("tree");
-          document.getElementById("cd-search-count").textContent = "";
-          return;
-        }
-        renderResults(hits, field.value.trim());
-        showPane("results");
-      }, SEARCH_DELAY);
+      timer = window.setTimeout(run, SEARCH_DELAY);
     });
 
     field.addEventListener("keydown", function (event) {
@@ -1625,9 +1799,8 @@
         }
       }
       if (event.key === "Enter") {
-        var first = document.getElementById("cd-results").children[0];
-        var button = first && first.children && first.children[0];
-        if (button && button.click) button.click();
+        var top = document.getElementById("cd-results").querySelector(".cd-result");
+        if (top && top.click) top.click();
       }
     });
   }

@@ -452,6 +452,42 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-search input:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
 .cd-search-count { color: var(--ink-soft); font-size: var(--step-0); white-space: nowrap; }
 
+/* The counts the quota is computed from, made visible: what the reader can see
+   here is that the other kinds exist at all. Set like the tab strip above it,
+   because it does the same job one level down. */
+.cd-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0 0 0.6rem;
+}
+.cd-filter {
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: none;
+  font: inherit;
+  font-size: var(--step-0);
+  color: var(--ink-soft);
+  padding: 0.1rem 0.55rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cd-filter:hover:not(:disabled) { color: var(--ink); border-color: var(--rule-strong); }
+.cd-filter[aria-pressed="true"] {
+  color: var(--ink);
+  border-color: var(--ink);
+  font-weight: 600;
+}
+.cd-filter:disabled { opacity: 0.45; cursor: default; }
+.cd-filter-count { font-variant-numeric: tabular-nums; }
+/* Shown to whoever has just narrowed with a chip, and only until they take the
+   shortcut it names — with the prefix in the field the line is not drawn. */
+.cd-filter-note {
+  margin: -0.3rem 0 0.6rem;
+  color: var(--ink-soft);
+  font-size: var(--step-0);
+}
+
 .cd-result-list { display: flex; flex-direction: column; }
 .cd-result {
   display: flex;

@@ -45,6 +45,26 @@
 
 
 
+- search: decide whether the per-kind quota, the filter chips and the query
+  prefixes stay. If they do, they deserve an ADR next to 0009, and F13 in the
+  specification should say that ranking decides the order while the quota
+  decides who is cut off at sixty. Not written down as a decision yet because
+  it is on trial.
+
+- search: the prefixes `type:`, `element:`, `attribute:`, a leading `@` and a
+  slash for a path have two teaching surfaces — the line under the chips, which
+  appears only to a reader who has just narrowed by hand, and the field's
+  `title`. Neither is strong. If the syntax is to stay, it wants a proper place
+  in the `?` panel, which today is about the tree's keys alone.
+
+- search: the corpus is 91 % repetition — 53,692 element entries are 2,224
+  distinct names (`x` alone is 5,280 of them), 4,022 attribute entries are 23
+  distinct names. One entry per name, with its places listed the way "Used by"
+  lists them, would make the ranking meaningful rather than propped up by a
+  quota. It costs a click on the way into the tree, which is the part of the
+  quick search that works today, so it is a separate decision.
+
+
 ### Closed
 
 Written up with numbers in `planning/sandcastle-comparison.md`, findings 1, 2,
