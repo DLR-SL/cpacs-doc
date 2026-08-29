@@ -153,6 +153,73 @@ def test_the_arrow_keys_walk_the_list(page):
     assert page.evaluate("return document.activeElement.textContent;") == "1. Overview"
 
 
+STRIP = """
+  var head = document.querySelector('#cd-results .cd-pane-head');
+  return {
+    resultsShown: !document.getElementById('cd-results').hidden,
+    docsShown: !document.getElementById('cd-docs').hidden,
+    treeShown: !document.getElementById('cd-tree').hidden,
+    tabsHidden: document.getElementById('cd-tabs').hidden,
+    title: head ? head.querySelector('.cd-pane-title').textContent : null,
+    back: head ? head.querySelector('.cd-pane-close').getAttribute('aria-label') : null,
+    marked: [document.getElementById('cd-tab-tree').getAttribute('aria-selected'),
+             document.getElementById('cd-tab-docs').getAttribute('aria-selected')],
+    stops: [document.getElementById('cd-tab-tree').tabIndex,
+            document.getElementById('cd-tab-docs').tabIndex]
+  };
+"""
+
+
+def search(page, text):
+    page.evaluate(
+        "var field = document.getElementById('cd-search');"
+        "field.value = '" + text + "';"
+        "field.dispatchEvent(new Event('input', {bubbles: true}));"
+        "return true;"
+    )
+    page.wait_for("return !document.getElementById('cd-results').hidden;", "the results")
+
+
+def test_the_results_take_the_strip_away_rather_than_unmarking_it(page):
+    """The strip names the two halves of the documentation, and the results are
+    neither. Standing above them it marked no tab at all and put both of its own
+    out of the tab order, which reads as a layer covering the tree rather than as
+    the swap it is. The results carry a head of their own instead."""
+    search(page, "he")
+    shown = page.evaluate(STRIP)
+    assert shown["resultsShown"] and shown["tabsHidden"]
+    assert shown["title"] == "Results"
+    # Exactly one marked tab and exactly one tab stop at every moment, so the
+    # strip is already right when it comes back.
+    assert shown["marked"] == ["true", "false"]
+    assert shown["stops"] == [0, -1]
+
+
+def test_the_head_and_the_empty_field_both_lead_back_to_the_half_the_reader_left(page):
+    """Not always the tree: whoever searched from the handbook is returned to
+    it, and the head says so before it is pressed."""
+    click(page, "#cd-tab-docs")
+    search(page, "he")
+    shown = page.evaluate(STRIP)
+    assert shown["back"] == "Close the results and go back to the handbook"
+    assert shown["marked"] == ["false", "true"]
+
+    page.evaluate("document.querySelector('#cd-results .cd-pane-close').click(); return true;")
+    back = page.evaluate(STRIP)
+    assert back["docsShown"] and not back["treeShown"] and not back["tabsHidden"]
+
+    # And the same for a field emptied rather than closed.
+    search(page, "he")
+    page.evaluate(
+        "var field = document.getElementById('cd-search');"
+        "field.value = 'h';"
+        "field.dispatchEvent(new Event('input', {bubbles: true}));"
+        "return true;"
+    )
+    page.wait_for("return document.getElementById('cd-results').hidden;", "the results to close")
+    assert page.evaluate(STRIP)["docsShown"]
+
+
 def test_a_schema_without_sections_shows_no_tabs(browser, tmp_path_factory):
     """One half is not a choice, and a strip naming only what is already on
     screen says nothing."""

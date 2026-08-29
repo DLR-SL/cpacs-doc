@@ -34,7 +34,8 @@
     usageOpen: false,     // whether "Used by" stands open, page-lifetime
     shownType: null,   // type displayed in place of the selected node's detail
     shownSection: null, // documentation section displayed in its place
-    tab: "tree"        // half of the left column the reader last chose
+    tab: "tree",       // half of the left column the reader last chose
+    tabs: false        // whether the strip has two halves to name at all
   };
 
   function parseLocation() {
@@ -1566,10 +1567,28 @@
     return row;
   }
 
+  // What the tab strip said while it stood here: which of the three occupants
+  // holds the slot. It also carries the way out, which was otherwise a key
+  // named in a hint the reader may have put away for good. The count is not
+  // repeated — it stands beside the field, two rows up.
+  function resultsHead() {
+    var head = element("div", "cd-pane-head");
+    head.appendChild(element("span", "cd-pane-title", "Results"));
+    var back = state.tab === "docs" ? "the handbook" : "the tree";
+    var close = element("button", "cd-pane-close", "\u00D7");
+    close.type = "button";
+    close.title = "Back to " + back;
+    close.setAttribute("aria-label", "Close the results and go back to " + back);
+    close.addEventListener("click", function () { closeSearch(true); });
+    head.appendChild(close);
+    return head;
+  }
+
   function renderResults(result, query, apply) {
     var panel = document.getElementById("cd-results");
     var count = document.getElementById("cd-search-count");
     panel.textContent = "";
+    panel.appendChild(resultsHead());
     panel.appendChild(renderFilters(result, apply));
     // Said only to the reader who has just shown they want one kind, and only
     // until they take the shortcut: with the prefix in the field it is gone.
@@ -1689,6 +1708,7 @@
     // No sections, no tabs: one half is not a choice, and a strip naming only
     // what is already on screen says nothing.
     if (!sections().length) return;
+    state.tabs = true;
     tabs.hidden = false;
 
     // Only now are the panes halves of something; until the tabs exist there
@@ -1741,10 +1761,16 @@
     document.getElementById("cd-results").hidden = name !== "results";
     document.getElementById("cd-docs").hidden = name !== "docs";
     if (name !== "results") state.tab = name;
-    // Search results are the third occupant of the slot and have no tab of
-    // their own: while they are up, neither half is the current one.
-    markTab("cd-tab-tree", name === "tree");
-    markTab("cd-tab-docs", name === "docs");
+    // The strip names the two halves of the documentation, and the results are
+    // neither. Left standing above them it marked no tab at all and put its
+    // own two out of the tab order, which read as a layer covering the tree
+    // rather than as the swap it is; the results carry a head of their own
+    // instead. The marks follow the half that is being returned to, so they
+    // are already right when the strip comes back.
+    var tabs = document.getElementById("cd-tabs");
+    if (tabs && state.tabs) tabs.hidden = name === "results";
+    markTab("cd-tab-tree", state.tab === "tree");
+    markTab("cd-tab-docs", state.tab === "docs");
   }
 
   function markTab(id, current) {
@@ -1767,7 +1793,7 @@
     function run() {
       var hits = search(field.value);
       if (hits === null) {
-        showPane("tree");
+        showPane(state.tab);
         document.getElementById("cd-search-count").textContent = "";
         return;
       }

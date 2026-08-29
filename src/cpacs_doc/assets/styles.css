@@ -598,6 +598,33 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   font-weight: 600;
   border-bottom-color: var(--ink);
 }
+/* The results are the third occupant of the slot and neither half of the
+   documentation, so the strip is taken away rather than left above them
+   marking nothing — which read as a layer covering the tree. This stands in
+   its place, on the same rule and at the same height, so the swap does not
+   move the list under the reader's eye. */
+.cd-pane-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 0 0 0.6rem;
+  padding: 0.15rem 0.1rem calc(0.4rem + 1px);
+  border-bottom: 1px solid var(--rule);
+}
+.cd-pane-title { font-size: var(--step-1); font-weight: 600; color: var(--ink); }
+.cd-pane-close {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: var(--step-2);
+  line-height: 1;
+  padding: 0 0.15rem;
+}
+.cd-pane-close:hover { color: var(--ink); }
+
 .cd-result.cd-selected { background: var(--field); }
 .cd-doc-index { line-height: 1.9; }
 
