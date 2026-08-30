@@ -158,7 +158,14 @@ def test_the_watcher_rebuilds_when_the_schema_changes(site):
             rebuilt.set()
 
     site.rebuild = observe
-    thread = threading.Thread(target=serve_module.watch, args=(site, stop, 0.02), daemon=True)
+    # The baseline is taken here, not in the thread: otherwise the write below
+    # can land before the thread is scheduled, and the change is then part of
+    # the state the watcher starts from.
+    thread = threading.Thread(
+        target=serve_module.watch,
+        args=(site, stop, 0.02, serve_module.stamps_of(site)),
+        daemon=True,
+    )
     thread.start()
     try:
         text = site.schema.read_text(encoding="utf-8")
@@ -169,6 +176,38 @@ def test_the_watcher_rebuilds_when_the_schema_changes(site):
         thread.join(timeout=5)
     assert b"A wing, changed." in site.model_bytes
 
+
+
+def test_a_change_made_before_the_watcher_runs_is_still_seen(site):
+    """The window between deciding to watch and the thread being scheduled is
+    not a hole: the baseline belongs to the caller. Taken inside the thread, a
+    save landing in that window is read as the state that was always there and
+    the change is never seen — windows-latest / 3.10 lost that race in CI."""
+    stamps = serve_module.stamps_of(site)
+    text = site.schema.read_text(encoding="utf-8")
+    site.schema.write_text(text.replace("A wing.", "A wing, changed."), encoding="utf-8")
+
+    stop = threading.Event()
+    rebuilt = threading.Event()
+    original = site.rebuild
+
+    def observe():
+        try:
+            return original()
+        finally:
+            rebuilt.set()
+
+    site.rebuild = observe
+    thread = threading.Thread(
+        target=serve_module.watch, args=(site, stop, 0.02, stamps), daemon=True
+    )
+    thread.start()
+    try:
+        assert rebuilt.wait(timeout=10)
+    finally:
+        stop.set()
+        thread.join(timeout=5)
+    assert b"A wing, changed." in site.model_bytes
 
 def test_a_browser_dropping_a_connection_is_not_an_error(site, capsys):
     """A cancelled image, a reload, a navigation away — from here they all look

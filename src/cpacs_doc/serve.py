@@ -199,8 +199,22 @@ class Site:
         return model.get("declarations", {}).get(tree.get("d"), {}).get("name", "")
 
 
-def watch(site: Site, stop: threading.Event, interval: float = WATCH_INTERVAL) -> None:
-    stamps = {path: _stamp(path) for path in site.watched}
+def stamps_of(site: Site) -> dict:
+    """What the watched files look like now.
+
+    The caller takes this before the watcher thread starts. Taken inside the
+    thread instead, the baseline belongs to the moment the thread happens to be
+    scheduled rather than the moment watching was asked for, and a save made in
+    between is read as the state that was always there — the change is then
+    never seen at all. windows-latest / 3.10 lost that race in CI.
+    """
+    return {path: _stamp(path) for path in site.watched}
+
+
+def watch(site: Site, stop: threading.Event, interval: float = WATCH_INTERVAL,
+          stamps: dict | None = None) -> None:
+    if stamps is None:
+        stamps = stamps_of(site)
     while not stop.wait(interval):
         for path in site.watched:
             current = _stamp(path)
@@ -390,7 +404,9 @@ def serve(schema: Path, media_path: Path | None, *, media_expected: bool,
 
     server = create_server(site, host, port)
     stop = threading.Event()
-    watcher = threading.Thread(target=watch, args=(site, stop), daemon=True)
+    watcher = threading.Thread(
+        target=watch, args=(site, stop, WATCH_INTERVAL, stamps_of(site)), daemon=True
+    )
     watcher.start()
 
     address = f"http://{host}:{server.server_address[1]}"
