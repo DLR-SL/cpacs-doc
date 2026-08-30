@@ -138,12 +138,15 @@ h1 {
   margin: 0 0 0.35rem;
 }
 
+/* The head's own line: where the element or the type stands, how often, what
+   may be written there. It ends where the prose begins, and the space says so
+   — a rule there only separated, which is what the space already does. The one
+   stroke left in the reading part of the page is the rail on the borrowed
+   block, and that one carries a meaning. */
 .cd-kind {
   color: var(--ink-soft);
   font-size: var(--step-1);
-  margin: 0 0 1.6rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--rule);
+  margin: 0 0 1.7rem;
 }
 .cd-kind code, .cd-kind a { font-size: inherit; }
 
@@ -890,6 +893,40 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-breadcrumb .cd-crumb { font-family: var(--face-code); text-transform: none; letter-spacing: 0; }
 
 .cd-elementdoc { font-size: var(--step-3); line-height: 1.5; }
+
+/* What the type lends the node, marked as borrowed. The words of the place
+   stay unmarked — that is what a reader came for, and marking both would make
+   a reader learn two signs where one will do. Measured on the real schema:
+   41,004 of the 54,552 nodes carry both kinds of text, 12,980 only the type's,
+   where a general sentence otherwise reads as a statement about this place.
+
+   The mark is on the attribution and not down the side of the block. A rail
+   the height of the text fences it, and fencing reads as quoting: on
+   `wingSectionType` and its like the type's words are the substance of the
+   page, four paragraphs and a figure, and they are not an aside to the one
+   line above them. So the prose keeps the margin and the measure the place's
+   own words have, and what is marked is where the owner changes.
+
+   The tick is decoration; the line beside it says the same thing in words. */
+.cd-borrowed { margin: 1.8rem 0 0; }
+.cd-borrowed-head {
+  position: relative;
+  padding-left: 0.9rem;
+  font-size: var(--step-0);
+  color: var(--ink-soft);
+  margin: 0 0 0.55rem;
+}
+.cd-borrowed-head::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.2em;
+  bottom: 0.2em;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--rule-strong);
+}
+.cd-borrowed-head code { font-size: inherit; }
 .cd-error { padding: 3rem 0; }
 .cd-empty { color: var(--ink-soft); }
 

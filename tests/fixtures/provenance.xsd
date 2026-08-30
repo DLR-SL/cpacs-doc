@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A schema where the two kinds of documentation meet the three ways they do
+     in the real one: a node with words of its own and a documented type
+     (41,004 of the 54,552 nodes), a node with none of its own (12,980), and a
+     node whose type has nothing to lend either (568). -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:ddue="http://ddue.schemas.microsoft.com/authoring/2003/5"
+            xmlns:sd="http://schemas.xsddoc.codeplex.com/schemaDoc/2009/3"
+            elementFormDefault="qualified">
+
+    <xsd:complexType name="pointType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <sd:schemaDoc>
+                    <ddue:summary>
+                        <ddue:para>Point with global reference.</ddue:para>
+                    </ddue:summary>
+                    <ddue:remarks>
+                        <ddue:para>The components are optional and default to zero.</ddue:para>
+                    </ddue:remarks>
+                </sd:schemaDoc>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="x" type="xsd:double" minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <!-- Nothing to lend: a type without documentation of its own. -->
+    <xsd:complexType name="plainType">
+        <xsd:sequence>
+            <xsd:element name="value" type="xsd:double" minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="rootType">
+        <xsd:sequence>
+            <xsd:element name="translation" type="pointType">
+                <xsd:annotation>
+                    <xsd:documentation>Translation of this component, in metres.</xsd:documentation>
+                </xsd:annotation>
+            </xsd:element>
+            <xsd:element name="scaling" type="pointType"/>
+            <xsd:element name="counter" type="plainType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:element name="cpacs" type="rootType"/>
+</xsd:schema>

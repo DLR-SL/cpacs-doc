@@ -2,7 +2,6 @@
 
 - Undo function of the browser only works affects the tree
 - xsd:types link to official description?
-- should it be a bit more visible what is element and what is type documentation?
 - the viewer's detail pane has the same defect one level down: the child table
   needs 1,110 px in a 718 px pane, so the pane scrolls sideways by 376 px and
   the heading of the type goes with it. Measured 2026-08-30 at 1280 × 900, the
@@ -24,10 +23,6 @@
   no longer the page's. Against it: the column set would differ between pages.
   For it: whole tables already do.
 
-- the detail panel's head carries two horizontal rules within 120 px — one
-  under the occurrence line, one under the type line — cutting a single head
-  into three blocks.
-
 - 41 of the 672 types that carry both begin their `remarks` with the `summary`
   verbatim (6 %, measured 2026-08-29), so the panel shows the same paragraph
   twice. The schema's own content, not a rendering fault; a finding for the
@@ -36,10 +31,37 @@
 - Child elements table
     - first "all" icon: a bit of space on the left
     - is type benefitial here? (open discussion)
-    - if no element description, but type summary, then use this? (open discussion; what can go wrong? Is the the wanted behavior?)
 
-- Attributes table:
-    - description: use type documentation, if element-description is missing (see above)
+- the description of an element or an attribute is its own, and stays empty
+  where the schema leaves it empty (decided 2026-08-30, for now). Sandcastle
+  fills it from the type — `useTypeDocumentation forUndocumentedElements` in
+  `Cpacs_doc_project.shfbproj:25`, on since the current build — and its pages
+  show what that is worth: `centerFuselageKeelbeamType/sheetElementUID` reads
+  `stringUIDBaseType`, `massDescription` reads "Mass description" and then the
+  whole remarks of `genericMassType`, examples included.
+
+  Measured 2026-08-30 on the real schema. 1,658 of 3,663 element declarations
+  carry no description of their own; the fallback would fire on 1,611 of them
+  and fill 837 (52 %) with the type's name spelled out and 297 more with a
+  sentence that only repeats the element's name. 477 rows — 13 % of all
+  declarations — would learn something. On 138 type pages the same borrowed
+  sentence would stand in 482 rows twice or more. For attributes it fires 14
+  times in 4,022 declarations, since attribute types are built-in ones that
+  carry no documentation, so `forUndocumentedAttributes` buys nothing here.
+
+  The way it would be worth having is the one A1 already prescribes — element
+  text and type text combined and the provenance marked, never a substitute —
+  with a guard against borrowing a sentence that only repeats the type's or the
+  element's name. Not built: the answer is better element documentation in the
+  schema, which is where the gap is.
+
+- **A schema finding, for the documentation work:** 393 of the 1,089 types with
+  a summary (36 %) have their own name as that summary — `stringUIDBaseType`
+  (`cpacs_schema.xsd:2081`), `doubleBaseType`, `genericCostType` and so on —
+  and all 393 carry real remarks underneath. The report says nothing about it
+  today and `documentedTypes: 1121` counts them as documented, so the coverage
+  figure is that much too kind. A finding of its own would put them on a list
+  worth working off.
 
 - Decide requirement D2: with the "Inherited from" column gone, nothing marks
   inherited attributes. Amend D2, or bring the mark back without a column.
@@ -153,6 +175,29 @@
 
 
 ### Closed
+
+**Whose words these are** (2026-08-30, `decisions/0015`). The element's text and
+the type's were set alike, with the `Type:` line as the only boundary. What
+belongs to the place now stays unmarked; what the type lends is opened by one
+line, `About the type <name>`, with a tick beside it — the prose itself keeps
+the margin, because on many nodes it is the substance of the panel and a rail
+down its side read as a quotation. Measured over all 54,552 nodes: 41,004 carry both kinds of text, 12,980 only
+the type's — where a general sentence read as a statement about this place — 387
+only their own, 181 neither.
+
+The `Type:` line is gone; the type is named where its words begin, and on the
+568 nodes whose type has nothing to lend the head names it instead. Both rules
+the head carried within 120 px go with it — the second one only separated,
+which the space already does — which was a ToDo of its own. Counted on the
+panel of `translation`: 50 strokes, of which the tables draw 48 and the rail 1.
+
+Three arrangements were drawn on real content and compared in a browser. The
+line without the rail is lighter and leaves the end of the borrowed block
+unmarked; the owner in the margin needs 52 rem and the detail pane is 718 px,
+so it would have folded above the text and been the first with extra lines.
+
+Held by `tests/test_viewer_provenance.py` on `fixtures/provenance.xsd`, a node
+in each of the three cases.
 
 **The table scrolls, not the page** (2026-08-30, `decisions/0014`). Every table
 on a type page stands in a container of its own — `div.cd-scroll` with

@@ -48,7 +48,7 @@ def test_a_node_whose_type_is_declared_inline_shows_it(page):
     assert panel["heading"] == "mode"
     # The base is what may be written there; the synthetic name says only where
     # the type was declared, which the breadcrumb has just said.
-    assert "Type: xsd:string" in panel["text"]
+    assert "type xsd:string" in panel["text"]
     assert "cpacsType/mode" not in panel["text"]
 
 
@@ -85,7 +85,7 @@ def test_the_constraints_on_a_value_reach_the_node(constrained):
     `phi` is bounded to 0…360 or that a NACA code is four digits."""
     panel = constrained.evaluate(PANEL)
     assert panel["heading"] == "ratio"
-    assert "Type: xsd:double" in panel["text"]
+    assert "type xsd:double" in panel["text"]
     assert "Value constraints" in panel["text"]
     # The cell holds the word and, clipped inside it, the reading of the word.
     assert [v.split("The value")[0] for v in panel["values"]] == [
@@ -158,14 +158,12 @@ def test_a_node_says_what_may_be_written_into_it(browser, base):
     browser.open(base + "/tree/cpacs/mass/")
     browser.wait_for(READY, "the tree")
     line = browser.evaluate(r"""
-      var lines = document.querySelectorAll('#cd-detail .cd-kind');
-      for (var i = 0; i < lines.length; i++) {
-        var text = lines[i].textContent.replace(/\s+/g, ' ').trim();
-        if (text.indexOf('Type:') === 0) return text;
-      }
-      return null;
+      var meta = document.querySelector('#cd-detail .cd-kind');
+      return meta ? meta.textContent.replace(/\s+/g, ' ').trim() : null;
     """)
-    assert line == "Type: measuredValueType · value xsd:double"
+    # The type stands on this line because `measuredValueType` has no words of
+    # its own to lend; where a type has them, its name heads those instead.
+    assert line.endswith("· type measuredValueType · value xsd:double"), line
 
 
 def test_a_row_says_what_sits_behind_the_type_link(browser, base):

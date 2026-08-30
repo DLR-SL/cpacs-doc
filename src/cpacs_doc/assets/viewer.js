@@ -746,6 +746,20 @@
     // declared default out, and the schema is what it exists to replace.
     var declared = declaredValue(decl);
     if (declared) meta.appendChild(element("span", null, " \u00B7 " + declared));
+    var type = decl.type ? state.model.types[decl.type] : null;
+    // The type is named where its own words begin, which is the head of
+    // the borrowed block below. Where it has no words to lend, that block
+    // does not appear and this line names it instead — otherwise the panel
+    // would name it nowhere. 568 of the 54,552 nodes are in that case.
+    if (decl.type && !typeProse(type)) {
+      meta.appendChild(document.createTextNode(" \u00B7 type "));
+      meta.appendChild(typeCell(decl.type));
+    }
+    var value = decl.type ? valueType(decl.type) : "";
+    if (value) {
+      meta.appendChild(document.createTextNode(" \u00B7 value "));
+      meta.appendChild(element("code", null, value));
+    }
     panel.appendChild(meta);
 
     if (decl.documentation && decl.documentation.text) {
@@ -753,19 +767,8 @@
     }
 
     if (decl.type) {
-      var line = element("p", "cd-kind");
-      line.appendChild(document.createTextNode("Type: "));
-      line.appendChild(typeCell(decl.type));
-      var value = valueType(decl.type);
-      if (value) {
-        line.appendChild(document.createTextNode(" \u00B7 value "));
-        line.appendChild(element("code", null, value));
-      }
-      panel.appendChild(line);
-    }
-
-    if (decl.type) {
-      appendTypeBody(panel, state.model.types[decl.type]);
+      appendBorrowedProse(panel, decl.type, type);
+      appendTypeTables(panel, type);
     }
 
     // Last, though the rule is about this element and everything above it
@@ -775,22 +778,53 @@
     appendIdentity(panel, decl);
   }
 
+  // Two kinds of words meet on a node's panel: what the schema says about
+  // this place, and what it says about the type standing there. They were
+  // set alike, so on the 41,004 nodes carrying both, nothing said which was
+  // which — and on the 12,980 carrying only the type's, a general sentence
+  // read as a statement about this place. What belongs to the place stays
+  // unmarked, being what the reader came for; what is borrowed says whose
+  // it is. The rail is decoration only: the attribution carries it in words.
+  function appendBorrowedProse(panel, typeName, type) {
+    if (!typeProse(type)) return;
+    var borrowed = element("section", "cd-borrowed");
+    var head = element("p", "cd-borrowed-head");
+    head.appendChild(document.createTextNode("About the type "));
+    head.appendChild(typeCell(typeName));
+    borrowed.appendChild(head);
+    appendTypeProse(borrowed, type);
+    panel.appendChild(borrowed);
+  }
+
+  function typeProse(type) {
+    var doc = type && type.documentation;
+    return !!(doc && (doc.summaryHtml || doc.remarksHtml));
+  }
+
+  function appendTypeProse(panel, type) {
+    if (!type || !type.documentation) return;
+    // The fragments were rendered once, by the generator. Inserting them
+    // here keeps one implementation of the ddue vocabulary.
+    if (type.documentation.summaryHtml) {
+      var summary = element("div", "cd-summary");
+      summary.innerHTML = withRoot(type.documentation.summaryHtml);
+      panel.appendChild(summary);
+    }
+    if (type.documentation.remarksHtml) {
+      var remarks = element("div", "cd-remarks");
+      remarks.innerHTML = withRoot(type.documentation.remarksHtml);
+      panel.appendChild(remarks);
+    }
+  }
+
+  // The type's own panel: all of it is the type's, so none of it is marked.
   function appendTypeBody(panel, type) {
+    appendTypeProse(panel, type);
+    appendTypeTables(panel, type);
+  }
+
+  function appendTypeTables(panel, type) {
       if (type) {
-        if (type.documentation) {
-          // The fragments were rendered once, by the generator. Inserting them
-          // here keeps one implementation of the ddue vocabulary.
-          if (type.documentation.summaryHtml) {
-            var summary = element("div", "cd-summary");
-            summary.innerHTML = withRoot(type.documentation.summaryHtml);
-            panel.appendChild(summary);
-          }
-          if (type.documentation.remarksHtml) {
-            var remarks = element("div", "cd-remarks");
-            remarks.innerHTML = withRoot(type.documentation.remarksHtml);
-            panel.appendChild(remarks);
-          }
-        }
         // The detail panel carries the same tables as the static type page.
         // Attributes appear nowhere else in the viewer, and repeating the
         // children costs little next to having to read them off the tree.
