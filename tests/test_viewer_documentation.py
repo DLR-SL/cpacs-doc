@@ -28,7 +28,10 @@ pytestmark = pytest.mark.skipif(
     BROWSER is None, reason="no Chrome or Edge on this machine"
 )
 
-READY = "return !!document.getElementById('cd-tab-search');"
+# The strip is in the static markup now, so its presence says nothing: what
+# these tests wait for is `setupTabs()`, which runs once the model has
+# arrived and is what unhides the Handbook tab on a schema with sections.
+READY = "return !document.getElementById('cd-tab-docs').hidden;"
 
 STATE = """
   var docs = document.getElementById('cd-docs');
