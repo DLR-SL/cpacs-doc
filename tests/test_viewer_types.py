@@ -48,7 +48,7 @@ def test_a_node_whose_type_is_declared_inline_shows_it(page):
     assert panel["heading"] == "mode"
     # The base is what may be written there; the synthetic name says only where
     # the type was declared, which the breadcrumb has just said.
-    assert "type xsd:string" in panel["text"]
+    assert "Value: text (xsd:string)" in panel["text"]
     assert "cpacsType/mode" not in panel["text"]
 
 
@@ -85,13 +85,28 @@ def test_the_constraints_on_a_value_reach_the_node(constrained):
     `phi` is bounded to 0…360 or that a NACA code is four digits."""
     panel = constrained.evaluate(PANEL)
     assert panel["heading"] == "ratio"
-    assert "type xsd:double" in panel["text"]
+    assert "Value: decimal number (xsd:double)" in panel["text"]
     assert "Value constraints" in panel["text"]
     # The cell holds the word and, clipped inside it, the reading of the word.
     assert [v.split("The value")[0] for v in panel["values"]] == [
         "minInclusive", "maxInclusive",
     ]
     assert "0" in panel["text"] and "1" in panel["text"]
+
+
+def test_the_value_line_says_what_narrows_it(constrained):
+    """1,199 of the real schema's 54,552 nodes have something behind the value —
+    a pattern, a range, a list of values. The table that spells it out sits
+    further down the same panel; the head says that there is one."""
+    lines = constrained.evaluate(r"""
+      var out = [];
+      document.querySelectorAll('#cd-detail .cd-kind').forEach(function (line) {
+        out.push(line.textContent.replace(/\s+/g, ' ').trim());
+      });
+      return out;
+    """)
+    # Named rather than counted, as the Constraints column names them.
+    assert lines[1] == "Value: decimal number (xsd:double) · minInclusive, maxInclusive", lines
 
 
 def test_the_schema_word_carries_its_reading(constrained):
@@ -113,7 +128,7 @@ def test_the_node_says_what_it_is_worth_unwritten(constrained):
     """`occurs` alone leaves the reader to guess what omitting the element
     means. The schema says it; nothing showed it before."""
     panel = constrained.evaluate(PANEL)
-    assert "Occurrence: [0..1] may appear at most once · default 0.5" in panel["text"]
+    assert "Occurrence: may appear at most once [0..1] · default 0.5" in panel["text"]
 
 
 def test_the_node_line_says_whether_it_is_a_rule(browser, base):
@@ -122,7 +137,7 @@ def test_the_node_line_says_whether_it_is_a_rule(browser, base):
     rather than scanned, so it can afford the sentence."""
     browser.open(base + "/tree/cpacs/header/")
     browser.wait_for(READY, "the tree")
-    assert "Occurrence: [1..1] must appear exactly once" in browser.evaluate(PANEL)["text"]
+    assert "Occurrence: must appear exactly once [1..1]" in browser.evaluate(PANEL)["text"]
 
 
 def test_a_column_headed_default_does_not_repeat_the_word(browser, base):
@@ -157,13 +172,62 @@ def test_a_node_says_what_may_be_written_into_it(browser, base):
     the rest."""
     browser.open(base + "/tree/cpacs/mass/")
     browser.wait_for(READY, "the tree")
-    line = browser.evaluate(r"""
-      var meta = document.querySelector('#cd-detail .cd-kind');
-      return meta ? meta.textContent.replace(/\s+/g, ' ').trim() : null;
+    lines = browser.evaluate(r"""
+      var out = [];
+      document.querySelectorAll('#cd-detail .cd-kind').forEach(function (line) {
+        out.push(line.textContent.replace(/\s+/g, ' ').trim());
+      });
+      return out;
     """)
-    # The type stands on this line because `measuredValueType` has no words of
-    # its own to lend; where a type has them, its name heads those instead.
-    assert line.endswith("· type measuredValueType · value xsd:double"), line
+    # The type stands on the first line because `measuredValueType` has no words
+    # of its own to lend; where a type has them, its name heads those instead.
+    # What may be written here is a second question and has a line of its own.
+    assert lines[0].endswith("· type measuredValueType"), lines
+    # The plain word leads, the schema's own name follows in brackets and
+    # carries the link.
+    assert lines[1] == "Value: decimal number (xsd:double)", lines
+
+
+def test_the_value_leads_to_what_that_datatype_allows(browser, base):
+    """Nothing here says what `xsd:double` permits, and looking it up meant
+    leaving the documentation. The reference answers it; the link opens beside
+    the viewer rather than in place of it."""
+    browser.open(base + "/tree/cpacs/mass/")
+    browser.wait_for(READY, "the tree")
+    link = browser.evaluate("""
+      var link = document.querySelector('#cd-detail .cd-builtin');
+      return link ? { href: link.href, target: link.target,
+                      rel: link.rel, text: link.textContent.trim() } : null;
+    """)
+    assert link is not None
+    assert link["text"] == "xsd:double"
+    assert link["href"].endswith("/datentypen-referenz/xs-double")
+    assert link["target"] == "_blank"
+    assert "noopener" in link["rel"]
+
+
+def test_a_name_that_leads_off_the_site_is_set_quieter_than_one_that_does_not(browser, base):
+    """A type name leads further into what is written here; a built-in name is
+    the last stop and leaves. `xsd:string` stands in 3,624 rows of the real
+    schema, so the difference is carried by ink rather than by a mark on every
+    one of them — and by the underline, which is what says "link" at all."""
+    browser.open(base + "/tree/cpacs/mass/")
+    browser.wait_for(READY, "the tree")
+    ink = browser.evaluate("""
+      var out = {};
+      var builtin = document.querySelector('#cd-detail .cd-builtin');
+      var inside = document.querySelector('#cd-detail .cd-kind .cd-crumb');
+      out.builtin = getComputedStyle(builtin).color;
+      out.builtinUnderline = getComputedStyle(builtin).textDecorationLine;
+      out.inside = inside ? getComputedStyle(inside).color : null;
+      out.soft = getComputedStyle(document.documentElement)
+        .getPropertyValue('--ink-soft').trim();
+      return out;
+    """)
+    assert ink["builtin"] != ink["inside"]
+    assert ink["builtinUnderline"] == "underline"
+    # The soft ink, not a colour of its own: one palette, two roles.
+    assert ink["soft"] in ("#5b6570", "#99a2ad")
 
 
 def test_a_row_says_what_sits_behind_the_type_link(browser, base):

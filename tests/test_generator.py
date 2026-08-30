@@ -83,11 +83,28 @@ def test_type_links_point_at_sibling_pages(model, tmp_path):
     assert 'href="../../baseType' not in html
 
 
-def test_builtin_types_are_not_linked(model, tmp_path):
+def test_a_builtin_type_has_no_page_here_and_points_at_its_reference(model, tmp_path):
+    """`xsd:ID` is not in the schema, so there is nothing to write a page from —
+    and a reader who wants to know what it allows had to leave the
+    documentation to find out. The reference is where that answer is."""
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
     assert "<code>xsd:ID</code>" in html
     assert 'href="../xsd:ID' not in html
+    assert generator.BUILTIN_REFERENCE + "id" in html
+    # It leaves the site, so it does not take the reader's place with it.
+    assert 'target="_blank"' in html
+
+
+def test_a_builtin_the_reference_does_not_document_stays_text(model, tmp_path):
+    """An address derived for it would be a guess, and a dead link is worse
+    than a word."""
+    model["types"]["wingType"]["attributes"][0]["type"] = "xsd:anySimpleType"
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert "<code>xsd:anySimpleType</code>" in html
+    assert "anysimpletype" not in html
+    assert generator.builtin_reference("xsd:anySimpleType") == ""
 
 
 def test_root_placeholder_is_resolved_against_page_depth(model, tmp_path):
@@ -388,7 +405,8 @@ def test_the_kind_line_names_the_value_where_the_base_does_not(model, tmp_path):
     model["types"]["wingType"]["contentType"] = "xsd:double"
     generator.generate(model, tmp_path)
     page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
-    assert "value <code>xsd:double</code>" in page
+    assert "<code>xsd:double</code>" in page
+    assert "value <a" in page and generator.BUILTIN_REFERENCE + "double" in page
 
 
 def test_the_kind_line_does_not_say_the_base_twice(model, tmp_path):

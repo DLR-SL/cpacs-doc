@@ -431,7 +431,9 @@ def _kind_line(entry) -> str:
     # `xsd:double`, and only the last of the three answers the question.
     content_type = entry.get("contentType")
     if content_type and content_type != base:
-        bits.append(f"value <code>{escape(content_type)}</code>")
+        bits.append("value " + _builtin_cell(content_type)
+                    if content_type.startswith("xsd:")
+                    else f"value <code>{escape(content_type)}</code>")
     compositor = entry.get("compositor")
     if compositor:
         bits.append(escape(compositor))
@@ -483,6 +485,49 @@ def _constraints_cell(type_name, types) -> str:
             f"{escape(holds)}</a>")
 
 
+# The built-in datatypes have no page here — they are not in the schema — and a
+# reader who has to look up what `xsd:IDREF` allows leaves the documentation to
+# do it. data2type carries a reference page for each of these 44, addressed by
+# the name in lower case (checked against its index on 2026-08-30). A name that
+# is not on the list is left as text: an address derived for it would be a
+# guess, and a dead link is worse than a word.
+BUILTIN_REFERENCE = (
+    "https://www.data2type.de/xml-xslt-xslfo/xml-schema/datentypen-referenz/xs-"
+)
+BUILTIN_DOCUMENTED = frozenset({
+    "anyURI", "base64Binary", "boolean", "byte", "date", "dateTime", "decimal",
+    "double", "duration", "ENTITIES", "ENTITY", "float", "gDay", "gMonth",
+    "gMonthDay", "gYear", "gYearMonth", "hexBinary", "ID", "IDREF", "IDREFS",
+    "int", "integer", "language", "long", "Name", "NCName", "negativeInteger",
+    "NMTOKEN", "NMTOKENS", "nonNegativeInteger", "nonPositiveInteger",
+    "normalizedString", "NOTATION", "positiveInteger", "QName", "short",
+    "string", "time", "token", "unsignedByte", "unsignedInt", "unsignedLong",
+    "unsignedShort",
+})
+
+
+def builtin_reference(type_name: str) -> str:
+    """The reference page for a built-in datatype, or "" where there is none."""
+    if not type_name or not type_name.startswith("xsd:"):
+        return ""
+    local = type_name[len("xsd:"):]
+    if local not in BUILTIN_DOCUMENTED:
+        return ""
+    return BUILTIN_REFERENCE + local.lower()
+
+
+def _builtin_cell(type_name: str) -> str:
+    """The name of a built-in datatype, linked to its reference where there is
+    one. It leaves the documentation, so it opens in a tab of its own rather
+    than taking the reader's place in the tree with it."""
+    href = builtin_reference(type_name)
+    name = f"<code>{escape(type_name or '')}</code>"
+    if not href:
+        return name
+    return (f'<a class="cd-builtin" href="{escape(href)}" target="_blank"'
+            f' rel="noopener noreferrer">{name}</a>')
+
+
 def _type_link(type_name: str, types: dict | None = None) -> str:
     """A link from one type page to another, or plain text for built-in types.
 
@@ -494,7 +539,7 @@ def _type_link(type_name: str, types: dict | None = None) -> str:
     that page is where the values are.
     """
     if not type_name or type_name.startswith("xsd:"):
-        return f"<code>{escape(type_name or '')}</code>"
+        return _builtin_cell(type_name)
     entry = (types or {}).get(type_name) or {}
     label = entry.get("base") or type_name if entry.get("anonymous") else type_name
     return (f'<a href="../{escape(slug(type_name))}/index.html">'

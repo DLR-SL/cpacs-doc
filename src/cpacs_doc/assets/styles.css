@@ -148,6 +148,11 @@ h1 {
   font-size: var(--step-1);
   margin: 0 0 1.7rem;
 }
+/* The lines of the head belong to each other, so they sit a line apart and the
+   air is under the block rather than between its parts. */
+.cd-head { margin-bottom: 1.7rem; }
+.cd-head .cd-kind { margin-bottom: 0.3rem; }
+.cd-head .cd-kind:last-child { margin-bottom: 0; }
 .cd-kind code, .cd-kind a { font-size: inherit; }
 
 h2 {
@@ -219,6 +224,21 @@ td code { white-space: nowrap; }
 .cd-scroll tr:last-child .cd-tip {
   top: auto;
   bottom: calc(100% + 0.4rem);
+}
+
+/* A built-in datatype is the last stop: its name leads out of the schema and
+   out of this site, while a type name next to it leads further into what is
+   written here. `xsd:string` alone stands in 3,624 rows, so the difference is
+   carried by ink rather than by a mark on every one of them — the underline
+   still says "link", and the pointer or the keyboard brings it up to a link's
+   own colour. */
+.cd-builtin {
+  color: var(--ink-soft);
+  text-decoration-color: var(--rule-strong);
+}
+.cd-builtin:hover, .cd-builtin:focus-visible {
+  color: var(--link);
+  text-decoration-color: currentColor;
 }
 
 .cd-inherited, .cd-fixed { color: var(--ink-soft); font-size: var(--step-0); }

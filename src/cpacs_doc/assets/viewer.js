@@ -737,30 +737,71 @@
     panel.appendChild(renderBreadcrumb());
     panel.appendChild(element("h1", null, decl.name || "?"));
 
+    // Plain words first, the schema's own notation behind them: the head is
+    // read rather than scanned, and the reader who needs the exact form finds
+    // it in the same line. Where a bound has no plain English — one that
+    // forbids the element, say — the line opens with the notation instead and
+    // states a fact rather than an invented phrase. The Occurrence column of
+    // the tables keeps the notation in front: there it is six characters wide
+    // on every row, so both parts line up in columns of their own.
     var meta = element("p", "cd-kind");
     meta.appendChild(document.createTextNode("Occurrence: "));
-    meta.appendChild(element("span", "cd-bounds", notation(decl)));
     var sentence = occurrenceSentence(decl);
-    if (sentence) meta.appendChild(document.createTextNode(" " + sentence));
+    if (sentence) meta.appendChild(document.createTextNode(sentence + " "));
+    meta.appendChild(element("span", "cd-bounds", notation(decl)));
     // Nowhere else would a reader learn it: the predecessor never wrote a
     // declared default out, and the schema is what it exists to replace.
     var declared = declaredValue(decl);
     if (declared) meta.appendChild(element("span", null, " \u00B7 " + declared));
     var type = decl.type ? state.model.types[decl.type] : null;
+    // What may be written here. Usually the value the type carries; for a
+    // type declared on the spot it is the base, since the synthetic name
+    // says only where the declaration stands, which the breadcrumb has just
+    // said.
+    var value = decl.type
+      ? (valueType(decl.type) || (type && type.anonymous ? typeLabel(decl.type) : ""))
+      : "";
     // The type is named where its own words begin, which is the head of
     // the borrowed block below. Where it has no words to lend, that block
     // does not appear and this line names it instead — otherwise the panel
-    // would name it nowhere. 568 of the 54,552 nodes are in that case.
-    if (decl.type && !typeProse(type)) {
+    // would name it nowhere. 568 of the 54,552 nodes are in that case, and
+    // the value line below is left to say it where it says it already.
+    if (decl.type && !typeProse(type) && typeLabel(decl.type) !== value) {
       meta.appendChild(document.createTextNode(" \u00B7 type "));
       meta.appendChild(typeCell(decl.type));
     }
-    var value = decl.type ? valueType(decl.type) : "";
+    // How often, and what may be written: two questions, a line each, and one
+    // block — the second was riding on the end of the first.
+    var head = element("div", "cd-head");
+    head.appendChild(meta);
     if (value) {
-      meta.appendChild(document.createTextNode(" \u00B7 value "));
-      meta.appendChild(element("code", null, value));
+      var line = element("p", "cd-kind");
+      line.appendChild(document.createTextNode("Value: "));
+      // A built-in content type leads out to what that datatype allows; the
+      // base of a type declared on the spot leads to that type's own page,
+      // where its values and its citable address are (0003). Both are written
+      // `xsd:...`, so which link it is has to be decided here rather than by
+      // the look of the name.
+      var name = valueType(decl.type) ? builtinCell(value) : typeCell(decl.type);
+      var word = VALUE_WORDS[value];
+      if (word) {
+        line.appendChild(document.createTextNode(word + " ("));
+        line.appendChild(name);
+        line.appendChild(document.createTextNode(")"));
+      } else {
+        line.appendChild(name);
+      }
+      // What narrows it, where anything does: 1,199 of the 54,552 nodes, and
+      // the table that spells the constraints out stands further down this
+      // same panel. Named rather than counted, as the Constraints column
+      // names them — `pattern` says more than "1 constraint".
+      var holds = holdings(decl.type);
+      if (holds) {
+        line.appendChild(document.createTextNode(" \u00B7 " + holds));
+      }
+      head.appendChild(line);
     }
-    panel.appendChild(meta);
+    panel.appendChild(head);
 
     if (decl.documentation && decl.documentation.text) {
       panel.appendChild(element("p", "cd-elementdoc", decl.documentation.text));
@@ -932,9 +973,56 @@
     return button;
   }
 
+  // The 44 built-in datatypes data2type documents, addressed by the name in
+  // lower case (checked against its index on 2026-08-30). A name that is not
+  // on the list stays text: an address derived for it would be a guess, and a
+  // dead link is worse than a word. The same list stands in generator.py,
+  // which writes the static pages.
+  // What an instance writes there, in words a reader of the schema need not
+  // have met before. Only for the datatypes a short phrase states exactly —
+  // and it is a gloss, never a replacement: the name stays, carries the link
+  // and is what a validator, TiXI or an error message will say. Nothing is
+  // written for a type whose plain word would promise more than it holds.
+  var VALUE_WORDS = {
+    "xsd:string": "text",
+    "xsd:double": "decimal number",
+    "xsd:integer": "whole number",
+    "xsd:boolean": "true or false",
+    "xsd:ID": "unique identifier",
+    "xsd:IDREF": "reference to an identifier",
+    "xsd:date": "date",
+    "xsd:time": "time of day",
+    "xsd:dateTime": "date and time"
+  };
+
+  var BUILTIN_REFERENCE =
+    "https://www.data2type.de/xml-xslt-xslfo/xml-schema/datentypen-referenz/xs-";
+  var BUILTIN_DOCUMENTED = ("anyURI base64Binary boolean byte date dateTime "
+    + "decimal double duration ENTITIES ENTITY float gDay gMonth gMonthDay "
+    + "gYear gYearMonth hexBinary ID IDREF IDREFS int integer language long "
+    + "Name NCName negativeInteger NMTOKEN NMTOKENS nonNegativeInteger "
+    + "nonPositiveInteger normalizedString NOTATION positiveInteger QName "
+    + "short string time token unsignedByte unsignedInt unsignedLong "
+    + "unsignedShort").split(" ");
+
+  // It leaves the documentation, so it opens in a tab of its own rather than
+  // taking the reader's place in the tree with it.
+  function builtinCell(typeName) {
+    var name = element("code", null, typeName || "");
+    var local = typeName && typeName.indexOf("xsd:") === 0
+      ? typeName.slice(4) : "";
+    if (!local || BUILTIN_DOCUMENTED.indexOf(local) === -1) return name;
+    var link = element("a", "cd-builtin");
+    link.href = BUILTIN_REFERENCE + local.toLowerCase();
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.appendChild(name);
+    return link;
+  }
+
   function typeCell(typeName) {
     if (!typeName || typeName.indexOf("xsd:") === 0) {
-      return element("code", null, typeName || "");
+      return builtinCell(typeName);
     }
     var type = state.model.types[typeName];
     if (!type) {
@@ -1139,7 +1227,7 @@
     }
     if (type.contentType && type.contentType !== type.base) {
       meta.appendChild(document.createTextNode(" \u00B7 value "));
-      meta.appendChild(element("code", null, type.contentType));
+      meta.appendChild(builtinCell(type.contentType));
     }
     if (type.compositor) {
       meta.appendChild(document.createTextNode(" \u00B7 " + type.compositor));

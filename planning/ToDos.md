@@ -1,7 +1,6 @@
 # Notes on ToDos, Bugs and Findings
 
 - Undo function of the browser only works affects the tree
-- xsd:types link to official description?
 - the viewer's detail pane has the same defect one level down: the child table
   needs 1,110 px in a 718 px pane, so the pane scrolls sideways by 376 px and
   the heading of the type goes with it. Measured 2026-08-30 at 1280 × 900, the
@@ -176,6 +175,59 @@
 
 ### Closed
 
+**What may be written here, in words** (2026-08-30). The value line names the
+datatype in plain words with the schema's own term behind it — `Value: decimal
+number (xsd:double)`, `reference to an identifier (xsd:IDREF)`, `text
+(xsd:string)`. It reaches 37,843 of the 54,552 nodes: 28,203 of them `double`,
+5,061 `string`, 4,230 `IDREF`, and those three are exactly the names that say
+nothing to a reader who has not met them.
+
+Nine words, for the datatypes a short phrase states exactly; the other 35 the
+reference documents get none, because a word that promises more than the type
+holds is worse than the name alone. The name stays in every case — it carries
+the link, and it is what a validator, TiXI or an error message will say.
+
+Where the type narrows the value, the line says so with the same vocabulary the
+Constraints column uses: `· minInclusive, maxInclusive`, `· 5 values`, `· one
+of 2 types`. Facets are named rather than counted, values counted rather than
+named. It reaches 1,199 nodes, and the table that spells it out stands further
+down the same panel.
+
+Two things that came out of building it. A type declared on the spot had its
+base named on the first line as `· type xsd:string`; it belongs on the value
+line, which is where the question is answered — with the difference that this
+name leads to that type's own page and its citable address (0003), while a
+built-in content type leads out to the reference. Both are written `xsd:…`, so
+the panel decides which link it is rather than the reader guessing from the
+look. And the tables keep the notation in front (`[0..1] optional`): there it
+is six characters wide on every row, so both parts line up in columns of their
+own, which is worth more in a surface that is scanned.
+
+**A built-in datatype leads to what it allows** (2026-08-30). `xsd:string`,
+`xsd:ID`, `xsd:double` and the six others the schema uses have no page here —
+they are not in the schema — so a reader who wanted to know what `xsd:IDREF`
+permits had to leave the documentation to find out. They now link to the
+data2type reference, `…/datentypen-referenz/xs-<name in lower case>`, in a tab
+of their own so the tree keeps its place.
+
+They are set in the soft ink rather than the link colour: a type name leads
+further into what is written here, a built-in name is the last stop and leaves
+the site, and `xsd:string` alone stands in 3,624 rows — too many for a mark on
+each. Measured against the page: 5.9 to 1 in light, 6.8 in dark, against 6.5
+and 7.9 for a link that stays. The underline is what says "link", so nothing
+rests on the colour, and hovering or focusing brings it up to a link's own.
+
+The list of 44 names it documents is written out in `generator.py` and again in
+`viewer.js`, checked against its index on 2026-08-30. A name that is not on the
+list stays text: an address derived for it would be a guess, and a dead link is
+worse than a word — `xsd:anySimpleType` is the case that proves it, and a test
+holds it.
+
+**The value has a line of its own** (2026-08-30). `Occurrence: [0..1] may appear
+at most once · value xsd:string` answered two questions in one line, the second
+riding on the end of the first. They are two lines in one block now, a line
+apart, with the air under the block.
+
 **Whose words these are** (2026-08-30, `decisions/0015`). The element's text and
 the type's were set alike, with the `Type:` line as the only boundary. What
 belongs to the place now stays unmarked; what the type lends is opened by one
@@ -250,6 +302,14 @@ bounds, then the English for them.
   element, say). A future combination therefore degrades to a correct statement
   rather than to an invented phrase. The modal is what makes it a rule —
   `occurs 1` read as a count of what stands in a dataset.
+
+  **Turned round on 2026-08-30**: `Occurrence: may appear at most once [0..1]`.
+  The head is read, not scanned, and the reader who has never met `[0..1]`
+  should not have to step over it to reach the sentence; the one who wants the
+  exact form finds it in the same line. What does not change is which of the
+  two may go missing: with no plain English the line opens with the notation
+  and states a fact. The Value line below it reads the same way, and one head
+  with two grammars was the thing to avoid.
 * The Occurrence column: both on one line — `[0..1] optional`,
   `[1..1] required`, `[1..∞] one or more`, `[0..∞] any number`, and
   `2 or more`, `up to 2`, `1 to 2`, `exactly 3` for the 20 declarations that
