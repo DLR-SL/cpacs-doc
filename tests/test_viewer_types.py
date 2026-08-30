@@ -52,6 +52,24 @@ def test_a_node_whose_type_is_declared_inline_shows_it(page):
     assert "cpacsType/mode" not in panel["text"]
 
 
+def test_a_declaration_naming_a_builtin_outright_says_it_as_the_value(browser, base):
+    """`type="xsd:string"` on the declaration: there is no type in the schema to
+    have a page, so the type is the value and the head has no business naming it
+    twice. `cpacs/header/version` is one of the five in the real schema, and it
+    is among the first nodes anyone opens."""
+    browser.open(base + "/tree/cpacs/header/name/")
+    browser.wait_for(READY, "the tree")
+    lines = browser.evaluate(r"""
+      var out = [];
+      document.querySelectorAll('#cd-detail .cd-head .cd-kind').forEach(function (line) {
+        out.push(line.textContent.replace(/\s+/g, ' ').trim());
+      });
+      return out;
+    """)
+    assert lines[1] == "Value: text (xsd:string)", lines
+    assert "type xsd:string" not in lines[0], lines
+
+
 def test_the_values_of_that_type_are_reachable_from_the_node(page):
     panel = page.evaluate(PANEL)
     assert "Allowed values" in panel["text"]
@@ -201,7 +219,7 @@ def test_the_value_leads_to_what_that_datatype_allows(browser, base):
     """)
     assert link is not None
     assert link["text"] == "xsd:double"
-    assert link["href"].endswith("/datentypen-referenz/xs-double")
+    assert link["href"].endswith("/t-xsd_double.html")
     assert link["target"] == "_blank"
     assert "noopener" in link["rel"]
 

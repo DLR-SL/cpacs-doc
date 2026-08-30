@@ -91,20 +91,23 @@ def test_a_builtin_type_has_no_page_here_and_points_at_its_reference(model, tmp_
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
     assert "<code>xsd:ID</code>" in html
     assert 'href="../xsd:ID' not in html
-    assert generator.BUILTIN_REFERENCE + "id" in html
+    assert generator.BUILTIN_REFERENCE + "ID.html" in html
     # It leaves the site, so it does not take the reader's place with it.
     assert 'target="_blank"' in html
 
 
-def test_a_builtin_the_reference_does_not_document_stays_text(model, tmp_path):
-    """An address derived for it would be a guess, and a dead link is worse
-    than a word."""
-    model["types"]["wingType"]["attributes"][0]["type"] = "xsd:anySimpleType"
+def test_a_name_that_is_not_a_builtin_stays_text(model, tmp_path):
+    """The reference documents the built-in types of XSD 1.0 and no more. An
+    address derived for anything else would be a guess, and a dead link is
+    worse than a word."""
+    model["types"]["wingType"]["attributes"][0]["type"] = "xsd:notADatatype"
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
-    assert "<code>xsd:anySimpleType</code>" in html
-    assert "anysimpletype" not in html
-    assert generator.builtin_reference("xsd:anySimpleType") == ""
+    assert "<code>xsd:notADatatype</code>" in html
+    assert "notADatatype.html" not in html
+    assert generator.builtin_reference("xsd:notADatatype") == ""
+    # The ones it does document keep their capitals in the address.
+    assert generator.builtin_reference("xsd:dateTime").endswith("t-xsd_dateTime.html")
 
 
 def test_root_placeholder_is_resolved_against_page_depth(model, tmp_path):
@@ -406,7 +409,7 @@ def test_the_kind_line_names_the_value_where_the_base_does_not(model, tmp_path):
     generator.generate(model, tmp_path)
     page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
     assert "<code>xsd:double</code>" in page
-    assert "value <a" in page and generator.BUILTIN_REFERENCE + "double" in page
+    assert "value <a" in page and generator.BUILTIN_REFERENCE + "double.html" in page
 
 
 def test_the_kind_line_does_not_say_the_base_twice(model, tmp_path):

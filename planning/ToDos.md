@@ -206,9 +206,17 @@ own, which is worth more in a surface that is scanned.
 **A built-in datatype leads to what it allows** (2026-08-30). `xsd:string`,
 `xsd:ID`, `xsd:double` and the six others the schema uses have no page here —
 they are not in the schema — so a reader who wanted to know what `xsd:IDREF`
-permits had to leave the documentation to find out. They now link to the
-data2type reference, `…/datentypen-referenz/xs-<name in lower case>`, in a tab
-of their own so the tree keeps its place.
+permits had to leave the documentation to find out. They now link to Priscilla
+Walmsley's XML Schema 1.0 reference at datypic,
+`https://www.datypic.com/sc/xsd/t-xsd_<name>.html`, in a tab of their own so
+the tree keeps its place.
+
+data2type was where this pointed first and was dropped the same day: it is a
+German site, and this documentation is written in English. The two English
+candidates were the W3C recommendation — normative, permanent, and written as
+specification prose — and datypic, which explains each type with values that
+are valid and values that are not. The link exists for the reader who does not
+know the type, so it goes to the one that answers that reader.
 
 They are set in the soft ink rather than the link colour: a type name leads
 further into what is written here, a built-in name is the last stop and leaves
@@ -217,11 +225,11 @@ each. Measured against the page: 5.9 to 1 in light, 6.8 in dark, against 6.5
 and 7.9 for a link that stays. The underline is what says "link", so nothing
 rests on the colour, and hovering or focusing brings it up to a link's own.
 
-The list of 44 names it documents is written out in `generator.py` and again in
-`viewer.js`, checked against its index on 2026-08-30. A name that is not on the
-list stays text: an address derived for it would be a guess, and a dead link is
-worse than a word — `xsd:anySimpleType` is the case that proves it, and a test
-holds it.
+The 46 built-in names of XSD 1.0 are written out in `generator.py` and again in
+`viewer.js`; every one of them was requested on 2026-08-30 and answered. The
+name keeps its capitals in the address, as it does in the schema. A name that
+is not among them stays text: an address derived for it would be a guess, and a
+dead link is worse than a word — a test holds that too.
 
 **The value has a line of its own** (2026-08-30). `Occurrence: [0..1] may appear
 at most once · value xsd:string` answered two questions in one line, the second

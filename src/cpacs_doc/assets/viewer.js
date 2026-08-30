@@ -758,8 +758,13 @@
     // type declared on the spot it is the base, since the synthetic name
     // says only where the declaration stands, which the breadcrumb has just
     // said.
+    // Usually the value the type carries. For a type declared on the spot it
+    // is the base, since the synthetic name says only where the declaration
+    // stands. And where the declaration names a built-in outright — 5 nodes,
+    // `header/version` among them — the type is the value: there is no type in
+    // this schema to have a page, and the line below is where it belongs.
     var value = decl.type
-      ? (valueType(decl.type) || (type && type.anonymous ? typeLabel(decl.type) : ""))
+      ? (valueType(decl.type) || (!type || type.anonymous ? typeLabel(decl.type) : ""))
       : "";
     // The type is named where its own words begin, which is the head of
     // the borrowed block below. Where it has no words to lend, that block
@@ -973,11 +978,6 @@
     return button;
   }
 
-  // The 44 built-in datatypes data2type documents, addressed by the name in
-  // lower case (checked against its index on 2026-08-30). A name that is not
-  // on the list stays text: an address derived for it would be a guess, and a
-  // dead link is worse than a word. The same list stands in generator.py,
-  // which writes the static pages.
   // What an instance writes there, in words a reader of the schema need not
   // have met before. Only for the datatypes a short phrase states exactly —
   // and it is a gloss, never a replacement: the name stays, carries the link
@@ -995,15 +995,19 @@
     "xsd:dateTime": "date and time"
   };
 
-  var BUILTIN_REFERENCE =
-    "https://www.data2type.de/xml-xslt-xslfo/xml-schema/datentypen-referenz/xs-";
-  var BUILTIN_DOCUMENTED = ("anyURI base64Binary boolean byte date dateTime "
-    + "decimal double duration ENTITIES ENTITY float gDay gMonth gMonthDay "
-    + "gYear gYearMonth hexBinary ID IDREF IDREFS int integer language long "
-    + "Name NCName negativeInteger NMTOKEN NMTOKENS nonNegativeInteger "
-    + "nonPositiveInteger normalizedString NOTATION positiveInteger QName "
-    + "short string time token unsignedByte unsignedInt unsignedLong "
-    + "unsignedShort").split(" ");
+  // The built-in types of XSD 1.0, each checked to answer on 2026-08-30, with
+  // the name keeping its capitals in the address as it does in the schema. A
+  // name that is not among them stays text: an address derived for it would be
+  // a guess, and a dead link is worse than a word. The same list stands in
+  // generator.py, which writes the static pages.
+  var BUILTIN_REFERENCE = "https://www.datypic.com/sc/xsd/t-xsd_";
+  var BUILTIN_DOCUMENTED = ("anyType anySimpleType string boolean decimal float "
+    + "double duration dateTime time date gYearMonth gYear gMonthDay gDay "
+    + "gMonth hexBinary base64Binary anyURI QName NOTATION normalizedString "
+    + "token language NMTOKEN NMTOKENS Name NCName ID IDREF IDREFS ENTITY "
+    + "ENTITIES integer nonPositiveInteger negativeInteger long int short byte "
+    + "nonNegativeInteger unsignedLong unsignedInt unsignedShort unsignedByte "
+    + "positiveInteger").split(" ");
 
   // It leaves the documentation, so it opens in a tab of its own rather than
   // taking the reader's place in the tree with it.
@@ -1013,7 +1017,7 @@
       ? typeName.slice(4) : "";
     if (!local || BUILTIN_DOCUMENTED.indexOf(local) === -1) return name;
     var link = element("a", "cd-builtin");
-    link.href = BUILTIN_REFERENCE + local.toLowerCase();
+    link.href = BUILTIN_REFERENCE + local + ".html";
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.appendChild(name);

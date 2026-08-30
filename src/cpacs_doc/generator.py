@@ -487,22 +487,23 @@ def _constraints_cell(type_name, types) -> str:
 
 # The built-in datatypes have no page here — they are not in the schema — and a
 # reader who has to look up what `xsd:IDREF` allows leaves the documentation to
-# do it. data2type carries a reference page for each of these 44, addressed by
-# the name in lower case (checked against its index on 2026-08-30). A name that
-# is not on the list is left as text: an address derived for it would be a
-# guess, and a dead link is worse than a word.
-BUILTIN_REFERENCE = (
-    "https://www.data2type.de/xml-xslt-xslfo/xml-schema/datentypen-referenz/xs-"
-)
+# do it. The reference is Priscilla Walmsley's XML Schema 1.0 reference at
+# datypic, which is where this documentation's own language points: it explains
+# each type in prose, with values that are valid and values that are not.
+#
+# The 46 names below are the built-in types of XSD 1.0, and each was checked to
+# answer on 2026-08-30. A name that is not among them is left as text: an
+# address derived for it would be a guess, and a dead link is worse than a word.
+BUILTIN_REFERENCE = "https://www.datypic.com/sc/xsd/t-xsd_"
 BUILTIN_DOCUMENTED = frozenset({
-    "anyURI", "base64Binary", "boolean", "byte", "date", "dateTime", "decimal",
-    "double", "duration", "ENTITIES", "ENTITY", "float", "gDay", "gMonth",
-    "gMonthDay", "gYear", "gYearMonth", "hexBinary", "ID", "IDREF", "IDREFS",
-    "int", "integer", "language", "long", "Name", "NCName", "negativeInteger",
-    "NMTOKEN", "NMTOKENS", "nonNegativeInteger", "nonPositiveInteger",
-    "normalizedString", "NOTATION", "positiveInteger", "QName", "short",
-    "string", "time", "token", "unsignedByte", "unsignedInt", "unsignedLong",
-    "unsignedShort",
+    "anyType", "anySimpleType", "string", "boolean", "decimal", "float",
+    "double", "duration", "dateTime", "time", "date", "gYearMonth", "gYear",
+    "gMonthDay", "gDay", "gMonth", "hexBinary", "base64Binary", "anyURI",
+    "QName", "NOTATION", "normalizedString", "token", "language", "NMTOKEN",
+    "NMTOKENS", "Name", "NCName", "ID", "IDREF", "IDREFS", "ENTITY",
+    "ENTITIES", "integer", "nonPositiveInteger", "negativeInteger", "long",
+    "int", "short", "byte", "nonNegativeInteger", "unsignedLong",
+    "unsignedInt", "unsignedShort", "unsignedByte", "positiveInteger",
 })
 
 
@@ -513,7 +514,8 @@ def builtin_reference(type_name: str) -> str:
     local = type_name[len("xsd:"):]
     if local not in BUILTIN_DOCUMENTED:
         return ""
-    return BUILTIN_REFERENCE + local.lower()
+    # The name keeps its capitals in the address, as it does in the schema.
+    return BUILTIN_REFERENCE + local + ".html"
 
 
 def _builtin_cell(type_name: str) -> str:
