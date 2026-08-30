@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A schema built for one measurement: one name standing in four places and
+     one standing in two, so the grouping threshold has a case on each side of
+     it. Both names answer the same query, and nothing else in the schema
+     does — neither in a path nor in a description. -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+
+    <xsd:complexType name="boxType">
+        <xsd:sequence>
+            <xsd:element name="spot" type="xsd:string"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="pairType">
+        <xsd:sequence>
+            <xsd:element name="spotless" type="xsd:string"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="rootType">
+        <xsd:sequence>
+            <xsd:element name="alpha" type="boxType"/>
+            <xsd:element name="beta" type="boxType"/>
+            <xsd:element name="gamma" type="boxType"/>
+            <xsd:element name="delta" type="boxType"/>
+            <xsd:element name="one" type="pairType"/>
+            <xsd:element name="two" type="pairType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:element name="cpacs" type="rootType"/>
+</xsd:schema>

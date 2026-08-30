@@ -58,6 +58,77 @@
   quota. It costs a click on the way into the tree, which is the part of the
   quick search that works today, so it is a separate decision.
 
+  **On trial since 2026-08-30, not decided.** A name standing in more than one
+  place is one row saying how many, and opens its places under itself. A path
+  query is never grouped — a reader who names a place is asking for places.
+
+  A threshold was tried first and dropped. Measured in a browser on the real
+  schema, 1174 × 807, nine queries. Two figures per query: how many of the
+  sixty rows on screen have their path cut at the front, and how long the whole
+  list is.
+
+  | GROUP_MIN | `mass` | `segment` | `wing` | `uid` | `translation` |
+  | --- | --- | --- | --- | --- | --- |
+  | none | 45 cut / 8,515 | 41 / 21,496 | 38 / 8,218 | 39 / 15,187 | 60 / 6,886 |
+  | 2 | 3 / 286 | 12 / 506 | 7 / 611 | 6 / 653 | 1 / 13 |
+  | 3 | 28 / 358 | 18 / 543 | 27 / 722 | 19 / 724 | 1 / 13 |
+  | 5 | 40 / 398 | 36 / 743 | 38 / 917 | 30 / 889 | 15 / 23 |
+  | 10 | 40 / 404 | 39 / 1,117 | 37 / 1,523 | 30 / 984 | 33 / 39 |
+
+  Two things the numbers say. The threshold does not trade one good against
+  another: at 5 and above the truncation is back to where it was without
+  grouping at all, because a name standing in two, three or four places is the
+  common case and each of those keeps a path row. And the list gets *longer* as
+  the threshold rises — 286 rows at 2 against 404 at 10 for `mass` — since
+  fewer names are folded. So there is no threshold: a name folds from its
+  second place.
+
+- search: **a query that is not a path no longer reads paths** (2026-08-30,
+  with the grouping above). Every descendant of a `wingCutOut` carries the name
+  in its own path, so `wingCutOut` was answered with `eta`, `xsi` and the rest
+  of what stands under one — and grouping made it worse, because folding the
+  name matches into few rows left room for hundreds of them. Paths are read
+  where the query is a path, which is the form with a slash in it, and the `?`
+  strip already teaches that.
+
+  **This amends F12 and F13**, which have search read paths on every query.
+  Both want rewriting if this stays. What it costs, measured the same way, is
+  the reading of a query as a place-in-the-schema without saying so: `mass`
+  now answers 69 rows where it answered 8,515, `segment` 155 where it answered
+  21,496, and the count on the chips is a number a reader can act on.
+
+  | query | rows before | cut before | rows now | cut now |
+  | --- | --- | --- | --- | --- |
+  | `mass` | 8,515 | 45 of 60 | 69 | 9 of 60 |
+  | `segment` | 21,496 | 41 | 155 | 14 |
+  | `wing` | 8,218 | 38 | 168 | 9 |
+  | `uid` | 15,187 | 39 | 530 | 6 |
+  | `translation` | 6,886 | 60 | 10 | 1 |
+  | `wingCutOut` | — | — | 6 | 0 |
+
+  Open with it, and not answered by it: the chips now count rows rather than
+  places, so `mass` reads `Elements 327` where it read `Elements 8,484`. Each
+  group states its own count, so nothing is hidden, but the corpus size is no
+  longer on screen anywhere. `Enter` in the field opens the top hit; where that
+  is a group, it opens the group rather than going to the tree. The places
+  under a name are cut at 25, as "Used by" cuts at 25.
+
+  The two left edges — a folded name starts 1.3 rem in behind its `+`, a name
+  with one place at the margin — are wanted: the indent is the sign of which
+  rows open and which jump.
+
+- search: **the places inside a group are cut where they differ.** 0013 argued
+  that truncating a path at the front is safe because the tail tells two
+  occurrences apart. Between different names it does. Within one name it does
+  not, and that is the case grouping creates: the nine places of `wingCutOut`
+  read as three tails repeated three times, because what separates them is
+  `aircraft` against `rotorcraft` and `wings/wing` against
+  `rotorBlades/rotorBlade`, all of it in the part that is cut. Measured
+  2026-08-30 on the real schema: of the 1,279 names that fold, **895 (69 %)**
+  have at least two places that are indistinguishable in the 352 px a row
+  shows. The row has to cut somewhere else — in the middle, or at the segments
+  the places have in common — before the list of places is worth opening.
+
 
 ### Closed
 

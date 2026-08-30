@@ -664,14 +664,21 @@
     if (!panel) return;
     panel.addEventListener("keydown", function (event) {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
-      var current = document.activeElement;
-      if (!current || current.className.indexOf("cd-result") !== 0) return;
-      var next = null;
-      if (event.key === "ArrowDown") next = current.nextSibling;
-      else if (event.key === "ArrowUp") next = current.previousSibling;
-      else return;
-      if (next && next.focus) next.focus();
-      event.preventDefault();
+      var step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
+      if (!step) return;
+      // Asked of the panel rather than walked as siblings: a group's places
+      // stand one level in, and a group that is closed has none on screen.
+      var rows = panel.querySelectorAll(".cd-result, .cd-place");
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i] !== document.activeElement) continue;
+        for (var j = i + step; j >= 0 && j < rows.length; j += step) {
+          if (rows[j].offsetParent === null) continue;
+          rows[j].focus();
+          break;
+        }
+        event.preventDefault();
+        return;
+      }
     });
   }
 
@@ -1347,12 +1354,28 @@
    *
    * Built from the model that is already loaded, so there is no separate index
    * to ship or keep in step. Ranking follows F13: an exact name first, then a
-   * name that starts with the query, then any name containing it, then a path
-   * segment, then body text — because someone typing `wingUID` wants the
-   * element, not the twelve descriptions that mention it.
+   * name that starts with the query, then any name containing it, then body
+   * text — because someone typing `wingUID` wants the element, not the twelve
+   * descriptions that mention it. A path is read only where the query is a
+   * path, which is the one with a slash in it.
    */
   var SEARCH_LIMIT = 60;
   var SEARCH_DELAY = 120;
+
+  // On trial. 53,692 element entries are 2,224 distinct names, so a list of
+  // places answers `mass` with 613 rows of the same word and leaves the path,
+  // cut at the front in 352 px, to tell them apart. A name standing in more
+  // than one place is therefore one row that says how many and opens them.
+  // Measured over nine queries at every threshold from 2 to 10: raising it
+  // brings the truncation straight back, because a name in two, three or four
+  // places is the common case, and it makes the list longer rather than
+  // shorter. Two is the only threshold the numbers support.
+  var GROUP_MIN = 2;
+  // The cut "Used by" makes on the same kind of list, for the same reason.
+  var PLACE_LIMIT = 25;
+  // Expanding is spelled the same here as in the tree.
+  var MARK_CLOSED = "+";
+  var MARK_OPEN = "\u2212";
 
   // Of the 58,920 entries 53,692 are elements, so on a broad query the whole
   // list was elements: `segment` matched 21,496 entries and every one of the
@@ -1454,7 +1477,11 @@
     if (label.indexOf(query) !== -1) {
       return entry.kind === "attribute" ? RANK.attribute : RANK.name;
     }
-    if (entry.path && entry.path.toLowerCase().indexOf(query) !== -1) return RANK.path;
+    // Not the path: every descendant of a `wingCutOut` carries it in its own
+    // path, so `wingCutOut` answered with `eta`, `xsi` and the rest of what
+    // stands under one. A reader who means a path says so with a slash, which
+    // is the branch at the top and is what the `?` strip teaches. Amends F12
+    // and F13, which have search read paths on every query.
     if (entry.text && entry.text.toLowerCase().indexOf(query) !== -1) return RANK.text;
     return -1;
   }
@@ -1496,6 +1523,29 @@
     return a < b ? -1 : a > b ? 1 : 0;
   }
 
+  // One row per name where a name has places enough to be worth a click, and
+  // the places themselves where it has not. The group takes the best rank any
+  // of its places had, so a name that matched exactly does not fall in behind
+  // one that was only found in a path.
+  function foldNames(byName, buckets, kinds) {
+    Object.keys(byName).forEach(function (label) {
+      var group = byName[label];
+      if (group.places.length < GROUP_MIN) {
+        for (var i = 0; i < group.places.length; i++) {
+          buckets[group.ranks[i]].push(group.places[i]);
+          kinds.element += 1;
+        }
+        return;
+      }
+      // Left in the order they were collected in, which is the order the tree
+      // walks: a group's places all carry one name, so the shortest-path rule
+      // the ranking uses would only shuffle them out of the order the reader
+      // will meet them in.
+      buckets[group.rank].push(group);
+      kinds.element += 1;
+    });
+  }
+
   function search(raw) {
     var asked = parseQuery(raw);
     var query = asked.text;
@@ -1509,13 +1559,33 @@
     // all of them to show sixty is where the time would go.
     var buckets = [[], [], [], [], [], []];
     var kinds = { element: 0, type: 0, attribute: 0 };
+    // A query with a slash in it asks about places, so it is answered with
+    // places: there is nothing to fold away for a reader who named one.
+    var byName = asked.paths ? null : {};
     for (var i = 0; i < state.searchEntries.length; i++) {
       var entry = state.searchEntries[i];
       var rank = scoreEntry(entry, query, asked.paths);
       if (rank === -1) continue;
+      if (byName && entry.kind === "element") {
+        // The rank is kept per place, not only per name: where the name itself
+        // does not match, one place can be found in its path and another in
+        // its documentation, and the two do not rank alike.
+        var group = byName[entry.label];
+        if (!group) {
+          group = byName[entry.label] = {
+            kind: "element", label: entry.label, rank: rank,
+            places: [], ranks: []
+          };
+        }
+        if (rank < group.rank) group.rank = rank;
+        group.places.push(entry);
+        group.ranks.push(rank);
+        continue;
+      }
       buckets[rank].push(entry);
       kinds[entry.kind] += 1;
     }
+    if (byName) foldNames(byName, buckets, kinds);
 
     // The prefix wins while it stands there: it is the more recent word from
     // the reader, and it is visible in the field, which the chip alone is not.
@@ -1624,7 +1694,25 @@
     panel.appendChild(list);
   }
 
+  // The query is not spent by being used: the reader goes to the tree, and
+  // the Search tab still holds the field, the rows and the count. Sixty hits
+  // are worth going through one at a time.
+  function openEntry(entry) {
+    if (entry.kind === "element") {
+      // F14: results navigate into the tree, expanding the path. The stored
+      // path already excludes the root element, as `state.path` does.
+      showPane("tree");
+      select(entry.path ? entry.path.split("/") : []);
+      focusCursor();
+    } else {
+      showPane("tree");
+      showType(entry.typeName);
+      focusDetail();
+    }
+  }
+
   function renderResult(entry) {
+    if (entry.places) return renderGroup(entry);
     var row = element("button", "cd-result");
     // Named on the row: the quota above decides how many of each kind are
     // here, and nothing else in the markup says which one a row is.
@@ -1633,23 +1721,64 @@
     if (entry.kind === "type") label.className += " cd-result-type";
     row.appendChild(label);
     row.appendChild(element("span", "cd-result-detail", entry.detail));
-    row.addEventListener("click", function () {
-      // The query is not spent by being used: the reader goes to the tree,
-      // and the Search tab still holds the field, the rows and the count.
-      // Sixty hits are worth going through one at a time.
-      if (entry.kind === "element") {
-        // F14: results navigate into the tree, expanding the path. The stored
-        // path already excludes the root element, as `state.path` does.
-        showPane("tree");
-        select(entry.path ? entry.path.split("/") : []);
-        focusCursor();
-      } else {
-        showPane("tree");
-        showType(entry.typeName);
-        focusDetail();
-      }
-    });
+    row.addEventListener("click", function () { openEntry(entry); });
     return row;
+  }
+
+  // A name and the number of places it stands in. The places are built when
+  // the reader opens them and not before: `x` would otherwise put 5,448
+  // buttons into the document for a row nobody clicked.
+  function renderGroup(group) {
+    var box = element("div", "cd-fold");
+    var row = element("button", "cd-result");
+    row.setAttribute("data-kind", group.kind);
+    row.setAttribute("aria-expanded", "false");
+    var mark = element("span", "cd-fold-mark", MARK_CLOSED);
+    mark.setAttribute("aria-hidden", "true");
+    row.appendChild(mark);
+    row.appendChild(element("span", "cd-result-label", group.label));
+    row.appendChild(element("span", "cd-fold-count",
+      group.places.length + " places"));
+    var list = element("div", "cd-place-list");
+    list.hidden = true;
+    row.addEventListener("click", function () {
+      var open = row.getAttribute("aria-expanded") === "true";
+      if (!open && !list.childNodes.length) fillPlaces(list, group);
+      row.setAttribute("aria-expanded", open ? "false" : "true");
+      mark.textContent = open ? MARK_CLOSED : MARK_OPEN;
+      list.hidden = open;
+    });
+    box.appendChild(row);
+    box.appendChild(list);
+    return box;
+  }
+
+  // Every place in a group ends in the group's own name, so the row leaves it
+  // off: what tells two places apart is where they stand, and the name is on
+  // the row above them. A place directly under the root has nothing else.
+  function placeLabel(path) {
+    var cut = path.lastIndexOf("/");
+    return cut === -1 ? path : path.slice(0, cut);
+  }
+
+  function fillPlaces(list, group) {
+    var places = group.places.slice(0, PLACE_LIMIT);
+    for (var i = 0; i < places.length; i++) {
+      var item = element("button", "cd-place");
+      item.appendChild(element("span", "cd-result-detail",
+        placeLabel(places[i].path)));
+      item.addEventListener("click", opener(places[i]));
+      list.appendChild(item);
+    }
+    if (group.places.length > PLACE_LIMIT) {
+      list.appendChild(element("p", "cd-place-more",
+        "and " + (group.places.length - PLACE_LIMIT)
+        + " more \u2014 name a path to narrow them"));
+    }
+  }
+
+  function opener(place) {
+    return function () { openEntry(place); };
   }
 
   // The focus has to go somewhere once the results are gone. Whoever closes

@@ -499,7 +499,10 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 }
 
 .cd-result-list { display: flex; flex-direction: column; }
-.cd-result {
+.cd-fold { display: flex; flex-direction: column; }
+.cd-place-list { display: flex; flex-direction: column; }
+.cd-result,
+.cd-place {
   display: flex;
   align-items: baseline;
   gap: 0.6rem;
@@ -512,7 +515,32 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   cursor: pointer;
   border-radius: 3px;
 }
-.cd-result:hover, .cd-result:focus-visible { background: var(--field); }
+.cd-result:hover, .cd-result:focus-visible,
+.cd-place:hover, .cd-place:focus-visible { background: var(--field); }
+/* The tree's own column width, so a name that folds starts where a name that
+   does not would. Not `.cd-group-mark`: that one is the compositor's, over in
+   the child-elements table. */
+.cd-fold-mark {
+  flex: 0 0 1.3rem;
+  color: var(--ink-soft);
+  text-align: center;
+}
+.cd-fold-count {
+  color: var(--ink-soft);
+  font-size: var(--step-0);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* The places line up under the name they belong to, past the mark. */
+.cd-place { padding-left: 1.9rem; }
+/* A class that sets `display` outweighs the browser's own `[hidden]` rule, and
+   a list once opened then stayed on screen when it was closed again. */
+.cd-place-list[hidden] { display: none; }
+.cd-place-more {
+  margin: 0.1rem 0 0.4rem 1.9rem;
+  color: var(--ink-soft);
+  font-size: var(--step-0);
+}
 .cd-result-label { font-family: var(--face-code); font-size: var(--step-1); flex: 0 0 auto; }
 /* A search result is a name next to its path and holds one line. A chapter
    title is the whole entry and runs to nine words in CPACS 3.5.1, so it wraps
