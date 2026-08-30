@@ -219,10 +219,18 @@ class Browser:
         marker = profile / "DevToolsActivePort"
         deadline = time.monotonic() + self.timeout
         while time.monotonic() < deadline:
-            if marker.exists():
+            try:
                 lines = marker.read_text(encoding="utf-8").splitlines()
-                if len(lines) >= 2:
-                    return int(lines[0]), lines[1]
+            except OSError:
+                # Not written yet, and on Windows that is not only a missing
+                # file: the browser creates the marker and then writes it, and
+                # opening it in between is a sharing violation — errno 13, not
+                # errno 2. Both mean the same thing here, which is to wait.
+                # Every browser test on windows-latest / 3.13 errored in the
+                # session fixture on it once.
+                lines = []
+            if len(lines) >= 2:
+                return int(lines[0]), lines[1]
             if self._process and self._process.poll() is not None:
                 raise RuntimeError("the browser stopped before it was ready")
             time.sleep(0.05)
