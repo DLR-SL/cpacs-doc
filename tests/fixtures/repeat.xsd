@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- A schema built for one measurement: one name standing in four places and
-     one standing in two, so the grouping threshold has a case on each side of
-     it. Both names answer the same query, and nothing else in the schema
-     does — neither in a path nor in a description. -->
+<!-- A schema built for two measurements. One name stands in four places and
+     one in two, and both answer the same query while nothing else does —
+     neither in a path nor in a description. A third stands twice at the end of
+     a path too long for the column, which is what the places of a group are on
+     the real schema: 140 characters at the median, against about 45 that fit. -->
 <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
 
     <xsd:complexType name="boxType">
@@ -17,6 +18,24 @@
         </xsd:sequence>
     </xsd:complexType>
 
+    <xsd:complexType name="chainType">
+        <xsd:sequence>
+            <xsd:element name="firstLongSegmentName" type="chainInnerType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="chainInnerType">
+        <xsd:sequence>
+            <xsd:element name="secondLongSegmentName" type="chainLeafType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="chainLeafType">
+        <xsd:sequence>
+            <xsd:element name="dot" type="xsd:string"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
     <xsd:complexType name="rootType">
         <xsd:sequence>
             <xsd:element name="alpha" type="boxType"/>
@@ -25,6 +44,8 @@
             <xsd:element name="delta" type="boxType"/>
             <xsd:element name="one" type="pairType"/>
             <xsd:element name="two" type="pairType"/>
+            <xsd:element name="firstBranchOfTheTree" type="chainType"/>
+            <xsd:element name="secondBranchOfTheTree" type="chainType"/>
         </xsd:sequence>
     </xsd:complexType>
 

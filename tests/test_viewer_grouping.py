@@ -162,3 +162,34 @@ def test_a_path_query_is_answered_with_places(page):
     assert [row["label"] for row in found["rows"]] == ["spot"]
     assert found["rows"][0]["count"] is None
     assert found["rows"][0]["detail"] == "alpha/spot"
+
+
+def test_a_place_carries_its_whole_path(page):
+    """A result row cuts a path at the front because the tail tells two
+    occurrences apart. Inside a group that is exactly what fails: the places of
+    one name end alike and differ at the front. Measured on the real schema, of
+    the 1,279 names that fold, 895 had two places a 45-character row could not
+    tell apart; written out, 31 do, and those are the schema's own ambiguous
+    paths. So the row wraps instead."""
+    look_for(page, "dot")
+    click(page, ".cd-fold .cd-result")
+    shown = page.evaluate("""
+      var rows = document.querySelectorAll('.cd-place');
+      var texts = [], clipped = 0;
+      for (var i = 0; i < rows.length; i++) {
+        var path = rows[i].querySelector('.cd-place-path');
+        texts.push(path.textContent);
+        // Wider than the room it has is what truncation looks like, whichever
+        // end it happens at.
+        if (path.scrollWidth > path.clientWidth + 1) clipped += 1;
+      }
+      return {texts: texts, clipped: clipped,
+              lines: rows[0].getBoundingClientRect().height > 30};
+    """)
+    assert shown["texts"] == [
+        "firstBranchOfTheTree/firstLongSegmentName/secondLongSegmentName",
+        "secondBranchOfTheTree/firstLongSegmentName/secondLongSegmentName",
+    ]
+    assert shown["clipped"] == 0
+    # And it is the wrapping that makes room, not a wider column.
+    assert shown["lines"] is True

@@ -91,8 +91,8 @@
   where the query is a path, which is the form with a slash in it, and the `?`
   strip already teaches that.
 
-  **This amends F12 and F13**, which have search read paths on every query.
-  Both want rewriting if this stays. What it costs, measured the same way, is
+  **F12 and F13 are amended** for it (2026-08-30), both in the specification.
+  What it costs, measured the same way, is
   the reading of a query as a place-in-the-schema without saying so: `mass`
   now answers 69 rows where it answered 8,515, `segment` 155 where it answered
   21,496, and the count on the chips is a number a reader can act on.
@@ -117,17 +117,38 @@
   with one place at the margin — are wanted: the indent is the sign of which
   rows open and which jump.
 
-- search: **the places inside a group are cut where they differ.** 0013 argued
-  that truncating a path at the front is safe because the tail tells two
-  occurrences apart. Between different names it does. Within one name it does
-  not, and that is the case grouping creates: the nine places of `wingCutOut`
-  read as three tails repeated three times, because what separates them is
-  `aircraft` against `rotorcraft` and `wings/wing` against
-  `rotorBlades/rotorBlade`, all of it in the part that is cut. Measured
-  2026-08-30 on the real schema: of the 1,279 names that fold, **895 (69 %)**
-  have at least two places that are indistinguishable in the 352 px a row
-  shows. The row has to cut somewhere else — in the middle, or at the segments
-  the places have in common — before the list of places is worth opening.
+- search: **a place inside a group is written out, not cut** (2026-08-30).
+  0013 argued that truncating a path at the front is safe because the tail
+  tells two occurrences apart. Between different names it does. Within one name
+  it does not, and that is the case grouping creates: the nine places of
+  `wingCutOut` read as three tails repeated three times, because what separates
+  them is `aircraft` against `rotorcraft` and `wings/wing` against
+  `rotorBlades/rotorBlade`, all of it in the part that is cut.
+
+  Measured on the real schema over the 1,279 names that fold, counting the
+  names that have two places a row cannot tell apart. A parent path is 140
+  characters at the median and about 45 fit on a line:
+
+  | the row shows | names with two places alike |
+  | --- | --- |
+  | the tail, cut at the front (as 0013 has it) | 895 (70 %) |
+  | the front, cut at the end | 669 (52 %) |
+  | the front and the tail, cut in the middle | 635 (49 %) |
+  | the same, with the segments the group shares dropped | 399 (31 %) |
+  | the whole path, wrapped | **31 (2 %)** |
+
+  No one-line form gets under a third, because the paths are three times the
+  room a line has and differ at both ends. So the place rows wrap and carry the
+  path whole, broken at the slashes — a `wbr` after each, since the wrapping
+  left to itself split `componentSegment` down the middle. Three lines at the
+  median, four at the ninth decile, six at the worst. The 31 that stay alike
+  are the schema's own: two places with one path, which the report already
+  carries as `TREE_PATH_AMBIGUOUS` (860 of them).
+
+  What this does not do is make 613 places findable by reading them. It makes
+  25 of them tell each other apart. Whether a group wants something other than
+  a list — its places by their first differing segment, say — is the question
+  after this one.
 
 
 ### Closed

@@ -532,7 +532,16 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   white-space: nowrap;
 }
 /* The places line up under the name they belong to, past the mark. */
-.cd-place { padding-left: 1.9rem; }
+.cd-place { padding-left: 1.9rem; align-items: flex-start; }
+/* Not `.cd-result-detail`: that one is cut at the front, which is the one
+   thing that does not work inside a group. */
+.cd-place-path {
+  color: var(--ink-soft);
+  font-size: var(--step-0);
+  /* Only where one segment is wider than the column: the breaks that matter
+     are the `wbr` the row puts after each slash. */
+  overflow-wrap: break-word;
+}
 /* A class that sets `display` outweighs the browser's own `[hidden]` rule, and
    a list once opened then stayed on screen when it was closed again. */
 .cd-place-list[hidden] { display: none; }
