@@ -177,15 +177,6 @@
     return term;
   }
 
-  // The compact form the tree rows carry, where a word per row would crowd out
-  // the names. The pages and the panel spell it out; this is the index.
-  function cardinality(decl) {
-    var min = bound(decl.minOccurs);
-    var max = bound(decl.maxOccurs);
-    var upper = max === null ? "\u221E" : String(max);
-    return String(min) === upper ? String(min) : min + ".." + upper;
-  }
-
   // The bounds themselves, exact for any pair the schema can hold. Always
   // shown, and always first: a reader who knows the notation takes it in
   // faster than a sentence, and it is the part that cannot run out of words.
@@ -324,10 +315,12 @@
 
     var label = element("button", "cd-label");
     label.tabIndex = -1;
+    // The name and nothing else. Every row but the root carried its bounds —
+    // 33,724 of them `0..1` and 18,012 a bare `1`, so 95 % of the 54,551 said
+    // either "optional" or "exactly one" in a notation a newcomer meets here
+    // for the first time. It is the panel's business, where there is room to
+    // say it in words; the tree is a list of names to find things in.
     label.appendChild(element("span", "cd-name", decl.name || "?"));
-    if (depth > 0) {
-      label.appendChild(element("span", "cd-cardinality", cardinality(decl)));
-    }
     if (decl.alternative) {
       // The tree stays flat; the constraint rides on the node it applies to.
       var mark = element("span", "cd-alternative", "\u2442");

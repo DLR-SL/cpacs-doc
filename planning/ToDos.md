@@ -332,6 +332,14 @@ bounds, then the English for them.
   is one notation and not two. A word per row would crowd out the names in a
   list of 54,552.
 
+  **Taken out again on 2026-08-30.** Measured over the 54,551 rows that carried
+  it: 33,724 said `0..1` and 18,012 a bare `1`, so 95 % said "optional" or
+  "exactly one" — in a notation a newcomer meets for the first time here, on
+  every row, before having read a word of the documentation. The panel says it
+  for the row in hand, in words and exactly. What stays in the tree is the
+  weight and the muted colour that already told required from optional, which
+  answers the scanning question without teaching anything.
+
 Read as UX afterwards (2026-08-29), three things it still owes:
 
 1. **The hierarchy is inverted.** The bounds are set in `--ink-soft`, the word
@@ -354,8 +362,9 @@ Read as UX afterwards (2026-08-29), three things it still owes:
    `[0..∞]` opens with a zero, which is the answer. That is the case for
    carrying both, and the case against ever dropping the notation.
 
-Also open: whether the `1` on 1,527 tree rows earns its place. Nothing else
-marks the default case.
+Settled with it: the `1` on the tree rows does not earn its place — it was
+18,012 rows, not the 1,527 counted at the time, and the default case is what a
+reader assumes anyway.
 
 Watch: all bracket forms in this schema are six characters wide, which is why
 the words line up in a column of their own. A future `[12..∞]` would push one
