@@ -28,7 +28,12 @@ costs, measured.
 
 ## What is already done
 
-Shipped in `main` on 2026-08-29, no ADR written for it yet:
+**Settled on 2026-08-30 by `decisions/0013`:** search is a third permanent tab
+with the field inside it, the results head is gone, the chips stay, and the
+query forms moved into the `?` strip. Read that file first — it supersedes the
+recommendation below on everything except the truncation.
+
+Shipped in `main` on 2026-08-29, and superseded by 0013:
 
 * `src/cpacs_doc/assets/viewer.js` — `showPane()` takes the tab strip away
   while the results hold the slot, and the tab marks follow `state.tab` so
@@ -43,13 +48,11 @@ Shipped in `main` on 2026-08-29, no ADR written for it yet:
 * `tests/test_viewer_documentation.py` — two browser tests hold both
   properties.
 
-**Not done:** no decision record for that change; `ToDos.md` still lists the
-search items as open.
+**Not done:** the grouping question below. It is what the placement waits on.
 
 ## The recommendation on record
 
-1. Change nothing further about the position yet. The reported confusion is
-   answered; put it in front of readers before stacking a second change on it.
+1. Done, by 0013: the position is settled as far as the tree column goes.
 2. Decide the grouping question in `ToDos.md` first — one entry per name with
    its places listed, the way "Used by" lists them. 53,691 entries are 2,223
    distinct element names; `x` alone is 5,280 of them. A row that carries a
@@ -120,6 +123,11 @@ principle, say so and withdraw it rather than shipping the guess.
 ## Where to look
 
 * `planning/mockups/README.md` — the study, what is real in it and what is not.
+* `planning/mockups/search-tab.html` — the follow-on study (2026-08-30). It
+  takes option A as the premise rather than as a candidate, moves the field
+  into the tab, keeps the chips under it and puts the query forms into the
+  strip the `?` already opens. Its numbers confirm this one's: T1 is A to the
+  pixel, T2 is B, T3 is D.
 * `planning/ToDos.md` — the search items, including the grouping question.
 * `planning/decisions/0009-search-uses-the-model.md` — why there is no separate
   index, and what the per-rank buckets cost.

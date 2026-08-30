@@ -229,10 +229,11 @@ def test_an_arrow_key_reaches_the_tree_when_the_focus_is_nowhere(page):
     assert after["scrolled"] == 0
 
 
-def test_the_tree_is_a_step_or_two_from_the_search_field(page):
+def test_the_tree_is_a_step_or_two_from_the_strip_above_it(page):
     """What matters is that no row of the tree is a tab stop of its own; the
-    chrome above it is allowed a control."""
-    page.evaluate("document.getElementById('cd-search').focus(); return true;")
+    chrome above it is allowed a control. The field is no longer on that route:
+    it lives in the Search tab, and the tree is not on screen beside it."""
+    page.evaluate("document.getElementById('cd-tab-tree').focus(); return true;")
     for step in range(1, 4):
         page.press("Tab")
         if state(page)["focusIsCursor"]:

@@ -886,30 +886,36 @@ def router_html() -> str:
         f"<style>\n{asset('styles.css')}</style>\n"
         '<body class="cd-viewer">\n<div id="cd-app" class="cd-app">\n'
         '<div class="cd-column">\n'
-        '<div class="cd-search">'
-        # The syntax has one teaching surface of its own — the line under the
-        # chips, shown to whoever has just narrowed by hand — and this, which
-        # is where a reader looks for what a field accepts.
-        '<input id="cd-search" type="search" placeholder="Search elements, types, attributes"'
-        ' title="Narrow it: type: element: attribute: a leading @ for an attribute,'
-        ' or a path with a slash in it"'
-        ' autocomplete="off" spellcheck="false" aria-label="Search">'
-        '<span id="cd-search-count" class="cd-search-count"></span>'
-        f"{THEME_BUTTON}"
-        '<button id="cd-help" class="cd-help" type="button" aria-expanded="false"'
-        ' title="Keyboard shortcuts" aria-label="Keyboard shortcuts">?</button>'
-        "</div>\n"
-        # Two halves of the same documentation, named against each other: a
-        # lone label would have to say what it is not. Hidden until the script
-        # knows there is a second half to switch to.
-        '<div id="cd-tabs" class="cd-tabs" role="tablist" aria-label="Left column" hidden>'
+        # The strip is the column's chrome and never leaves: it says which of
+        # the column's places is showing, so none of them can read as a layer
+        # over another. Search is one of those places rather than a thing that
+        # happens to the tree, which is why the field lives inside it. The
+        # page's two round buttons keep the strip company at its far end, the
+        # row above having gone with the field.
+        '<div id="cd-tabs" class="cd-tabs" role="tablist" aria-label="Left column">'
         '<button id="cd-tab-tree" class="cd-tab" type="button" role="tab"'
         ' aria-controls="cd-tree" aria-selected="true">Tree</button>'
         '<button id="cd-tab-docs" class="cd-tab" type="button" role="tab"'
-        ' aria-controls="cd-docs" aria-selected="false" tabindex="-1">Handbook</button>'
+        ' aria-controls="cd-docs" aria-selected="false" tabindex="-1" hidden>Handbook</button>'
+        '<button id="cd-tab-search" class="cd-tab" type="button" role="tab"'
+        ' aria-controls="cd-search-panel" aria-selected="false" tabindex="-1">Search'
+        '<span id="cd-tab-count" class="cd-tab-count"></span></button>'
+        '<span class="cd-tabs-rest"></span>'
+        f"{THEME_BUTTON}"
+        '<button id="cd-help" class="cd-help" type="button" aria-expanded="false"'
+        ' title="Keys and query forms" aria-label="Keys and query forms">?</button>'
         "</div>\n"
         '<div id="cd-tree" class="cd-pane"></div>\n'
-        '<div id="cd-results" class="cd-pane" hidden></div>\n'
+        # The field is the tab's own content, and the rows scroll under it
+        # rather than with it.
+        '<div id="cd-search-panel" class="cd-pane cd-search-panel" hidden>'
+        '<div class="cd-search">'
+        '<input id="cd-search" type="search" placeholder="Search elements, types, attributes"'
+        ' autocomplete="off" spellcheck="false" aria-label="Search">'
+        '<span id="cd-search-count" class="cd-search-count"></span>'
+        "</div>"
+        '<div id="cd-results" class="cd-results"></div>'
+        "</div>\n"
         '<div id="cd-docs" class="cd-pane" hidden></div>\n'
         "</div>\n"
         '<div id="cd-splitter" class="cd-splitter" role="separator" aria-orientation="vertical"'

@@ -34,8 +34,7 @@
     usageOpen: false,     // whether "Used by" stands open, page-lifetime
     shownType: null,   // type displayed in place of the selected node's detail
     shownSection: null, // documentation section displayed in its place
-    tab: "tree",       // half of the left column the reader last chose
-    tabs: false        // whether the strip has two halves to name at all
+    tab: "tree"        // place in the left column the reader last chose
   };
 
   function parseLocation() {
@@ -506,14 +505,26 @@
    */
   var HINT_KEY = "cpacs-doc.keyboardHint";
   var hintIsAutomatic = false;
-  var HINT_ITEMS = [
-    [["\u2191", "\u2193"], "move"],
-    [["\u2192", "\u2190"], "open, close"],
-    [["Enter"], "details"],
-    [["/"], "search"],
-    // The way back. Enter without it strands a reader in the detail panel,
-    // and the same key closes the search results and this hint.
-    [["Esc"], "back to the tree"]
+  // Two lines, because the column holds two things a reader cannot read off
+  // the screen: the tree's keys, and what the field accepts. The forms were a
+  // `title` on the field and a note under the chips that only a reader who
+  // had already narrowed by hand ever saw; this is where someone looks.
+  var HINT_GROUPS = [
+    ["Tree", "key", [
+      [["\u2191", "\u2193"], "move"],
+      [["\u2192", "\u2190"], "open, close"],
+      [["Enter"], "details"],
+      [["/"], "search"],
+      // The way back. Enter without it strands a reader in the detail panel,
+      // and the same key clears the search and closes this hint.
+      [["Esc"], "back to the tree"]
+    ]],
+    ["Search", "form", [
+      [["type:"], "types only"],
+      [["element:"], "elements only"],
+      [["@"], "attributes, or attribute:"],
+      [["wings/wing"], "a slash searches paths"]
+    ]]
   ];
 
   function hintSeen() {
@@ -570,16 +581,24 @@
     var hint = element("div", "cd-hint");
     hint.id = "cd-hint";
     hint.setAttribute("role", "note");
-    hint.appendChild(element("span", "cd-hint-lead", "Keyboard"));
 
-    for (var i = 0; i < HINT_ITEMS.length; i++) {
-      var item = element("span", "cd-hint-item");
-      var keys = HINT_ITEMS[i][0];
-      for (var k = 0; k < keys.length; k++) {
-        item.appendChild(element("kbd", null, keys[k]));
+    for (var g = 0; g < HINT_GROUPS.length; g++) {
+      var group = HINT_GROUPS[g];
+      var line = element("div", "cd-hint-line");
+      line.appendChild(element("span", "cd-hint-lead", group[0]));
+      var entries = group[2];
+      for (var i = 0; i < entries.length; i++) {
+        var item = element("span", "cd-hint-item");
+        var written = entries[i][0];
+        for (var k = 0; k < written.length; k++) {
+          item.appendChild(group[1] === "key"
+            ? element("kbd", null, written[k])
+            : element("span", "cd-hint-form", written[k]));
+        }
+        item.appendChild(element("span", "cd-hint-what", entries[i][1]));
+        line.appendChild(item);
       }
-      item.appendChild(element("span", "cd-hint-what", HINT_ITEMS[i][1]));
-      hint.appendChild(item);
+      hint.appendChild(line);
     }
 
     var close = element("button", "cd-hint-close", "\u00D7");
@@ -587,7 +606,8 @@
     close.addEventListener("click", hideHint);
     hint.appendChild(close);
 
-    // Ahead of the tree, so it is read before what it describes.
+    // At the head of the column, under the strip: it describes whichever
+    // place is showing, and both of its lines are about one of them.
     tree.parentNode.insertBefore(hint, tree);
     hintIsAutomatic = automatic;
     markHelp(true);
@@ -604,15 +624,14 @@
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       if (isTextField(event.target)) return;
       if (event.key === "/") {
-        var field = document.getElementById("cd-search");
-        if (!field) return;
-        field.focus();
-        field.select();
+        if (!document.getElementById("cd-search")) return;
+        showPane("search");
+        focusSearch();
         event.preventDefault();
         return;
       }
       if (event.key === "Escape") {
-        if (!document.getElementById("cd-results").hidden) {
+        if (!document.getElementById("cd-search-panel").hidden) {
           closeSearch(true);
         } else if (document.getElementById("cd-hint")) {
           hideHint();
@@ -1567,28 +1586,12 @@
     return row;
   }
 
-  // What the tab strip said while it stood here: which of the three occupants
-  // holds the slot. It also carries the way out, which was otherwise a key
-  // named in a hint the reader may have put away for good. The count is not
-  // repeated — it stands beside the field, two rows up.
-  function resultsHead() {
-    var head = element("div", "cd-pane-head");
-    head.appendChild(element("span", "cd-pane-title", "Results"));
-    var back = state.tab === "docs" ? "the handbook" : "the tree";
-    var close = element("button", "cd-pane-close", "\u00D7");
-    close.type = "button";
-    close.title = "Back to " + back;
-    close.setAttribute("aria-label", "Close the results and go back to " + back);
-    close.addEventListener("click", function () { closeSearch(true); });
-    head.appendChild(close);
-    return head;
-  }
-
+  // The tab above names the region and marks it, so a head saying "Results"
+  // under it would be the second label for one thing.
   function renderResults(result, query, apply) {
     var panel = document.getElementById("cd-results");
     var count = document.getElementById("cd-search-count");
     panel.textContent = "";
-    panel.appendChild(resultsHead());
     panel.appendChild(renderFilters(result, apply));
     // Said only to the reader who has just shown they want one kind, and only
     // until they take the shortcut: with the prefix in the field it is gone.
@@ -1601,6 +1604,7 @@
 
     if (!result.total) {
       count.textContent = "no matches";
+      markSearchCount(0);
       panel.appendChild(element("p", "cd-empty",
         state.searchFilter === "all"
           ? "Nothing matches " + query + "."
@@ -1611,6 +1615,7 @@
     count.textContent = result.total > result.shown.length
       ? result.shown.length + " of " + result.total
       : String(result.total);
+    markSearchCount(result.shown.length);
 
     var list = element("div", "cd-result-list");
     for (var i = 0; i < result.shown.length; i++) {
@@ -1629,14 +1634,17 @@
     row.appendChild(label);
     row.appendChild(element("span", "cd-result-detail", entry.detail));
     row.addEventListener("click", function () {
+      // The query is not spent by being used: the reader goes to the tree,
+      // and the Search tab still holds the field, the rows and the count.
+      // Sixty hits are worth going through one at a time.
       if (entry.kind === "element") {
         // F14: results navigate into the tree, expanding the path. The stored
         // path already excludes the root element, as `state.path` does.
-        closeSearch(false);
+        showPane("tree");
         select(entry.path ? entry.path.split("/") : []);
         focusCursor();
       } else {
-        closeSearch(false);
+        showPane("tree");
         showType(entry.typeName);
         focusDetail();
       }
@@ -1702,38 +1710,59 @@
     if (panel && panel.scrollTo) panel.scrollTo(0, 0);
   }
 
-  function setupDocs() {
+  function setupTabs() {
     var tabs = document.getElementById("cd-tabs");
     if (!tabs) return;
-    // No sections, no tabs: one half is not a choice, and a strip naming only
-    // what is already on screen says nothing.
-    if (!sections().length) return;
-    state.tabs = true;
-    tabs.hidden = false;
-
-    // Only now are the panes halves of something; until the tabs exist there
-    // is nothing for a tab panel to belong to.
     label("cd-tree", "cd-tab-tree");
-    label("cd-docs", "cd-tab-docs");
+    label("cd-search-panel", "cd-tab-search");
+    // No sections, no third tab: one half is not a choice, and a tab naming
+    // an empty pane says nothing. Tree and Search are always both there.
+    if (sections().length) {
+      document.getElementById("cd-tab-docs").hidden = false;
+      label("cd-docs", "cd-tab-docs");
+    }
 
     tabs.addEventListener("click", function (event) {
-      var tab = event.target;
+      var tab = event.target.closest ? event.target.closest(".cd-tab") : event.target;
+      if (!tab) return;
       if (tab.id === "cd-tab-docs") { renderDocs(); showPane("docs"); }
       else if (tab.id === "cd-tab-tree") { showPane("tree"); focusCursor(); }
+      else if (tab.id === "cd-tab-search") { showPane("search"); focusSearch(); }
     });
 
-    // A tab strip is one tab stop; the arrow keys move within it.
+    // A tab strip is one tab stop; the arrow keys move within it, over the
+    // tabs that are actually there.
     tabs.addEventListener("keydown", function (event) {
       if (event.altKey || event.ctrlKey || event.metaKey) return;
-      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-      var other = document.getElementById(
-        document.activeElement.id === "cd-tab-docs" ? "cd-tab-tree" : "cd-tab-docs"
-      );
-      if (!other) return;
-      other.focus();
-      other.click();
-      event.preventDefault();
+      var step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+      if (!step) return;
+      var shown = [];
+      var all = tabs.querySelectorAll(".cd-tab");
+      for (var i = 0; i < all.length; i++) if (!all[i].hidden) shown.push(all[i]);
+      for (var j = 0; j < shown.length; j++) {
+        if (shown[j] !== document.activeElement) continue;
+        var next = shown[j + step];
+        if (!next) return;
+        next.focus();
+        next.click();
+        event.preventDefault();
+        return;
+      }
     });
+  }
+
+  function focusSearch() {
+    var field = document.getElementById("cd-search");
+    if (!field) return;
+    field.focus();
+    field.select();
+  }
+
+  // The tab carries what the field's count carries, for the moments the field
+  // is not on screen: the reader who opened a result and is now in the tree.
+  function markSearchCount(shown) {
+    var mark = document.getElementById("cd-tab-count");
+    if (mark) mark.textContent = shown ? String(shown) : "";
   }
 
   function label(paneId, tabId) {
@@ -1743,34 +1772,31 @@
     pane.setAttribute("aria-labelledby", tabId);
   }
 
+  // Escape gives the query up, which is the one thing that empties the tab:
+  // everything else leaves it standing, so a reader can come back to it.
   function closeSearch(returnFocus) {
     var field = document.getElementById("cd-search");
     if (field) field.value = "";
-    // Back to whichever half the reader was in, not always the tree.
-    showPane(state.tab);
+    document.getElementById("cd-results").textContent = "";
     document.getElementById("cd-search-count").textContent = "";
-    if (returnFocus && state.tab === "tree") focusCursor();
+    markSearchCount(0);
+    showPane("tree");
+    if (returnFocus) focusCursor();
   }
 
-  // One slot, three occupants: the tree, the search results, and the
-   // documentation. A second navigation area for eleven chapters would cost
-   // more room than the chapters are worth, and the reader is never reading
-   // two of the three at once.
+  // One slot, three places: the tree, the search, and the documentation. A
+  // second navigation area for eleven chapters would cost more room than the
+  // chapters are worth, and the reader is never reading two of the three at
+  // once. The strip stays put and marks the one that is showing — that is
+  // what tells a swap from a layer, and the results had neither before.
   function showPane(name) {
     document.getElementById("cd-tree").hidden = name !== "tree";
-    document.getElementById("cd-results").hidden = name !== "results";
+    document.getElementById("cd-search-panel").hidden = name !== "search";
     document.getElementById("cd-docs").hidden = name !== "docs";
-    if (name !== "results") state.tab = name;
-    // The strip names the two halves of the documentation, and the results are
-    // neither. Left standing above them it marked no tab at all and put its
-    // own two out of the tab order, which read as a layer covering the tree
-    // rather than as the swap it is; the results carry a head of their own
-    // instead. The marks follow the half that is being returned to, so they
-    // are already right when the strip comes back.
-    var tabs = document.getElementById("cd-tabs");
-    if (tabs && state.tabs) tabs.hidden = name === "results";
-    markTab("cd-tab-tree", state.tab === "tree");
-    markTab("cd-tab-docs", state.tab === "docs");
+    state.tab = name;
+    markTab("cd-tab-tree", name === "tree");
+    markTab("cd-tab-docs", name === "docs");
+    markTab("cd-tab-search", name === "search");
   }
 
   function markTab(id, current) {
@@ -1793,12 +1819,12 @@
     function run() {
       var hits = search(field.value);
       if (hits === null) {
-        showPane(state.tab);
+        document.getElementById("cd-results").textContent = "";
         document.getElementById("cd-search-count").textContent = "";
+        markSearchCount(0);
         return;
       }
       renderResults(hits, parseQuery(field.value).text, apply);
-      showPane("results");
     }
 
     // A chip and a prefix are the same switch, so choosing with one clears the
@@ -1874,7 +1900,7 @@
         expandAncestors(segments);
         renderTree();
         renderDetail();
-        setupDocs();
+        setupTabs();
         setupHint();
       })
       .catch(function (error) {

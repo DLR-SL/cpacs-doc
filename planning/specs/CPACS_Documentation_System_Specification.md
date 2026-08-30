@@ -460,7 +460,7 @@ The type page, which has no path context, shows only the declared cardinality to
 
 - **F12** Client-side full-text search across path, element, type and attribute names, and `summary` text. No backend. Unaffected by the deferral of the reference graph: searching for `wingUID` and getting the occurrences is full-text search, not derivation.
 - **F13** Ranking: exact element or type name before path segment before body text.
-- **F14** Results navigate directly into the tree, expanding the path.
+- **F14** Results navigate directly into the tree, expanding the path. Search is a place in the left column rather than something that happens to the tree: it holds a tab of its own, and opening a result leaves the query standing to come back to. See decision 0013.
 
 ### 7.4 Diagram export
 

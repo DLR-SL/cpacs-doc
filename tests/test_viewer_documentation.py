@@ -28,7 +28,7 @@ pytestmark = pytest.mark.skipif(
     BROWSER is None, reason="no Chrome or Edge on this machine"
 )
 
-READY = "return !document.getElementById('cd-tabs').hidden;"
+READY = "return !!document.getElementById('cd-tab-search');"
 
 STATE = """
   var docs = document.getElementById('cd-docs');
@@ -154,75 +154,132 @@ def test_the_arrow_keys_walk_the_list(page):
 
 
 STRIP = """
-  var head = document.querySelector('#cd-results .cd-pane-head');
+  var tabs = ['cd-tab-tree', 'cd-tab-docs', 'cd-tab-search'];
+  var shown = tabs.filter(function (id) { return !document.getElementById(id).hidden; });
   return {
-    resultsShown: !document.getElementById('cd-results').hidden,
+    searchShown: !document.getElementById('cd-search-panel').hidden,
     docsShown: !document.getElementById('cd-docs').hidden,
     treeShown: !document.getElementById('cd-tree').hidden,
-    tabsHidden: document.getElementById('cd-tabs').hidden,
-    title: head ? head.querySelector('.cd-pane-title').textContent : null,
-    back: head ? head.querySelector('.cd-pane-close').getAttribute('aria-label') : null,
-    marked: [document.getElementById('cd-tab-tree').getAttribute('aria-selected'),
-             document.getElementById('cd-tab-docs').getAttribute('aria-selected')],
-    stops: [document.getElementById('cd-tab-tree').tabIndex,
-            document.getElementById('cd-tab-docs').tabIndex]
+    stripShown: !document.getElementById('cd-tabs').hidden,
+    head: !!document.querySelector('#cd-results .cd-pane-head'),
+    query: document.getElementById('cd-search').value,
+    rows: document.querySelectorAll('#cd-results .cd-result').length,
+    onTab: document.getElementById('cd-tab-count').textContent,
+    marked: shown.map(function (id) {
+      return document.getElementById(id).getAttribute('aria-selected');
+    }),
+    stops: shown.map(function (id) { return document.getElementById(id).tabIndex; })
   };
 """
 
 
 def search(page, text):
+    click(page, "#cd-tab-search")
     page.evaluate(
         "var field = document.getElementById('cd-search');"
         "field.value = '" + text + "';"
         "field.dispatchEvent(new Event('input', {bubbles: true}));"
         "return true;"
     )
-    page.wait_for("return !document.getElementById('cd-results').hidden;", "the results")
-
-
-def test_the_results_take_the_strip_away_rather_than_unmarking_it(page):
-    """The strip names the two halves of the documentation, and the results are
-    neither. Standing above them it marked no tab at all and put both of its own
-    out of the tab order, which reads as a layer covering the tree rather than as
-    the swap it is. The results carry a head of their own instead."""
-    search(page, "he")
-    shown = page.evaluate(STRIP)
-    assert shown["resultsShown"] and shown["tabsHidden"]
-    assert shown["title"] == "Results"
-    # Exactly one marked tab and exactly one tab stop at every moment, so the
-    # strip is already right when it comes back.
-    assert shown["marked"] == ["true", "false"]
-    assert shown["stops"] == [0, -1]
-
-
-def test_the_head_and_the_empty_field_both_lead_back_to_the_half_the_reader_left(page):
-    """Not always the tree: whoever searched from the handbook is returned to
-    it, and the head says so before it is pressed."""
-    click(page, "#cd-tab-docs")
-    search(page, "he")
-    shown = page.evaluate(STRIP)
-    assert shown["back"] == "Close the results and go back to the handbook"
-    assert shown["marked"] == ["false", "true"]
-
-    page.evaluate("document.querySelector('#cd-results .cd-pane-close').click(); return true;")
-    back = page.evaluate(STRIP)
-    assert back["docsShown"] and not back["treeShown"] and not back["tabsHidden"]
-
-    # And the same for a field emptied rather than closed.
-    search(page, "he")
-    page.evaluate(
-        "var field = document.getElementById('cd-search');"
-        "field.value = 'h';"
-        "field.dispatchEvent(new Event('input', {bubbles: true}));"
-        "return true;"
+    page.wait_for(
+        "return document.querySelectorAll('#cd-results .cd-result').length > 0;",
+        "the results",
     )
-    page.wait_for("return document.getElementById('cd-results').hidden;", "the results to close")
-    assert page.evaluate(STRIP)["docsShown"]
 
 
-def test_a_schema_without_sections_shows_no_tabs(browser, tmp_path_factory):
-    """One half is not a choice, and a strip naming only what is already on
-    screen says nothing."""
+def test_the_search_is_a_tab_and_the_strip_never_leaves(page):
+    """The results looked laid over the tree because the strip stood above them
+    marking neither half and putting both of its own out of the tab order. Search
+    is a place of its own now, so the strip stays and marks it."""
+    search(page, "he")
+    shown = page.evaluate(STRIP)
+    assert shown["searchShown"] and shown["stripShown"]
+    assert not shown["treeShown"] and not shown["docsShown"]
+    # A tab names the region, so a head under it would be the second label for
+    # one thing.
+    assert not shown["head"]
+    # Exactly one marked tab and exactly one tab stop, at every moment.
+    assert shown["marked"] == ["false", "false", "true"]
+    assert shown["stops"] == [-1, -1, 0]
+
+
+def test_the_field_stands_in_its_own_tab_and_nowhere_else(page):
+    """A class that sets `display` outweighs the browser's own `[hidden]` rule,
+    so `hidden` alone left the field standing under the tree as well. And the
+    panel must not clip: the field's focus ring reaches past its own box."""
+    shown = page.evaluate(
+        "var panel = document.getElementById('cd-search-panel');"
+        "var field = document.getElementById('cd-search').getBoundingClientRect();"
+        "return { display: getComputedStyle(panel).display,"
+        " overflow: getComputedStyle(panel).overflow,"
+        " visible: field.width > 0 && field.height > 0 };"
+    )
+    assert shown["display"] == "none" and not shown["visible"]
+
+    click(page, "#cd-tab-search")
+    open_now = page.evaluate(
+        "var panel = document.getElementById('cd-search-panel');"
+        "var field = document.getElementById('cd-search').getBoundingClientRect();"
+        "return { display: getComputedStyle(panel).display,"
+        " overflow: getComputedStyle(panel).overflow,"
+        " visible: field.width > 0 && field.height > 0 };"
+    )
+    assert open_now["display"] == "flex" and open_now["visible"]
+    assert open_now["overflow"] == "visible"
+
+
+def test_opening_a_result_keeps_the_query_for_coming_back_to(page):
+    """Sixty hits are worth going through one at a time, so the click that opens
+    one leaves the tab holding the field, the rows and the count."""
+    search(page, "he")
+    before = page.evaluate(STRIP)
+    assert before["rows"] > 1
+
+    click(page, "#cd-results .cd-result")
+    after = page.evaluate(STRIP)
+    assert after["treeShown"] and not after["searchShown"]
+    assert after["marked"] == ["true", "false", "false"]
+    assert after["query"] == "he" and after["rows"] == before["rows"]
+    # And the tab says so while the field is off screen.
+    assert after["onTab"] == str(before["rows"])
+
+    click(page, "#cd-tab-search")
+    assert page.evaluate(STRIP)["rows"] == before["rows"]
+
+
+def test_escape_is_the_one_thing_that_gives_the_query_up(page):
+    search(page, "he")
+    page.press("Escape")
+    page.wait_for(
+        "return document.querySelectorAll('#cd-results .cd-result').length === 0;",
+        "the results to clear",
+    )
+    back = page.evaluate(STRIP)
+    assert back["treeShown"] and back["query"] == "" and back["onTab"] == ""
+
+
+def test_the_question_mark_strip_carries_the_query_forms_too(page):
+    """The forms were a `title` on the field and a note only an already-narrowing
+    reader ever saw. They belong where someone looks for them."""
+    click(page, "#cd-help")
+    page.wait_for("return !!document.getElementById('cd-hint');", "the hint")
+    leads = page.evaluate(
+        "return Array.from(document.querySelectorAll('#cd-hint .cd-hint-lead'))"
+        ".map(function (n) { return n.textContent; });"
+    )
+    assert leads == ["Tree", "Search"]
+    forms = page.evaluate(
+        "return Array.from(document.querySelectorAll('#cd-hint .cd-hint-form'))"
+        ".map(function (n) { return n.textContent; });"
+    )
+    assert "type:" in forms and "@" in forms
+    # A form is typed, a key is pressed: only the keys are set in relief.
+    assert page.evaluate("return document.querySelectorAll('#cd-hint kbd').length;") == 7
+
+
+def test_a_schema_without_sections_shows_the_other_two_tabs(browser, tmp_path_factory):
+    """One half is not a choice, so the Handbook tab stays away — but Tree and
+    Search name each other whatever the schema carries."""
     directory = tmp_path_factory.mktemp("plain")
     schema = directory / "minimal.xsd"
     shutil.copyfile(FIXTURES / "minimal.xsd", schema)
@@ -237,9 +294,10 @@ def test_a_schema_without_sections_shows_no_tabs(browser, tmp_path_factory):
     try:
         browser.open(address + "/tree/cpacs/")
         browser.wait_for('return document.querySelectorAll(\'[role="treeitem"]\').length > 1;')
-        assert browser.evaluate("return document.getElementById('cd-tabs').hidden;")
+        assert not browser.evaluate("return document.getElementById('cd-tabs').hidden;")
+        assert browser.evaluate("return document.getElementById('cd-tab-docs').hidden;")
         assert browser.evaluate(
-            "return getComputedStyle(document.getElementById('cd-tabs')).display;"
+            "return getComputedStyle(document.getElementById('cd-tab-docs')).display;"
         ) == "none"
     finally:
         server.shutdown()

@@ -437,6 +437,16 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-splitter:hover, .cd-splitter:focus-visible { background: var(--rule-strong); outline: none; }
 
 .cd-column { display: flex; flex-direction: column; min-width: 0; }
+/* The panel is the pane, so the field keeps its place while the rows move.
+   Nothing is clipped here: the rows do their own scrolling, and the field's
+   focus ring reaches past its own box. */
+/* Two classes, so this beats `.cd-pane`'s own `overflow` whatever the order
+   of the two rules: this pane does not scroll, the rows inside it do. */
+.cd-pane.cd-search-panel { display: flex; flex-direction: column; overflow: visible; }
+/* A class that sets `display` outweighs the browser's own `[hidden]` rule, and
+   without this the field stands under the tree as well as in its own tab. */
+.cd-search-panel[hidden] { display: none; }
+.cd-results { overflow: auto; min-height: 0; }
 .cd-search { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 0.6rem; }
 .cd-search input {
   flex: 1 1 auto;
@@ -567,20 +577,32 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
    it gets a line of its own above the heading. */
 .cd-chrome { display: flex; justify-content: flex-end; margin: -1rem 0 0.4rem; }
 
-/* Two halves of the same documentation: the schema as a tree, and the prose
-   that belongs to no instance path and therefore to no node in it. They share
-   the slot, as the search results do, rather than opening a second navigation
-   area — and they are named against each other, because a single label would
-   have to say what it is not. */
+/* The places the column can show: the schema as a tree, the search, and the
+   prose that belongs to no instance path and therefore to no node in it. They
+   share one slot rather than opening a second navigation area, and the strip
+   is what keeps that legible — it names them against each other, and exactly
+   one of them is marked at every moment. It does not come and go: a strip that
+   left while one of the three held the slot is what made the results read as
+   a layer over the tree. */
 .cd-tabs {
   display: flex;
+  align-items: baseline;
   gap: 1.2rem;
   margin: 0 0 0.6rem;
   border-bottom: 1px solid var(--rule);
 }
-/* A class that sets `display` outweighs the browser's own `[hidden]` rule, and
-   a schema without sections would keep a dead strip and a tab stop. */
-.cd-tabs[hidden] { display: none; }
+/* A class that sets `display` outweighs the browser's own `[hidden]` rule. */
+.cd-tab[hidden] { display: none; }
+/* The two round buttons are the page's, not the strip's: they sit past the
+   last tab, where the field used to keep them. */
+.cd-tabs-rest { flex: 1 1 auto; }
+.cd-tabs .cd-theme, .cd-tabs .cd-help { margin-bottom: 0.25rem; }
+.cd-tab-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+.cd-tab-count:not(:empty) { margin-left: 0.35rem; }
 .cd-tab {
   border: 0;
   border-bottom: 2px solid transparent;
@@ -598,39 +620,11 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   font-weight: 600;
   border-bottom-color: var(--ink);
 }
-/* The results are the third occupant of the slot and neither half of the
-   documentation, so the strip is taken away rather than left above them
-   marking nothing — which read as a layer covering the tree. This stands in
-   its place, on the same rule and at the same height, so the swap does not
-   move the list under the reader's eye. */
-.cd-pane-head {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  margin: 0 0 0.6rem;
-  padding: 0.15rem 0.1rem calc(0.4rem + 1px);
-  border-bottom: 1px solid var(--rule);
-}
-.cd-pane-title { font-size: var(--step-1); font-weight: 600; color: var(--ink); }
-.cd-pane-close {
-  margin-left: auto;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  color: var(--ink-soft);
-  font: inherit;
-  font-size: var(--step-2);
-  line-height: 1;
-  padding: 0 0.15rem;
-}
-.cd-pane-close:hover { color: var(--ink); }
-
 .cd-result.cd-selected { background: var(--field); }
 .cd-doc-index { line-height: 1.9; }
 
-/* The way back to the hint once it has been put away, and the sign that there
-   is something to know at all. It sits with the search box because that is the
-   only chrome the tree column has. */
+/* The way back to the strip once it has been put away, and the sign that
+   there is something to know at all. */
 .cd-help {
   align-self: center;
   flex: 0 0 auto;
@@ -651,24 +645,38 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 
 /* Said once, above the thing it describes, and gone at the first key. In the
    idiom of the rest of the page: a quiet strip, no card, no motion — the keys
-   themselves carry it, so they are the only thing set in relief. */
+   themselves carry it, so they are the only thing set in relief. Two lines,
+   because the column holds two things that cannot be read off the screen: the
+   tree's keys, and what the field accepts. */
 .cd-hint {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem 0.85rem;
+  position: relative;
   margin: 0 0 0.7rem;
-  padding: 0.5rem 0.6rem;
+  padding: 0.5rem 1.9rem 0.5rem 0.6rem;
   background: var(--field);
   border-radius: 4px;
   font-size: var(--step-0);
   color: var(--ink-soft);
 }
+.cd-hint-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.85rem;
+}
+.cd-hint-line + .cd-hint-line {
+  margin-top: 0.4rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--rule);
+}
 .cd-hint-lead {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  flex: 0 0 3.4rem;
 }
+/* A form is typed into the field, a key is pressed on the keyboard. Setting
+   both in relief would send a reader looking for a key marked `type:`. */
+.cd-hint-form { font-family: var(--face-code); color: var(--ink); }
 .cd-hint-item { display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
 .cd-hint-what { margin-left: 0.15rem; }
 .cd-hint kbd {
@@ -683,7 +691,9 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
      key look like a button to press on the page. */
 }
 .cd-hint-close {
-  margin-left: auto;
+  position: absolute;
+  top: 0.35rem;
+  right: 0.4rem;
   border: 0;
   background: none;
   cursor: pointer;

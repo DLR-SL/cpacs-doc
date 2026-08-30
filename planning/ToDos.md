@@ -45,17 +45,11 @@
 
 
 
-- search: decide whether the per-kind quota, the filter chips and the query
-  prefixes stay. If they do, they deserve an ADR next to 0009, and F13 in the
-  specification should say that ranking decides the order while the quota
-  decides who is cut off at sixty. Not written down as a decision yet because
-  it is on trial.
-
-- search: the prefixes `type:`, `element:`, `attribute:`, a leading `@` and a
-  slash for a path have two teaching surfaces — the line under the chips, which
-  appears only to a reader who has just narrowed by hand, and the field's
-  `title`. Neither is strong. If the syntax is to stay, it wants a proper place
-  in the `?` panel, which today is about the tree's keys alone.
+- search: decide whether the per-kind quota stays. If it does, it deserves an
+  ADR next to 0009, and F13 in the specification should say that ranking
+  decides the order while the quota decides who is cut off at sixty. Not
+  written down as a decision yet because it is on trial. (The chips and the
+  prefixes are settled: 0013 keeps both and gives the forms a home.)
 
 - search: the corpus is 91 % repetition — 53,692 element entries are 2,224
   distinct names (`x` alone is 5,280 of them), 4,022 attribute entries are 23
@@ -66,6 +60,14 @@
 
 
 ### Closed
+
+**Where the search lives** (2026-08-30, `decisions/0013`). It is a third
+permanent tab with the field inside it, the chips on one line under the field,
+and the query forms as a second line in the `?` strip. Drawn first in
+`mockups/search-tab.html`, which also records what the arrangements that were
+not taken cost, measured. What it deliberately does not settle is the width a
+result row has for a path — 352 px, 0.9 % of the schema's paths whole — because
+that waits on the grouping question still open above, which comes first.
 
 Written up with numbers in `planning/sandcastle-comparison.md`, findings 1, 2,
 6, 7 and 8.
