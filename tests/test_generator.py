@@ -76,6 +76,16 @@ def test_slash_in_an_anonymous_type_name_becomes_a_directory_safe_slug(model, tm
     assert generator.unslug(generator.slug("nacaType/code")) == "nacaType/code"
 
 
+def test_the_type_index_marks_a_break_after_the_slash(model, tmp_path):
+    """A type name carries no space, so the long ones were drawn over the
+    column beside them. The slash is the one place a reader still takes the
+    name for one name, and the line-breaking algorithm offers nothing there."""
+    generator.generate(model, tmp_path)
+    index = (tmp_path / "index.html").read_text(encoding="utf-8")
+    assert ">nacaType/<wbr>code</a>" in index
+    assert ">wingType</a>" in index
+
+
 def test_type_links_point_at_sibling_pages(model, tmp_path):
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")

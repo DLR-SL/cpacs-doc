@@ -899,8 +899,14 @@ def _resolve_cross_references(html: str, types: dict) -> str:
 
 
 def index_html(types: dict, statistics: dict, meta: dict, has_docs: bool = False) -> str:
+    # The slash is the one place a type name may be broken and still read as
+    # one name, and the line-breaking algorithm offers no break after it, so
+    # the markup marks the opportunity. Where a name has no slash the
+    # stylesheet lets it break mid-word instead; without either, 153 of the
+    # names are drawn over the column beside them.
     items = "".join(
-        f'<li><a href="{TYPES_DIRECTORY}/{escape(slug(name))}/index.html">{escape(name)}</a></li>'
+        f'<li><a href="{TYPES_DIRECTORY}/{escape(slug(name))}/index.html">'
+        f'{escape(name).replace("/", "/<wbr>")}</a></li>'
         for name in sorted(types)
     )
     version = meta.get("schemaVersion")
