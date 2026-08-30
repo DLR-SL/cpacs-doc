@@ -350,6 +350,19 @@ def test_value_constraints_are_shown_with_the_schema_word_and_its_reading(model,
     assert '<span class="cd-facet" tabindex="0">' in page
 
 
+def test_every_table_stands_in_a_scroller_of_its_own(model, tmp_path):
+    """A reference table is as wide as its widest name, so it cannot be made to
+    fit the reading measure — and where it had no container of its own it was
+    the page that scrolled, taking the heading and the breadcrumb with it. What
+    that looks like in a browser is measured in test_page_tables."""
+    model["types"]["wingType"]["facets"] = [{"name": "pattern", "value": "[0-9]{4}"}]
+    generator.generate(model, tmp_path)
+    for name in ("wingType", "nacaType--code", "markingType"):
+        page = (tmp_path / "type" / name / "index.html").read_text(encoding="utf-8")
+        assert "<table" in page, name
+        assert "<table" not in page.replace('<div class="cd-scroll"><table', ""), name
+
+
 def test_a_type_without_constraints_gets_no_table(model, tmp_path):
     generator.generate(model, tmp_path)
     page = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")

@@ -227,7 +227,7 @@ def _usage_section(name: str, usage: dict, first_paths: dict) -> str:
     if users:
         schema = (f'<h3>In the schema <span class="cd-inherited">· {len(users)} '
                   f'declaration{"s" if len(users) != 1 else ""}</span></h3>'
-                  f"<table><tr><th>Type</th><th>Name</th></tr>{rows}</table>")
+                  + _scrolling(f"<table><tr><th>Type</th><th>Name</th></tr>{rows}</table>"))
 
     return (f'<details class="cd-usage"><summary><h2>Used by</h2></summary>'
             f"{where}{schema}</details>")
@@ -535,6 +535,17 @@ def _value_cell(entry) -> str:
     return f"<code>{escape(default)}</code>" if default is not None else ""
 
 
+# A table is the one thing on a type page that cannot be made to fit. The child
+# table needs 1,143 px on `wingType`, 1,119 on `fuselageType` and 1,073 on
+# `genericMassType` against a 928 px column — the 58 rem measure less its
+# padding, at a 1280 px viewport, measured 2026-08-30. Without a container of
+# its own the table is not what scrolls: it is the page, and the heading, the
+# prose and the breadcrumb slide out of view with the table. So the table
+# scrolls inside its section, the way a code block already does (styles.css).
+def _scrolling(table: str) -> str:
+    return f'<div class="cd-scroll">{table}</div>'
+
+
 def _attribute_table(attributes, types=None) -> str:
     if not attributes:
         return ""
@@ -551,13 +562,15 @@ def _attribute_table(attributes, types=None) -> str:
             f'<td>{escape(attribute.get("documentation", {}).get("text", ""))}</td>'
             "</tr>"
         )
-    return (
-        '<section class="cd-attributes"><h2>Attributes</h2><table>'
+    table = (
+        "<table>"
         "<tr><th>Name</th><th>Type</th><th>Constraints</th><th>Use</th><th>Default</th>"
         "<th>Description</th></tr>"
         + "".join(rows)
-        + "</table></section>"
+        + "</table>"
     )
+    return ('<section class="cd-attributes"><h2>Attributes</h2>'
+            + _scrolling(table) + "</section>")
 
 
 # The schema word carries the row; the explanation appears on hover and focus,
@@ -584,14 +597,16 @@ def _child_table(children, types=None) -> str:
     rows = _child_rows(children, depth=0, types=types)
     if not rows:
         return ""
-    return (
-        '<section class="cd-children"><h2>Child elements</h2><table>'
+    table = (
+        "<table>"
         "<tr><th>Name</th><th>Type</th><th>Constraints</th>"
         f"<th>{OCCURRENCE_HEAD}</th>"
         "<th>Default</th><th>Description</th></tr>"
         + "".join(rows)
-        + "</table></section>"
+        + "</table>"
     )
+    return ('<section class="cd-children"><h2>Child elements</h2>'
+            + _scrolling(table) + "</section>")
 
 
 # The column says how often in words; the schema says it in two attributes, and
@@ -757,8 +772,10 @@ def _union_table(union, types) -> str:
         '<section class="cd-union"><h2>Allowed types '
         '<span class="cd-facet" tabindex="0">union'
         f'<span class="cd-tip" role="note">{escape(UNION_GLOSS)}</span>'
-        "</span></h2><table>"
-        "<tr><th>Type</th><th>Constraints</th></tr>" + rows + "</table></section>"
+        "</span></h2>"
+        + _scrolling("<table><tr><th>Type</th><th>Constraints</th></tr>"
+                     + rows + "</table>")
+        + "</section>"
     )
 
 
@@ -782,8 +799,10 @@ def _facet_table(facets) -> str:
             f'</span></td><td><code>{escape(facet["value"])}</code></td></tr>'
         )
     return (
-        '<section class="cd-facets"><h2>Value constraints</h2><table>'
-        "<tr><th>Constraint</th><th>Value</th></tr>" + "".join(rows) + "</table></section>"
+        '<section class="cd-facets"><h2>Value constraints</h2>'
+        + _scrolling("<table><tr><th>Constraint</th><th>Value</th></tr>"
+                     + "".join(rows) + "</table>")
+        + "</section>"
     )
 
 
@@ -797,8 +816,10 @@ def _enumeration_list(values) -> str:
             f'<tr><td><code>{escape(value["value"])}</code></td><td>{escape(description)}</td></tr>'
         )
     return (
-        '<section class="cd-enumeration"><h2>Allowed values</h2><table>'
-        "<tr><th>Value</th><th>Description</th></tr>" + "".join(rows) + "</table></section>"
+        '<section class="cd-enumeration"><h2>Allowed values</h2>'
+        + _scrolling("<table><tr><th>Value</th><th>Description</th></tr>"
+                     + "".join(rows) + "</table>")
+        + "</section>"
     )
 
 

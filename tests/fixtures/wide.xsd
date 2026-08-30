@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A schema whose child table cannot be made to fit the reading measure. The
+     names alone are wider than the 58 rem text column, which is the case
+     1,079 of the real schema's type pages are in: the widest child table needs
+     1,143 px against 928 px of column. What is measured on it is that the
+     table scrolls and the page does not. -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:ddue="http://ddue.schemas.microsoft.com/authoring/2003/5"
+            xmlns:sd="http://schemas.xsddoc.codeplex.com/schemaDoc/2009/3"
+            elementFormDefault="qualified">
+
+    <xsd:complexType name="longRangeCruisePerformanceReferenceValueType">
+        <xsd:sequence>
+            <xsd:element name="value" type="xsd:double"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="longRangeCruisePerformanceSettingsType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <sd:schemaDoc>
+                    <ddue:summary>
+                        <ddue:para>Settings whose names are longer than the column.</ddue:para>
+                    </ddue:summary>
+                </sd:schemaDoc>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="longRangeCruisePerformanceReferenceValue"
+                         type="longRangeCruisePerformanceReferenceValueType"/>
+            <xsd:element name="longRangeCruisePerformanceCorrectionValue"
+                         type="longRangeCruisePerformanceReferenceValueType" minOccurs="0"/>
+        </xsd:sequence>
+        <xsd:attribute name="longRangeCruisePerformanceIdentifier" type="xsd:string"/>
+    </xsd:complexType>
+
+    <!-- One constraint, so the table is one row and the tip on it opens where
+         the container ends. -->
+    <xsd:simpleType name="cruiseMachNumberType">
+        <xsd:restriction base="xsd:double">
+            <xsd:minInclusive value="0"/>
+        </xsd:restriction>
+    </xsd:simpleType>
+
+    <xsd:complexType name="rootType">
+        <xsd:sequence>
+            <xsd:element name="settings" type="longRangeCruisePerformanceSettingsType"/>
+            <xsd:element name="machNumber" type="cruiseMachNumberType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:element name="cpacs" type="rootType"/>
+</xsd:schema>

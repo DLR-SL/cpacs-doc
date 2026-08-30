@@ -3,24 +3,25 @@
 - Undo function of the browser only works affects the tree
 - xsd:types link to official description?
 - should it be a bit more visible what is element and what is type documentation?
-- type pages scroll sideways, and it is the page that scrolls, not the table:
-  the heading, the prose and the breadcrumb slide with it. The text column is
-  968 px wide (`max-width: 58rem`); measured at a 1280 px viewport on
-  2026-08-29, the child table is 1,143 px on `wingType`, 1,119 px on
-  `fuselageType`, 1,073 px on `genericMassType` — 105 to 175 px over. All
-  1,079 type pages with a child table are affected. Code blocks already solve
-  this with `overflow-x: auto` on their own container (styles.css:336); the
-  tables have no such container. Contributing: `td code` is set `nowrap`, and
-  the attributes table alone is 753 px at a 700 px viewport (measured
-  2026-08-28 on `doubleBaseType`, which has no other content).
+- the viewer's detail pane has the same defect one level down: the child table
+  needs 1,110 px in a 718 px pane, so the pane scrolls sideways by 376 px and
+  the heading of the type goes with it. Measured 2026-08-30 at 1280 × 900, the
+  same on `wingType`, `fuselageType` and `genericMassType`. The pane's tables
+  are written in `viewer.js`; the container and its rule are already there.
+
+- the tables `ddue` writes into prose need no container today: 6 stand on the
+  documentation pages, none wider than its column, and no type page is past the
+  window either (measured 2026-08-30 over all 1,206). Worth measuring again
+  when the schema grows a wide one.
 
 - two of the six columns are empty on almost every page, and the eye crosses
   them on every row. Measured 2026-08-29: of 1,079 child tables, *Constraints*
   is empty in every row on 993 (92 %) and *Default* on 1,073 (99 %), both on
   992 (92 %); of 1,161 attribute tables, 1,109 (96 %) and 1,147 (99 %).
   Dropping a column where every row in that table is empty gives back 45 to
-  105 px — `genericMassType` lands exactly on the 968 px text column and stops
-  scrolling altogether. Against it: the column set would differ between pages.
+  105 px — `genericMassType` lands exactly on the text column and stops
+  scrolling altogether; since 2026-08-30 that is the table's own scrolling and
+  no longer the page's. Against it: the column set would differ between pages.
   For it: whole tables already do.
 
 - the detail panel's head carries two horizontal rules within 120 px — one
@@ -152,6 +153,37 @@
 
 
 ### Closed
+
+**The table scrolls, not the page** (2026-08-30, `decisions/0014`). Every table
+on a type page stands in a container of its own — `div.cd-scroll` with
+`overflow-x: auto`, the way a code block has done all along — so the heading,
+the prose and the breadcrumb stay where they are while a column on the right is
+read.
+
+Measured in a browser on the real schema at 1280 × 900, over all 1,206 type
+pages: 1,079 carry a table wider than the 928 px column (the 58 rem measure
+less its padding), and none of the 1,206 is now wider than the window. Before
+it, `wingType` stood 46 px past the window at 1280 px and 478 px at 700 px.
+
+What it costs, and where that went:
+
+* `overflow-x: auto` makes the other axis a scroll container too, and a tip is
+  laid out even while hidden — so the container carried a vertical scrollbar
+  for a tip nobody had opened. Hence `overflow-y: clip`.
+  `overflow-clip-margin` is the declaration that would leave the tips their
+  room, and Chrome ignores it on a scroll container.
+* The clip cuts a tip that opens past the last row, and that is where 20 of the
+  2,319 tips in tables stand: cut by up to 23 px, one of them by 46. They open
+  upwards instead (`.cd-scroll tr:last-child .cd-tip`), where the rows above
+  leave 46 px at the least against the 41 a tip and its gap take. Measured
+  again over all 1,206 pages: none cut.
+
+Held in a browser by `tests/test_page_tables.py` — the page does not scroll,
+the heading does not move while the table is scrolled to its end, and the tip
+on the last row is drawn whole — on `fixtures/wide.xsd`, whose names alone are
+wider than the column. Three of the four fail without the two rules; the
+fourth states the premise, that the table is wider than the column it stands
+in, and is there so the other three cannot pass by measuring nothing.
 
 **Where the search lives** (2026-08-30, `decisions/0013`). It is a third
 permanent tab with the field inside it, the chips on one line under the field,
