@@ -108,13 +108,20 @@ with the file path relative to the documentation directory and
 {
   "schemaVersion": 1,
   "images": {
-    "figureFuselageSections": {
-      "file": "media/fuselageSections.png",
-      "alt": "Fuselage sections"
+    "guideCurveIllustration": {
+      "file": "figures/GuideCurveDocumentation.png",
+      "alt": "Illustration of guide curves"
+    },
+    "superEllipseLowerZ0": {
+      "file": "equations/superEllipseZ0.png",
+      "alt": "Equation for superellipse middle line"
     }
   }
 }
 ```
+
+Ids and file names are independent, as both entries show; nothing is inferred
+from the one to reach the other. Entries are written in id order.
 
 File names are compared against the actual directory listing rather than through
 `Path.exists()`, which is case-insensitive on Windows and macOS and would accept
