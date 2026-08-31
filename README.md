@@ -123,17 +123,6 @@ Neither is pinned — `uv.lock` does not apply there, so you get whatever versio
 pip resolves at that moment. That is fine for using the tool, and it is the
 reason CI installs with `uv sync --locked` instead.
 
-### Windows: `python` may open the Microsoft Store
-
-On a fresh Windows install, typing `python` hits an App-Execution-Alias stub and
-prints *"Python was not found; run without arguments to install from the
-Microsoft Store"*. That is not a broken installation — there simply is no
-`python` on `PATH` yet. Use `uv run python …` (Path A) or activate the
-environment first (Paths B and C), and the commands in this README work as
-written. On Path B you need a real Python before you can create the virtual
-environment at all: install one from [python.org](https://www.python.org/downloads/)
-and tick *Add python.exe to PATH*, or take Path A, where uv brings its own.
-
 ---
 
 ## 2. Run
