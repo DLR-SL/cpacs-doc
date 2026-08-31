@@ -86,4 +86,43 @@ dependency on the package and can be run against any XSD.
 
 `tools/convert_media_catalogue.py` migrates the figure catalogue out of the SHFB
 project file into `media.json`, correcting file name capitalisation against the
-file system on the way. A one-off migration, not part of the build.
+file system on the way. A one-off migration, not part of the build: run it once,
+commit the result, and the `.shfbproj` is no longer needed for figures. Standard
+library only, so no environment is needed.
+
+```
+python tools/convert_media_catalogue.py documentation/ --dry-run
+python tools/convert_media_catalogue.py documentation/
+```
+
+The argument is the directory holding the `.shfbproj` and the figures; the first
+project file found there is read. The catalogue is written to
+`<documentation>/media.json`, or wherever `-o` points. `--dry-run` reports
+without writing.
+
+Every `<Image>` entry becomes one catalogue entry, keyed by its `<ImageId>`,
+with the file path relative to the documentation directory and
+`<AlternateText>` as `alt`:
+
+```json
+{
+  "schemaVersion": 1,
+  "images": {
+    "figureFuselageSections": {
+      "file": "media/fuselageSections.png",
+      "alt": "Fuselage sections"
+    }
+  }
+}
+```
+
+File names are compared against the actual directory listing rather than through
+`Path.exists()`, which is case-insensitive on Windows and macOS and would accept
+the very spellings the conversion exists to correct. Directories are matched
+segment by segment, since a directory may differ in case just as a file may.
+
+Entries without an `<ImageId>`, without alt text, without a matching file, or
+declared more than once are reported and left out, and the run then exits with
+status 1: a catalogue that is quietly shorter than its source should not pass
+unnoticed in a script. Corrected capitalisation is reported as well but does not
+change the exit status.
