@@ -261,23 +261,72 @@ def test_escape_is_the_one_thing_that_gives_the_query_up(page):
     assert back["treeShown"] and back["query"] == "" and back["onTab"] == ""
 
 
+def visible_groups(page):
+    return page.evaluate("""
+      return Array.from(document.querySelectorAll('#cd-hint .cd-hint-line'))
+        .filter(function (line) { return line.getClientRects().length > 0; })
+        .map(function (line) { return line.querySelector('.cd-hint-lead').textContent; });
+    """)
+
+
 def test_the_question_mark_strip_carries_the_query_forms_too(page):
     """The forms were a `title` on the field and a note only an already-narrowing
-    reader ever saw. They belong where someone looks for them."""
+    reader ever saw. They belong where someone looks for them — which is the
+    `?` while standing in Search, the tab they are about."""
     click(page, "#cd-help")
     page.wait_for("return !!document.getElementById('cd-hint');", "the hint")
-    leads = page.evaluate(
-        "return Array.from(document.querySelectorAll('#cd-hint .cd-hint-lead'))"
-        ".map(function (n) { return n.textContent; });"
-    )
-    assert leads == ["Tree", "Search"]
-    forms = page.evaluate(
-        "return Array.from(document.querySelectorAll('#cd-hint .cd-hint-form'))"
-        ".map(function (n) { return n.textContent; });"
-    )
+    click(page, "#cd-tab-search")
+    assert visible_groups(page) == ["Search"]
+    forms = page.evaluate("""
+      return Array.from(document.querySelectorAll(
+        '#cd-hint .cd-hint-line[data-tab="search"] .cd-hint-form'))
+        .map(function (n) { return n.textContent; });
+    """)
     assert "type:" in forms and "@" in forms
-    # A form is typed, a key is pressed: only the keys are set in relief.
-    assert page.evaluate("return document.querySelectorAll('#cd-hint kbd').length;") == 7
+    # A form is typed, a key is pressed: only the keys are set in relief, and
+    # the keys belong to the tree.
+    click(page, "#cd-tab-tree")
+    assert visible_groups(page) == ["Tree"]
+    assert page.evaluate("""
+      return document.querySelectorAll(
+        '#cd-hint .cd-hint-line[data-tab="tree"] kbd').length;
+    """) == 7
+
+
+def test_the_handbook_offers_no_hint_and_says_so_on_the_button(page):
+    """The Handbook is read, not driven: there are no keys to tell anyone
+    about. Rather than an empty box or the keys of a place the reader is not
+    in, the hint stays away and the `?` is plainly not on offer."""
+    click(page, "#cd-help")
+    page.wait_for("return !!document.getElementById('cd-hint');", "the hint")
+
+    click(page, "#cd-tab-docs")
+    assert visible_groups(page) == []
+    help_state = page.evaluate("""
+      var help = document.getElementById('cd-help');
+      return {
+        disabled: help.disabled,
+        expanded: help.getAttribute('aria-expanded'),
+        dim: parseFloat(getComputedStyle(help).opacity)
+      };
+    """)
+    assert help_state["disabled"] is True, help_state
+    assert help_state["expanded"] == "false", help_state
+    # Dimmed, not gone: a button that leaves the strip is harder to place.
+    assert 0 < help_state["dim"] < 0.7, help_state
+
+    # The strip keeps its own gap where the hint is not showing, or the pane
+    # would butt against the tabs on the strength of a box that is not there.
+    gap = page.evaluate("""
+      var strip = document.getElementById('cd-tabs').getBoundingClientRect();
+      return document.getElementById('cd-docs').getBoundingClientRect().top - strip.bottom;
+    """)
+    assert gap > 4, gap
+
+    # Suppressed, not closed — leaving the Handbook gives back what was open.
+    click(page, "#cd-tab-tree")
+    assert visible_groups(page) == ["Tree"]
+    assert page.evaluate("return document.getElementById('cd-help').disabled;") is False
 
 
 def test_a_schema_without_sections_shows_the_other_two_tabs(browser, tmp_path_factory):

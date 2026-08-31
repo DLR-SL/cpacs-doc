@@ -502,6 +502,8 @@
   // the screen: the tree's keys, and what the field accepts. The forms were a
   // `title` on the field and a note under the chips that only a reader who
   // had already narrowed by hand ever saw; this is where someone looks.
+  // The fourth entry is the tab the line is about. It is named rather than
+  // derived from the label, so renaming one does not silently unmark the other.
   var HINT_GROUPS = [
     ["Tree", "key", [
       [["\u2191", "\u2193"], "move"],
@@ -511,13 +513,13 @@
       // The way back. Enter without it strands a reader in the detail panel,
       // and the same key clears the search and closes this hint.
       [["Esc"], "back to the tree"]
-    ]],
+    ], "tree"],
     ["Search", "form", [
       [["type:"], "types only"],
       [["element:"], "elements only"],
       [["@"], "attributes, or attribute:"],
       [["wings/wing"], "a slash searches paths"]
-    ]]
+    ], "search"]
   ];
 
   function hintSeen() {
@@ -534,6 +536,40 @@
     help.setAttribute("aria-expanded", String(open));
     if (open) help.setAttribute("aria-controls", "cd-hint");
     else help.removeAttribute("aria-controls");
+  }
+
+  function hintGroupFor(tab) {
+    for (var i = 0; i < HINT_GROUPS.length; i++) {
+      if (HINT_GROUPS[i][3] === tab) return HINT_GROUPS[i];
+    }
+    return null;
+  }
+
+  // One tab, one group. The hint stands over a single pane and is read as
+  // belonging to it, so lines about the other place look misplaced there.
+  //
+  // A tab the hint knows no keys for — the Handbook, which is read rather than
+  // driven — gets no hint at all, and its `?` is disabled rather than hidden:
+  // a button that vanishes and returns as the reader moves along the strip is
+  // harder to place than one that is plainly not on offer here. The hint is
+  // suppressed, not closed, so leaving the Handbook restores what the reader
+  // had open.
+  function fitHintToTab() {
+    var group = hintGroupFor(state.tab);
+    var help = document.getElementById("cd-help");
+    if (help) {
+      help.disabled = !group;
+      help.title = group ? "Keys and query forms" : "No keys in the Handbook";
+    }
+
+    var hint = document.getElementById("cd-hint");
+    if (!hint) return;
+    hint.hidden = !group;
+    markHelp(!!group);
+    var lines = hint.querySelectorAll(".cd-hint-line");
+    for (var i = 0; i < lines.length; i++) {
+      lines[i].hidden = !group || lines[i].getAttribute("data-tab") !== state.tab;
+    }
   }
 
   function hideHint() {
@@ -578,6 +614,7 @@
     for (var g = 0; g < HINT_GROUPS.length; g++) {
       var group = HINT_GROUPS[g];
       var line = element("div", "cd-hint-line");
+      line.setAttribute("data-tab", group[3]);
       line.appendChild(element("span", "cd-hint-lead", group[0]));
       var entries = group[2];
       for (var i = 0; i < entries.length; i++) {
@@ -599,11 +636,14 @@
     close.addEventListener("click", hideHint);
     hint.appendChild(close);
 
-    // At the head of the column, under the strip: it describes whichever
-    // place is showing, and both of its lines are about one of them.
+    // At the head of the column, flush under the strip: it is what the `?` in
+    // the strip opens, and it outlives the pane below it, which `fitHintToTab`
+    // then keeps it in step with.
     tree.parentNode.insertBefore(hint, tree);
     hintIsAutomatic = automatic;
-    markHelp(true);
+    // Marks the button too: whether the hint is on offer at all is the same
+    // question as which group it carries.
+    fitHintToTab();
   }
 
   function isTextField(node) {
@@ -2069,6 +2109,7 @@
     markTab("cd-tab-tree", name === "tree");
     markTab("cd-tab-docs", name === "docs");
     markTab("cd-tab-search", name === "search");
+    fitHintToTab();
   }
 
   function markTab(id, current) {

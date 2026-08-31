@@ -345,3 +345,70 @@ def test_the_hint_that_came_by_itself_goes_at_the_first_key(unseen):
     unseen.evaluate("document.querySelector('.cd-node.cd-cursor').focus(); return true;")
     unseen.press("ArrowDown")
     assert unseen.evaluate("return !document.getElementById('cd-hint');")
+
+
+def click_selector(page, selector):
+    spot = page.evaluate(
+        "var box = document.querySelector(%r).getBoundingClientRect();"
+        "return { x: box.left + box.width / 2, y: box.top + box.height / 2 };" % selector
+    )
+    page.click(spot["x"], spot["y"])
+
+
+def test_the_hint_hangs_from_the_strip_rather_than_heading_the_pane(page):
+    """It is what the `?` in the strip opens and it outlives the pane below it,
+    so it must not read as that pane's heading. Nothing but proximity says
+    which it belongs to, so the gap is the assertion: none above, one below."""
+    click_help(page)
+    gaps = page.evaluate("""
+      var strip = document.getElementById('cd-tabs').getBoundingClientRect();
+      var hint = document.getElementById('cd-hint').getBoundingClientRect();
+      var pane = document.getElementById('cd-tree').getBoundingClientRect();
+      return { above: hint.top - strip.bottom, below: pane.top - hint.bottom };
+    """)
+    assert gaps["above"] < 1, gaps
+    assert gaps["below"] >= gaps["above"] + 8, gaps
+
+
+def shown_groups(page):
+    """The leads of the groups a reader can actually see, not the ones in the
+    document: a group is put away by `hidden`, and it stays in the DOM."""
+    return page.evaluate("""
+      return Array.from(document.querySelectorAll('#cd-hint .cd-hint-line'))
+        .filter(function (line) { return line.getClientRects().length > 0; })
+        .map(function (line) { return line.querySelector('.cd-hint-lead').textContent; });
+    """)
+
+
+def test_the_hint_shows_the_group_for_the_tab_the_reader_is_in(page):
+    """It stands over one pane and is read as belonging to it, so it carries
+    the keys of that place and no other."""
+    click_help(page)
+    assert shown_groups(page) == ["Tree"]
+
+    click_selector(page, "#cd-tab-search")
+    assert shown_groups(page) == ["Search"]
+
+    click_selector(page, "#cd-tab-tree")
+    assert shown_groups(page) == ["Tree"]
+
+
+def test_the_group_that_is_put_away_takes_its_dividing_rule_with_it(page):
+    """The rule divides two groups. Left behind by the group above it, it is a
+    line under nothing and a gap at the top of the box."""
+    click_help(page)
+    click_selector(page, "#cd-tab-search")
+    edges = page.evaluate("""
+      var hint = document.getElementById('cd-hint').getBoundingClientRect();
+      var line = document.querySelector('#cd-hint .cd-hint-line[data-tab="search"]');
+      var style = getComputedStyle(line);
+      return {
+        gap: line.getBoundingClientRect().top - hint.top,
+        rule: style.borderTopWidth,
+        padding: style.paddingTop
+      };
+    """)
+    assert edges["rule"] in ("0px", "", None), edges
+    assert edges["padding"] == "0px", edges
+    # Only the box's own padding stands above the group that is showing.
+    assert edges["gap"] < 12, edges
