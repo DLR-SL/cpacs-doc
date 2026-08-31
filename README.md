@@ -4,34 +4,221 @@
 a supported deliverable and not a replacement for the current documentation
 build. Interfaces and output format may change without notice.
 
-Stage one of the three-stage architecture (extractor → generator → viewer). It
-reads an XSD and produces two things:
+It reads an XSD and produces a **build report** (undocumented types, unknown
+`ddue` vocabulary, structural outliers, unresolvable figure references,
+ambiguous tree paths) and an **intermediate model** (type catalogue, instance
+tree, media catalogue and report as one JSON document). `serve` additionally
+shows the model in a browser. Nothing is rendered to final HTML here.
 
-* **the build report** — undocumented types, unknown `ddue` vocabulary,
-  structural outliers, unresolvable figure references, ambiguous tree paths;
-* **the intermediate model** — type catalogue, instance tree, media catalogue
-  and report as one JSON document.
+Requires Python 3.10 or newer. The only runtime dependency is `lxml`, which
+ships as a wheel on Windows, macOS and Linux — no compiler needed.
 
-Nothing is rendered here. `ddue` markup is carried as plain text; turning it
-into HTML belongs to the generator.
+---
 
-## Usage
+## 1. Install
+
+Pick **one** of the three paths below. If you have no preference, take uv: it is
+what CI uses, and `uv.lock` pins the exact versions so every checkout resolves
+identically.
+
+### Path A — with uv (recommended)
+
+**Install uv itself**, once per machine ([full
+instructions](https://docs.astral.sh/uv/getting-started/installation/)):
+
+```powershell
+# Windows, PowerShell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Open a new terminal afterwards so the changed `PATH` takes effect, then check:
 
 ```
-cpacs-doc report schema/cpacs_schema.xsd
-cpacs-doc build  schema/cpacs_schema.xsd -o build/
-cpacs-doc serve  schema/cpacs_schema.xsd
+uv --version
 ```
 
-The media catalogue (`documentation/media.json`) is picked up automatically when
-it sits next to the schema directory. `--media` points elsewhere, `--no-media`
-skips it. Exit status is 1 when the report holds errors; `--tolerate-errors`
-suppresses that.
+**Set up the project**, from the repository root:
 
-`serve` is the mode for working on the schema. It builds the model in memory,
-serves the viewer on `127.0.0.1:8000`, and rebuilds when the schema or the media
-catalogue changes — the build report goes to the terminal on every pass, and the
-browser reloads by itself. Nothing is written to disk.
+```
+uv sync
+```
+
+That one command does everything: it downloads a suitable Python if none is
+installed, creates the virtual environment in `.venv/`, installs `cpacs-doc` in
+editable mode, and pulls the test tooling from the `dev` dependency group.
+
+**Run things** by prefixing `uv run` — no `activate`, no manual `PATH` fiddling:
+
+```
+uv run pytest
+uv run cpacs-doc report path/to/cpacs/schema/cpacs_schema.xsd
+```
+
+`uv run` re-syncs the environment first whenever it is out of date, so the
+explicit `uv sync` above is really only a convenience for getting the download
+over with.
+
+> If you would rather type `cpacs-doc` without the prefix, activate the
+> environment once per terminal: `.venv\Scripts\activate` on Windows,
+> `source .venv/bin/activate` elsewhere.
+
+### Path B — with pip and a virtual environment
+
+Any Python 3.10 or newer will do. From the repository root:
+
+```powershell
+# Windows, PowerShell
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e . pytest
+```
+
+```bash
+# macOS / Linux
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e . pytest
+```
+
+`pytest` has to be named explicitly: the test tooling sits in a PEP 735
+`[dependency-groups]` block rather than in an extra, and a plain
+`pip install -e .` does not pull it.
+
+The environment has to be activated once per terminal; afterwards everything
+runs without a prefix:
+
+```
+pytest
+cpacs-doc report path/to/cpacs/schema/cpacs_schema.xsd
+```
+
+### Path C — with conda
+
+If your workflow is conda-based, that works too. The package has no conda-only
+dependencies, so let conda provide the interpreter and install the package with
+pip *inside* the environment:
+
+```
+conda create -n cpacs-doc python=3.12
+conda activate cpacs-doc
+pip install -e . pytest
+```
+
+`pytest` again has to be named explicitly, for the same reason as in Path B.
+Then run without any prefix:
+
+```
+pytest
+cpacs-doc report path/to/cpacs/schema/cpacs_schema.xsd
+```
+
+### A note on Paths B and C
+
+Neither is pinned — `uv.lock` does not apply there, so you get whatever versions
+pip resolves at that moment. That is fine for using the tool, and it is the
+reason CI installs with `uv sync --locked` instead.
+
+### Windows: `python` may open the Microsoft Store
+
+On a fresh Windows install, typing `python` hits an App-Execution-Alias stub and
+prints *"Python was not found; run without arguments to install from the
+Microsoft Store"*. That is not a broken installation — there simply is no
+`python` on `PATH` yet. Use `uv run python …` (Path A) or activate the
+environment first (Paths B and C), and the commands in this README work as
+written. On Path B you need a real Python before you can create the virtual
+environment at all: install one from [python.org](https://www.python.org/downloads/)
+and tick *Add python.exe to PATH*, or take Path A, where uv brings its own.
+
+---
+
+## 2. Run
+
+Three subcommands, all sharing one pipeline, so the report can never describe a
+different run than the model does:
+
+```
+cpacs-doc report  path/to/cpacs/schema/cpacs_schema.xsd            # report only
+cpacs-doc build   path/to/cpacs/schema/cpacs_schema.xsd -o build/  # report + model
+cpacs-doc serve   path/to/cpacs/schema/cpacs_schema.xsd            # report + viewer
+```
+
+**How to type the commands in this README.** Everything below is written as the
+bare command. Which form you actually type depends on the path you installed
+with:
+
+| Path | `cpacs-doc …` | `python …` |
+| --- | --- | --- |
+| A (uv) | `uv run cpacs-doc …` | `uv run python …` |
+| B (venv) / C (conda) | `cpacs-doc …` | `python …`, environment activated |
+
+On Path A nothing has to be activated; on Paths B and C the environment has to
+be activated once per terminal, and then the bare command is the whole story.
+
+### What `report` prints
+
+A statistics line, then the findings grouped by code, then a verdict. Against
+the real CPACS schema it looks like this:
+
+```
+types: 1206 (1121 documented) | tree: 54552 nodes (2848 in a choice), 53692 distinct paths, depth 22 | media: 98 entries
+
+WARNING  TREE_PATH_AMBIGUOUS  (860)
+    cpacs/vehicles/…/coefficientsBreakdown/otherComponents: reachable 2 times (differing cardinality ['(0, 1)', '(1, 1)'])  [cpacs_schema.xsd]
+    … 858 more
+
+INFO  MEDIA_ENTRY_UNREFERENCED  (14)
+    catalogue defines 'bodyFixCoordSys', which no documentation references  [documentation/media.json]
+    … 12 more
+
+0 errors, 58 warnings, 817 notes
+```
+
+Only ten findings per code are shown; `--limit 0` shows all, `--limit N` shows
+N. **Exit status is 1 when the report holds errors** (warnings and notes do not
+fail the run), which is what makes it usable in CI. `--tolerate-errors` forces
+exit 0 for exploratory runs.
+
+### Where the figures come from
+
+`documentation/media.json` is picked up automatically when it sits next to the
+schema *directory*, i.e. this layout:
+
+```
+cpacs/
+├── schema/
+│   └── cpacs_schema.xsd     ← the argument you pass
+└── documentation/
+    ├── media.json           ← found automatically
+    ├── figures/
+    └── equations/
+```
+
+Anywhere else, point at it with `--media path/to/media.json`. `--no-media` skips
+it entirely — without it you get a `MEDIA_CATALOGUE_NOT_GIVEN` warning as soon
+as any documentation references a figure.
+
+### `build`
+
+Writes `build/cpacs-doc-model.json` and prints its size. `--site` additionally
+generates the static type pages, `--media-root` overrides the directory the
+catalogue's file paths resolve against (default: the catalogue's own directory).
+
+### `serve` — the mode for working on the schema
+
+```
+cpacs-doc serve path/to/cpacs/schema/cpacs_schema.xsd
+```
+
+Builds the model in memory, serves the viewer on <http://127.0.0.1:8000>, and
+rebuilds whenever the schema or the media catalogue changes — the build report
+goes to the terminal on every pass and the browser reloads by itself. Nothing is
+written to disk. `--host` and `--port` change the address; `--port 0` takes any
+free port. Stop it with Ctrl-C.
 
 It reproduces the deployment target rather than merely serving files: one
 not-found document answers every path that is not a file, tree paths keep their
@@ -39,70 +226,62 @@ address and carry status 404, and there are no directory listings. A generic
 static server does not do this, which is why `python -m http.server` is not a
 substitute.
 
-## Installing
+---
 
-With [uv](https://docs.astral.sh/uv/):
-
-```
-uv sync
-uv run pytest
-uv run cpacs-doc report schema/cpacs_schema.xsd
-```
-
-`uv sync` creates the environment, installs the package in editable mode and
-pulls the test tooling from the `dev` dependency group. `uv.lock` pins the exact
-versions and is committed, so CI and every checkout resolve identically.
-
-The viewer's keyboard behaviour is checked in a real browser: `tests/cdp.py`
-drives an installed Chrome or Edge over the DevTools protocol, without a driver
-package and without Node. Those tests skip where no such browser is found, and
-`CPACS_DOC_BROWSER` points at one that is installed elsewhere. Everything else
-runs without a browser.
-
-Without uv, any Python 3.10 environment works:
-
-```
-pip install -e . pytest
-pytest
-```
-
-The only runtime dependency is `lxml`, which ships as a wheel on all three
-platforms — no compiler and no conda-style environment needed. The extractor
-deliberately does not depend on `cpacs-schema-tool` or on the viewer.
-
-## Reporting rather than repairing
-
-Where the schema deviates from its own conventions, the extractor reports and
-moves on. It does not recover a documentation body from an unexpected wrapper,
-does not infer a figure's file from its id, and does not translate vocabulary it
-has not been told about. Silent repair would keep the underlying defect alive
-and would oblige every later consumer to reimplement the same guess.
-
-## Tools
-
-`tools/survey_doc_vocabulary.py` counts the documentation vocabulary of a schema
-and cross-checks the media catalogue against the file system. It has no
-dependency on the package and can be run against any XSD.
+## 3. The media catalogue converter
 
 `tools/convert_media_catalogue.py` migrates the figure catalogue out of the SHFB
-project file into `media.json`, correcting file name capitalisation against the
-file system on the way. A one-off migration, not part of the build: run it once,
-commit the result, and the `.shfbproj` is no longer needed for figures. Standard
-library only, so no environment is needed.
+project file (`.shfbproj`) into `media.json`, correcting file name
+capitalisation against the file system on the way.
+
+This is a **one-off migration, not part of the build**: run it once, commit the
+result, and the `.shfbproj` is no longer needed for figures. The script is
+standard library only — no `lxml`, no project environment. It does still need a
+working Python interpreter, so type `python` the way your install path spells it
+(see the table in section 2): `uv run python …` on Path A, plain `python …` with
+the environment activated on Paths B and C. A bare `python` in a fresh Windows
+terminal is the one case that will not work.
+
+### Use it
+
+Always look first:
 
 ```
-python tools/convert_media_catalogue.py documentation/ --dry-run
-python tools/convert_media_catalogue.py documentation/
+python tools/convert_media_catalogue.py path/to/cpacs/documentation --dry-run
 ```
 
-The argument is the directory holding the `.shfbproj` and the figures; the first
-project file found there is read. The catalogue is written to
-`<documentation>/media.json`, or wherever `-o` points. `--dry-run` reports
-without writing.
+```
+source: Cpacs_doc_project.shfbproj
+entries: 98
+(dry run, nothing written)
+```
+
+Then write:
+
+```
+python tools/convert_media_catalogue.py path/to/cpacs/documentation
+```
+
+The argument is the directory holding the `.shfbproj` **and** the figures. The
+catalogue is written to `<documentation>/media.json`, or wherever `-o` points.
+
+Three things to know before the first real run:
+
+* **It overwrites `media.json` without asking.** Run `--dry-run` first and keep
+  the old file in git, so the diff shows what actually changed.
+* **It reads exactly one project file** — the alphabetically first `.shfbproj`
+  in that directory. The CPACS documentation directory holds two
+  (`Cpacs_doc_project.shfbproj` and `Toolspecific_doc_project.shfbproj`), so
+  `Cpacs_doc_project.shfbproj` is the one converted; the `source:` line names
+  it. To convert the other one, pass a directory containing only that file.
+* **Exit status is 1 when entries were dropped**, so a catalogue that came out
+  quietly shorter than its source cannot pass unnoticed in a script.
+
+### What it produces
 
 Every `<Image>` entry becomes one catalogue entry, keyed by its `<ImageId>`,
 with the file path relative to the documentation directory and
-`<AlternateText>` as `alt`:
+`<AlternateText>` as `alt`. Entries are written in id order:
 
 ```json
 {
@@ -121,15 +300,68 @@ with the file path relative to the documentation directory and
 ```
 
 Ids and file names are independent, as both entries show; nothing is inferred
-from the one to reach the other. Entries are written in id order.
+from the one to reach the other.
+
+### What it reports
+
+Every line after `entries:` is a problem or a correction:
+
+| Message | What happened | Entry kept? |
+| --- | --- | --- |
+| `<id>: case corrected a/B.png -> a/b.png` | The spelling in the project file differs from the file on disk | yes, corrected |
+| `<id>: file not found: …` | No file matches, in any capitalisation | no |
+| `<id>: no AlternateText; alt is mandatory in media.json` | Missing or empty alt text | no |
+| `<id>: declared more than once` | Duplicate `<ImageId>` | first one only |
+| `entry without <ImageId>: …` | Image has no id to key on | no |
+
+Only the dropped entries set exit status 1; a corrected capitalisation does not.
 
 File names are compared against the actual directory listing rather than through
 `Path.exists()`, which is case-insensitive on Windows and macOS and would accept
 the very spellings the conversion exists to correct. Directories are matched
-segment by segment, since a directory may differ in case just as a file may.
+segment by segment, since a directory may differ in case just as a file may. The
+practical effect: a figure reference that works on your Windows machine but
+breaks on a Linux runner is caught here.
 
-Entries without an `<ImageId>`, without alt text, without a matching file, or
-declared more than once are reported and left out, and the run then exits with
-status 1: a catalogue that is quietly shorter than its source should not pass
-unnoticed in a script. Corrected capitalisation is reported as well but does not
-change the exit status.
+---
+
+## 4. Other tools and notes
+
+### `tools/survey_doc_vocabulary.py`
+
+Counts the documentation vocabulary of a schema and cross-checks the media
+catalogue against the file system. Independent of the package, runnable against
+any XSD; needs `lxml`, so run it inside the environment:
+
+```
+python tools/survey_doc_vocabulary.py path/to/cpacs_schema.xsd --media path/to/documentation
+```
+
+### Testing
+
+```
+pytest
+```
+
+`uv run pytest` on Path A, as everywhere else.
+
+The viewer's keyboard behaviour is checked in a real browser: `tests/cdp.py`
+drives an installed Chrome or Edge over the DevTools protocol, without a driver
+package and without Node. Those tests skip where no such browser is found, and
+`CPACS_DOC_BROWSER` points at one that is installed elsewhere. Everything else
+runs without a browser.
+
+### Reporting rather than repairing
+
+Where the schema deviates from its own conventions, the extractor reports and
+moves on. It does not recover a documentation body from an unexpected wrapper,
+does not infer a figure's file from its id, and does not translate vocabulary it
+has not been told about. Silent repair would keep the underlying defect alive
+and would oblige every later consumer to reimplement the same guess.
+
+### Where this sits
+
+Stage one of the three-stage architecture (extractor → generator → viewer).
+`ddue` markup is carried as plain text; turning it into HTML belongs to the
+generator. The extractor deliberately does not depend on `cpacs-schema-tool` or
+on the viewer.
