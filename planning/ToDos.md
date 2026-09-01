@@ -175,6 +175,29 @@
 
 ### Closed
 
+**The tree says where the keyboard is** (2026-09-01, `decisions/0016`). The
+cursor row and the focused element carried the same `2px solid` ring, so after
+Enter the tree still said "you are here" while `activeElement` was `#cd-detail`
+and the next ArrowDown scrolled the panel by 8 px. The standing mark is a
+dashed hair in `--ink-soft` now, 5.4 and 6.2 to 1 against the row it sits on
+where the quieter `--rule-strong` measured 2.3 and 2.7 and would have gone
+under WCAG 1.4.11's 3:1. ArrowLeft steps out of the panel, the direction the
+tree already uses. The focus ring has its own token, `--focus`, at roughly 4:1
+against the page where `--link` stood at 6.5 and 8.4.
+
+**The tree explains itself in one place** (2026-09-01, `decisions/0017`). The
+`⑂` on a choice node had a hover tip, and a tip is laid out even while hidden —
+0014's finding one pane over, where the answer had been `overflow-y: clip` and
+the tree was never considered. Five marks in `fixtures/minimal.xsd` put
+scrollHeight 272 into a 219 px pane and scrollWidth 445 into 433, and the tip a
+reader did open was cut at the pane's edge, 53 px below it at the default width
+and 180 px past its right at half that. Now 219/219 and 448/448. The words went
+into a legend under the `?`, drawn from the tree's own classes — which found
+`.cd-required .cd-name` inheriting its ink and drawing the "must appear" sample
+in the muted colour of its opposite. The hint that comes by itself is one line
+of 37 px against the old table's 65, and it waits for the reader's first click
+instead of standing there from the first paint.
+
 **What may be written here, in words** (2026-08-30). The value line names the
 datatype in plain words with the schema's own term behind it — `Value: decimal
 number (xsd:double)`, `reference to an identifier (xsd:IDREF)`, `text

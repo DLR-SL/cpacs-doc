@@ -265,7 +265,11 @@ def visible_groups(page):
     return page.evaluate("""
       return Array.from(document.querySelectorAll('#cd-hint .cd-hint-line'))
         .filter(function (line) { return line.getClientRects().length > 0; })
-        .map(function (line) { return line.querySelector('.cd-hint-lead').textContent; });
+        .map(function (line) {
+          // A group alone in its tab carries no lead: the tab names it.
+          var lead = line.querySelector('.cd-hint-lead');
+          return lead ? lead.textContent : "";
+        });
     """)
 
 
@@ -276,7 +280,7 @@ def test_the_question_mark_strip_carries_the_query_forms_too(page):
     click(page, "#cd-help")
     page.wait_for("return !!document.getElementById('cd-hint');", "the hint")
     click(page, "#cd-tab-search")
-    assert visible_groups(page) == ["Search"]
+    assert visible_groups(page) == ["Start your search with:"]
     forms = page.evaluate("""
       return Array.from(document.querySelectorAll(
         '#cd-hint .cd-hint-line[data-tab="search"] .cd-hint-form'))
@@ -284,13 +288,14 @@ def test_the_question_mark_strip_carries_the_query_forms_too(page):
     """)
     assert "type:" in forms and "@" in forms
     # A form is typed, a key is pressed: only the keys are set in relief, and
-    # the keys belong to the tree.
+    # the keys belong to the tree. Eight caps over five entries, because two of
+    # them name a pair: the arrows that open and close, and the two ways back.
     click(page, "#cd-tab-tree")
-    assert visible_groups(page) == ["Tree"]
+    assert visible_groups(page) == ["", "Legend"]
     assert page.evaluate("""
       return document.querySelectorAll(
         '#cd-hint .cd-hint-line[data-tab="tree"] kbd').length;
-    """) == 7
+    """) == 8
 
 
 def test_the_handbook_offers_no_hint_and_says_so_on_the_button(page):
@@ -325,7 +330,7 @@ def test_the_handbook_offers_no_hint_and_says_so_on_the_button(page):
 
     # Suppressed, not closed — leaving the Handbook gives back what was open.
     click(page, "#cd-tab-tree")
-    assert visible_groups(page) == ["Tree"]
+    assert visible_groups(page) == ["", "Legend"]
     assert page.evaluate("return document.getElementById('cd-help').disabled;") is False
 
 

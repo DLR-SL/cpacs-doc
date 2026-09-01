@@ -323,16 +323,15 @@
     label.appendChild(element("span", "cd-name", decl.name || "?"));
     if (decl.alternative) {
       // The tree stays flat; the constraint rides on the node it applies to.
-      var mark = element("span", "cd-alternative", "\u2442");
-      // Reached through the row rather than as a tab stop of its own: the
-      // explanation appears when the row takes focus, see the stylesheet.
-      mark.setAttribute("tabindex", "-1");
-      var tip = element("span", "cd-tip",
-        "One of several alternatives: only one branch of a choice may appear. "
-        + "The type page lists the combinations.");
-      tip.setAttribute("role", "note");
-      mark.appendChild(tip);
-      label.appendChild(mark);
+      // What the mark means is said in the legend under the `?` and no
+      // longer in a tip hanging off the row. An absolutely positioned box
+      // belongs to the pane's scrollable area whether or not it is on
+      // screen, and five of them in the smallest schema there is raised
+      // both scrollbars over a tree that fits: 272px of scroll height
+      // against 219 of pane. The pane clips as it scrolls, so the one tip
+      // a reader did open was cut off at its edge — 53px below it at the
+      // default width, 180 past its right at half that.
+      label.appendChild(element("span", "cd-alternative", "\u2442"));
     }
     // The type name is not repeated here: for most nodes it merely echoes the
     // element name, and the detail panel states it precisely.
@@ -504,22 +503,81 @@
   // had already narrowed by hand ever saw; this is where someone looks.
   // The fourth entry is the tab the line is about. It is named rather than
   // derived from the label, so renaming one does not silently unmark the other.
+  // The other half of what cannot be read off the tree. The keys are one
+  // half; these are the marks — a glyph and two weights of one name — and
+  // they are as unguessable, which is why they were on hover and why hover
+  // was the wrong place: it explains one row at a time, to whoever already
+  // suspected there was something to explain.
+  //
+  // It stands in the table the `?` opens and never in the opening, which is
+  // one line to glance at and would become the legend it replaced. Directly
+  // after the keys, so that the rule between the two lines has something on
+  // both sides: with the Search group in between, that rule was suppressed by
+  // `.cd-hint-line[hidden] + .cd-hint-line` — correctly, and invisibly.
+  //
+  // Drawn in the tree's own classes rather than in copies of its rules, so
+  // that restyling the tree restyles the legend with it. Each entry names
+  // the shell it is drawn in and, where the tree puts the name inside one,
+  // the inner class: `.cd-required .cd-name` and its optional twin are
+  // descendant rules, and a bare span would miss them.
+  var HINT_MARKS = ["Legend", "mark", [
+    [["\u2442"], "one branch of a choice", ["cd-alternative", null]],
+    [["name"], "must appear", ["cd-required", "cd-name"]],
+    [["name"], "may appear", ["cd-optional", "cd-name"]]
+  ], "tree"];
+
   var HINT_GROUPS = [
-    ["Tree", "key", [
+    ["", "key", [
       [["\u2191", "\u2193"], "move"],
       [["\u2192", "\u2190"], "open, close"],
       [["Enter"], "details"],
       [["/"], "search"],
       // The way back. Enter without it strands a reader in the detail panel,
-      // and the same key clears the search and closes this hint.
-      [["Esc"], "back to the tree"]
+      // and the same key clears the search and closes this hint. ArrowLeft
+      // stands beside it and is named twice on this line on purpose: it steps
+      // out of a node and out of the panel, which is one movement, not two.
+      [["Esc", "←"], "back to the tree"]
     ], "tree"],
-    ["Search", "form", [
+    HINT_MARKS,
+    // A heading names what the row below it is, never where the reader is —
+    // the tab above already says that. The forms are the one group whose kind
+    // is not written on them: a key in relief is plainly pressed, and `type:`
+    // in the code face is plainly typed only to someone who already knew. So
+    // the heading is the sentence the forms finish, and every one of them is
+    // in fact how a query starts.
+    ["Start your search with:", "form", [
       [["type:"], "types only"],
       [["element:"], "elements only"],
-      [["@"], "attributes, or attribute:"],
-      [["wings/wing"], "a slash searches paths"]
+      // Two spellings of one filter, said the way the tree line says two
+      // arrows: the caption belongs to the pair, not to each of them.
+      [["@", "attribute:"], "attributes"],
+      // The slash is in the example and needs no naming beside it.
+      [["wings/wing"], "paths"]
     ], "search"]
+  ];
+
+
+  // What the hint says the first time is not what it says when asked for.
+  // The table above is a legend — five entries and eight caps — and a legend
+  // asks a reader to learn five things before doing one, which is why it was
+  // read past. The opening carries the two keys that get anyone moving and
+  // points at the `?` for the rest. Written as a group of its own rather than
+  // sliced out of the table, so that shortening one does not quietly shorten
+  // the other.
+  //
+  // An entry with no keys is prose: the `?` is a button in the strip, not a
+  // key, and setting it in relief would promise a keystroke that does nothing.
+  //
+  // It has to hold one line at the tree's default width, which is what makes
+  // it a glance rather than a legend — 37px against the table's 65. The words
+  // are short for that reason and not for terseness; a fourth entry, or a
+  // longer way of saying "more under ?", puts it back on two.
+  var HINT_OPENING = [
+    ["Keys", "key", [
+      [["↑", "↓"], "move"],
+      [["Enter"], "details"],
+      [[], "more under ?"]
+    ], "tree"]
   ];
 
   function hintSeen() {
@@ -564,12 +622,18 @@
 
     var hint = document.getElementById("cd-hint");
     if (!hint) return;
-    hint.hidden = !group;
-    markHelp(!!group);
+    // Read off the lines the box actually holds rather than off the table: the
+    // opening carries the tree's line alone, and on any other tab that would
+    // leave an empty box standing where a group used to be.
     var lines = hint.querySelectorAll(".cd-hint-line");
+    var shown = 0;
     for (var i = 0; i < lines.length; i++) {
-      lines[i].hidden = !group || lines[i].getAttribute("data-tab") !== state.tab;
+      var fits = !!group && lines[i].getAttribute("data-tab") === state.tab;
+      lines[i].hidden = !fits;
+      if (fits) shown++;
     }
+    hint.hidden = !shown;
+    markHelp(!!shown);
   }
 
   function hideHint() {
@@ -578,6 +642,10 @@
     hint.parentNode.removeChild(hint);
     hintIsAutomatic = false;
     markHelp(false);
+    markSeen();
+  }
+
+  function markSeen() {
     try { window.localStorage.setItem(HINT_KEY, "seen"); } catch (e) { /* private mode */ }
   }
 
@@ -585,7 +653,16 @@
   // been proved superfluous. One the reader asked for stays until the reader
   // closes it — being shown the keys and then having them snatched away for
   // trying one is not help.
+  //
+  // A key also calls off an opening that is still waiting for its click, and
+  // for good: someone already driving with the keyboard is not the reader it
+  // is for, and greeting him with it on the next page would be worse than not
+  // greeting him at all.
   function hintUsed() {
+    if (openingPending) {
+      openingPending();
+      markSeen();
+    }
     if (hintIsAutomatic) hideHint();
   }
 
@@ -598,8 +675,29 @@
     });
   }
 
+  /* Not at the door. Standing there from the first paint, the hint is part of
+     the furniture and is read as little as the rest of it; it arrives instead
+     at the reader's first touch of the tree, when he has just shown what he
+     came for and has one question — what now. A click is the touch everyone
+     makes, so that is the trigger.
+
+     Held so it can be called off: `hintUsed` drops it when the reader turns
+     out to be driving with the keyboard already. */
+  var openingPending = null;
+
   function setupHint() {
-    if (!hintSeen()) showHint(true);
+    if (hintSeen()) return;
+    var tree = document.getElementById("cd-tree");
+    if (!tree) return;
+    function opening() {
+      openingPending();
+      showHint(true);
+    }
+    openingPending = function () {
+      tree.removeEventListener("click", opening);
+      openingPending = null;
+    };
+    tree.addEventListener("click", opening);
   }
 
   function showHint(automatic) {
@@ -611,19 +709,32 @@
     hint.id = "cd-hint";
     hint.setAttribute("role", "note");
 
-    for (var g = 0; g < HINT_GROUPS.length; g++) {
-      var group = HINT_GROUPS[g];
+    var groups = automatic ? HINT_OPENING : HINT_GROUPS;
+    for (var g = 0; g < groups.length; g++) {
+      var group = groups[g];
       var line = element("div", "cd-hint-line");
       line.setAttribute("data-tab", group[3]);
-      line.appendChild(element("span", "cd-hint-lead", group[0]));
+      // Only a group that shares its tab with another needs naming. The tab is
+      // already lit in the strip above, so a line reading "Tree" under the
+      // Tree tab said nothing twice; the legend keeps its lead because it
+      // stands beneath the keys and has to be told apart from them.
+      if (group[0]) line.appendChild(element("span", "cd-hint-lead", group[0]));
       var entries = group[2];
       for (var i = 0; i < entries.length; i++) {
         var item = element("span", "cd-hint-item");
         var written = entries[i][0];
         for (var k = 0; k < written.length; k++) {
-          item.appendChild(group[1] === "key"
-            ? element("kbd", null, written[k])
-            : element("span", "cd-hint-form", written[k]));
+          if (group[1] === "mark") {
+            var shell = entries[i][2];
+            var drawn = element("span", shell[0]);
+            if (shell[1]) drawn.appendChild(element("span", shell[1], written[k]));
+            else drawn.textContent = written[k];
+            item.appendChild(drawn);
+          } else {
+            item.appendChild(group[1] === "key"
+              ? element("kbd", null, written[k])
+              : element("span", "cd-hint-form", written[k]));
+          }
         }
         item.appendChild(element("span", "cd-hint-what", entries[i][1]));
         line.appendChild(item);
@@ -712,6 +823,29 @@
         event.preventDefault();
         return;
       }
+    });
+  }
+
+  /* The way out of the detail panel, in the direction the tree already uses.
+     Enter hands the keyboard over and Escape hands it back, but Escape has to
+     be learned; ArrowLeft is already in the fingers from stepping out of a
+     node, and it means the same thing one pane further out. Up and Down are
+     left alone: on a type page that runs past the fold they are how it is
+     read.
+
+     Only an event the panel itself received — that is, the state Enter leaves
+     behind. Once the reader has tabbed on to a link or into a table that
+     scrolls sideways, ArrowLeft is that table's key, and Escape is still the
+     way back. */
+  function setupDetailKeys() {
+    var panel = document.getElementById("cd-detail");
+    if (!panel) return;
+    panel.addEventListener("keydown", function (event) {
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      if (event.key !== "ArrowLeft" || event.target !== panel) return;
+      hintUsed();
+      focusCursor();
+      event.preventDefault();
     });
   }
 
@@ -2193,6 +2327,7 @@
     setupTreeKeys();
     setupListKeys("cd-results");
     setupListKeys("cd-docs");
+    setupDetailKeys();
     setupGlobalKeys();
     setupHelp();
 

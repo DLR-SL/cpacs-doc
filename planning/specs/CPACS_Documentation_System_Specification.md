@@ -122,7 +122,7 @@ The nine outliers are `positionXUidEnd`, `-Max`, `-Mid`, `-Min`, `-Start` (spell
 - **G4 — Reproducible build without proprietary dependencies.** Linux CI, no binary blobs in the repository, no end-of-life components.
 - **G5 — The schema remains the single source of truth.** No parallel documentation source, no registration obligations outside the XSD.
 - **G6 — Extensible to toolspecific schemas and to multiple schema versions.**
-- **G7 — Make structural semantics visible.** Compositor and cardinality rules are presented so that they are understood without a legend (§6).
+- **G7 — Make structural semantics visible.** Compositor and cardinality rules are presented so that they are understood without a legend (§6). This is a requirement on the child list, where the presentation carries the rule in words. The tree is the bounded exception (amended 2026-09-01): it is flat (`decisions/0008`), so a node bound to a `choice` carries a compact mark and cannot carry the rule, and required against optional is told by weight and colour. Those three marks have a legend, in the `?` beside the search field and nowhere else — not on hover, which explains one row at a time to whoever already suspected there was something to explain (`decisions/0017`).
 
 ### 2.2 Non-goals for v1
 

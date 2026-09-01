@@ -12,6 +12,13 @@
   --rule-strong: #9aa2ab;
   --field: rgba(120, 130, 140, 0.09);
   --link: #1d5fa8;
+  /* The focus ring, which was --link and had no business being it: a link is
+     read, a ring is only glanced at, and at the link's strength — 6.5 to 1
+     against the page, 5.9 against a selected row — it shouted every time the
+     keyboard moved. Quieted to roughly 4, which keeps the 3:1 a focus
+     indicator owes (WCAG 2.4.11) even on the tightest ground it meets, the
+     --field of the row the cursor stands on. Measured there: 3.7 and 3.9. */
+  --focus: #4b81bd;
   --alarm: #a3241c;
   /* Figures are drawn for paper: dark strokes and labels, mostly on a
      transparent ground (62 of 98). They are set on a light plate rather than
@@ -67,6 +74,7 @@
     --rule-strong: #5c646d;
     --field: rgba(150, 160, 172, 0.11);
     --link: #74b3f0;
+    --focus: #4f80b0;
     --alarm: #e8837b;
     /* Slightly off white, so a full-page-width figure does not glare against
        a dark page. */
@@ -89,6 +97,7 @@
   --rule-strong: #5c646d;
   --field: rgba(150, 160, 172, 0.11);
   --link: #74b3f0;
+  --focus: #4f80b0;
   --alarm: #e8837b;
   --plate: #edeff1;
   --plate-edge: rgba(255, 255, 255, 0.14);
@@ -111,7 +120,7 @@ body {
 
 a { color: var(--link); text-underline-offset: 0.15em; }
 a:hover { text-decoration-thickness: 2px; }
-:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 2px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
 
 code {
   font-family: var(--face-code);
@@ -302,13 +311,13 @@ td code { white-space: nowrap; }
   cursor: help;
   border-bottom: 1px dotted var(--rule-strong);
 }
-.cd-note-term:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.cd-note-term:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .cd-note-term:hover .cd-tip,
 .cd-note-term:focus-visible .cd-tip { opacity: 1; visibility: visible; }
 
 .cd-group-term, .cd-facet { position: relative; cursor: help; }
 .cd-group-term:focus-visible,
-.cd-facet:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.cd-facet:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .cd-tip {
   position: absolute;
   left: 0;
@@ -527,7 +536,7 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   border: 1px solid var(--rule);
   border-radius: 4px;
 }
-.cd-search input:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
+.cd-search input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .cd-search-count { color: var(--ink-soft); font-size: var(--step-0); white-space: nowrap; }
 
 /* The counts the quota is computed from, made visible: what the reader can see
@@ -729,14 +738,19 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-doc-index { line-height: 1.9; }
 
 /* The way back to the strip once it has been put away, and the sign that
-   there is something to know at all. */
+   there is something to know at all.
+
+   Ring and glyph in one ink. Drawn in --rule-strong the ring measured 2.6 and
+   3.1 to 1 against the page while the `?` inside it held 5.9 and 7.3: the eye
+   read the character and not the button, and a lone `?` beside a search field
+   looks like a question rather than something to press. */
 .cd-help {
   align-self: center;
   flex: 0 0 auto;
   width: 1.45rem;
   height: 1.45rem;
   padding: 0;
-  border: 1px solid var(--rule-strong);
+  border: 1px solid var(--ink-soft);
   border-radius: 50%;
   background: none;
   color: var(--ink-soft);
@@ -803,11 +817,21 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   padding-top: 0;
   border-top: 0;
 }
+/* A heading over its row rather than a column beside it. Set flush left on a
+   line of its own, it is plainly what follows it is about, and the samples
+   underneath start where every other line starts.
+
+   Not uppercase: it holds a word on one line and a sentence on the next, and a
+   sentence in capitals shouts. What tells it from the samples is the face and
+   the ink — text against the code face, --ink-soft against --ink — since
+   weight alone put it within 50 of the legend's own bold sample, which is the
+   mark for "must appear", and a heading that reads as a sample explains
+   nothing. */
 .cd-hint-lead {
+  flex: 0 0 100%;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  flex: 0 0 3.4rem;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
 }
 /* A form is typed into the field, a key is pressed on the keyboard. Setting
    both in relief would send a reader looking for a key marked `type:`. */
@@ -854,47 +878,37 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 /* The cursor is where the keyboard points, the selection is what the detail
    panel shows. They are usually the same row and need not be, so they are
    marked differently — and the cursor keeps its mark once Enter has moved the
-   focus to the panel, so the way back stays visible. */
-/* One rule for both, and the offset pulled inside the row: the cursor row is
-   normally the focused one, and two rules would draw two rings around it. */
-.cd-node.cd-cursor,
-.cd-node:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+   focus to the panel, so the way back stays visible.
+
+   Kept, but not in the same words as the focus. Enter hands the keyboard to
+   the panel; drawing the row it came from in the ring that means "the keys are
+   here" says the opposite of what happened, and the next arrow key scrolls the
+   panel instead of moving a cursor the reader believes he still holds. So the
+   two are told apart by weight and hue — one dashed grey hair against two
+   solid blue — and the quietness is spent on the stroke rather than on the
+   colour. A paler grey was the first try and the wrong one: --rule-strong
+   measures 2.3 and 2.7 to 1 against the row it sits on, under the 3:1 a state
+   indicator owes (WCAG 1.4.11), and a mark saying "the way back is here" may
+   not be the faintest thing on the screen. --ink-soft holds 5.4 and 6.2.
+
+   Both offsets are pulled inside the row and both are -2px, so the two marks
+   share an outer edge and the row does not shift as the focus comes and goes.
+   The focus rule follows this one at equal specificity so that the focused
+   cursor row takes it: the two match the same element most of the time, and
+   two rings around one row is a smear. */
+.cd-node.cd-cursor { outline: 1px dashed var(--ink-soft); outline-offset: -2px; }
+.cd-node:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* Marks a node bound to a choice. The tree is flat — indentation there means
    containment in an instance, and a compositor contains nothing — so the
    constraint rides on the node rather than on a row of its own. */
+/* No tip of its own and so nothing to position against: what it means is in
+   the legend under the `?`, where it is read once instead of hunted for on
+   every row. See the note in `renderNode` for what the tip cost the pane. */
 .cd-alternative {
-  position: relative;
   color: var(--ink-soft);
   font-size: var(--step-1);
-  cursor: help;
   line-height: 1;
 }
-.cd-alternative:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
-.cd-alternative .cd-tip {
-  position: absolute;
-  left: 0;
-  top: calc(100% + 0.35rem);
-  z-index: 5;
-  width: max-content;
-  max-width: 20rem;
-  padding: 0.5rem 0.7rem;
-  background: var(--tip-bg);
-  color: var(--tip-ink);
-  border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
-  font-family: var(--face-text);
-  font-size: var(--step-0);
-  line-height: 1.45;
-  white-space: normal;
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-/* The mark is no longer a tab stop of its own — that would put one per
-   choice node into the tab order — so the row it rides on shows the
-   explanation when the keyboard reaches it. */
-.cd-alternative:hover .cd-tip,
-.cd-node:focus .cd-alternative .cd-tip { opacity: 1; visibility: visible; }
 .cd-toggle {
   flex: 0 0 1.3rem;
   border: 0;
@@ -927,7 +941,12 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
    which is which, and it is meant to stay that way: it answers the question a
    reader has while scanning — is this one I have to write? — without teaching
    a notation, and the panel states the bounds exactly for the row in hand. */
-.cd-required .cd-name { font-weight: 650; }
+/* The ink is stated rather than inherited, as its optional twin below always
+   stated it. Inherited, the pair says what it means only inside the tree, and
+   the legend under the `?` — which draws these very rules, so that it cannot
+   drift from what it explains — drew the required sample in the muted colour
+   of the optional one. */
+.cd-required .cd-name { font-weight: 650; color: var(--ink); }
 .cd-optional .cd-name { color: var(--ink-soft); }
 /* The bounds, wherever they are stated in full: the head of the panel and the
    Occurrence column. One quiet code face for the notation everywhere it
