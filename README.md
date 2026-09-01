@@ -13,6 +13,9 @@ shows the model in a browser. Nothing is rendered to final HTML here.
 Requires Python 3.10 or newer. The only runtime dependency is `lxml`, which
 ships as a wheel on Windows, macOS and Linux — no compiler needed.
 
+This project was written with AI assistance; the documentation it extracts was
+not. See [section 5](#5-how-this-was-built).
+
 ---
 
 ## 1. Install
@@ -354,3 +357,66 @@ Stage one of the three-stage architecture (extractor → generator → viewer).
 `ddue` markup is carried as plain text; turning it into HTML belongs to the
 generator. The extractor deliberately does not depend on `cpacs-schema-tool` or
 on the viewer.
+
+---
+
+## 5. How this was built
+
+**This software was written with the assistance of a generative AI system.**
+The assistant was Anthropic's Claude, used as a coding assistant from a
+terminal, over the development period recorded in the git history.
+
+### What was AI-assisted, and what was not
+
+Assisted: the Python package under `src/`, the viewer's JavaScript and CSS, the
+test suite under `tests/`, the tooling under `tools/`, and the planning
+documents under `planning/` — including the decision records and this README.
+
+**Not** assisted, and this is the distinction that matters for anyone reading
+the output: the documentation content this tool extracts, reports on and
+displays is the CPACS schema's own `xsd:documentation`, carried through
+unchanged. No description, summary, remark, example or figure caption in the
+generated model or in the viewer is written, completed, rewritten or
+paraphrased by a model. The extractor reports where the schema's documentation
+is missing or malformed and does not fill the gap — see *Reporting rather than
+repairing* above, and goal G5 in
+`planning/specs/CPACS_Documentation_System_Specification.md`, which makes the
+schema the single source of truth.
+
+### Human review and responsibility
+
+Every change was proposed one step at a time, reviewed and accepted by the
+maintainers before it entered the repository. The design decisions are the
+maintainers' own and are recorded with their reasoning in
+`planning/decisions/`. Editorial responsibility for this repository and for the
+documentation it produces rests with the copyright holder named in `NOTICE`,
+the German Aerospace Center (DLR), Institute of System Architectures in
+Aeronautics.
+
+### Relationship to Regulation (EU) 2024/1689 (AI Act)
+
+This statement is voluntary. It is made because readers of a documentation tool
+deserve to know how it came about, and not because the Regulation requires it
+of this project — as far as we can tell, it does not. Set out plainly, so that
+the claim can be checked rather than taken on trust:
+
+- **Art. 50(2)**, marking synthetic output in a machine-readable format, is an
+  obligation on the *provider* of the AI system, not on those who use it to
+  write software.
+- **Art. 50(4)**, the deployer's duty to disclose, covers AI-generated or
+  manipulated text *published in order to inform the public on matters of
+  public interest*. It also does not apply where the content has undergone
+  human review and a natural or legal person holds editorial responsibility for
+  it — which is the case here, as stated above.
+- The Regulation contains **no general obligation to label software written
+  with AI assistance**. A badge claiming conformity where no obligation applies
+  would itself be a misleading claim, so none is made.
+- The transparency obligations in Art. 50 have applied since 2 August 2026.
+
+The disclosure above is written to satisfy the substance of an Art. 50(4)
+disclosure — what was generated, by what, under whose review — should the
+Regulation, or a downstream user's own policy, ever call for one.
+
+This is a statement of fact about how the project was built, not legal advice.
+Anyone redistributing or building on this work should form their own view of
+their obligations.
