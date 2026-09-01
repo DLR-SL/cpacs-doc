@@ -1,4 +1,4 @@
-# cpacs-doc
+# CPACS Documentation Generator
 
 **Experimental.** A prototype documentation extractor for the CPACS schema, not
 a supported deliverable and not a replacement for the current documentation
