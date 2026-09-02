@@ -175,6 +175,44 @@
 
 ### Closed
 
+**Backspace is a second Escape** (2026-09-02, `decisions/0021`). Bound after
+0020 had declined it: the ordering fault it would have papered over is fixed,
+and what remains is that the hand is on the right of the keyboard after Enter.
+It shares Escape's whole resolution rather than answering in the panel alone,
+because a key that works in one state and not the neighbouring one is what 0018
+and 0020 both took out. The text-field guard keeps it out of the search field.
+Named in the table, since 0018's finding about Space applies doubly to a key
+with no convention behind it. One cost, measured and accepted: `Backspace` is
+the longest cap in the line and its item is 214 px against
+`white-space: nowrap`, so at `MIN_TREE_WIDTH` the hint box scrolls 23 px
+sideways — nothing at the default 448 px. `⌫` would fit but renders from a
+system fallback, not the code face.
+
+**Escape does the nearest thing first** (2026-09-02, `decisions/0020`). Fallout
+from 0019, found while weighing Backspace as a second way out of the detail
+panel. Escape ran its claimants in a fixed order — search panel, hint, tree —
+written when the hint was gone at the reader's first key. With the hint
+standing until it is closed, the first Escape out of the panel closed the hint
+and left the focus on `cd-detail`; measured on the real schema, `ArrowDown`,
+`Enter`, `Escape` returned to the tree for a reader who had already closed the
+hint and not for a first-time one. It resolves by nearness now, and Backspace
+is not needed: the fault was not that Escape was taken but that it was answered
+by the wrong claimant. Backspace would have worked — unmapped in Chrome since
+52 and Firefox since 86, and the panel holds no text field on any of the 60
+nodes walked — and would have been a synonym papering over the order.
+
+**A key is a touch of the tree too** (2026-09-02, `decisions/0019`). The opening
+hint waited for a click and was called off for good by a key pressed before
+one, on 0017's reading that a reader already on the arrows had found the keys
+himself. Since 0018 the line he has not found is `Space`, and the reader who
+starts on the keys is the one who never clicks — so the rule withheld the only
+unguessable line from the only reader guaranteed to miss it. A key now brings
+the hint out as a click does, from the tree's own handler and from the global
+arrow handler, and nothing but closing it takes it away. `hintUsed()` is
+`hintStart()`; `hintIsAutomatic` is gone, and the two hints behave alike. The
+cost, taken deliberately: a reader who ignores it sees it on every page load
+until he closes it.
+
 **Two keys commit, one key comes back** (2026-09-02, `decisions/0018`). Readers
 asked for a second key that shows the detail page without taking the keyboard
 out of the tree. Space has done that since 0010 and was named in neither the

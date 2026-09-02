@@ -51,6 +51,7 @@ KEYS = {
     "ArrowLeft": (37, "ArrowLeft"), "ArrowRight": (39, "ArrowRight"),
     "Home": (36, "Home"), "End": (35, "End"),
     "Enter": (13, "Enter"), "Escape": (27, "Escape"),
+    "Backspace": (8, "Backspace"),
     "Tab": (9, "Tab"), " ": (32, "Space"), "/": (191, "Slash"),
 }
 

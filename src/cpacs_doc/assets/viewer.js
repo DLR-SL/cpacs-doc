@@ -429,6 +429,22 @@
     if (panel.scrollTo) panel.scrollTo(0, 0);
   }
 
+  // The whole panel, not the element Enter leaves the focus on: a reader who
+  // has tabbed on to a link inside it is still in the panel, and 0018 settled
+  // that the way back may not depend on which of those two states he is in.
+  function inDetail(node) {
+    var panel = document.getElementById("cd-detail");
+    return !!panel && !!node && panel.contains(node);
+  }
+
+  // The cursor lives in the tree pane, and focusing a row of a hidden pane
+  // focuses nothing — so the Handbook has to be put away before the cursor is
+  // asked for.
+  function backToTree() {
+    if (docsAreOpen()) showPane("tree");
+    focusCursor();
+  }
+
   function parentIndex(index) {
     var depth = state.rows[index].depth;
     for (var i = index - 1; i >= 0; i--) {
@@ -449,7 +465,7 @@
       var index = state.cursorIndex;
       var row = state.rows[index];
       if (!row) return;
-      hintUsed();
+      hintStart();
 
       if (event.key === "ArrowDown") {
         moveCursor(index + 1);
@@ -496,7 +512,6 @@
    * has moved a cursor once does not need telling again.
    */
   var HINT_KEY = "cpacs-doc.keyboardHint";
-  var hintIsAutomatic = false;
   // Two lines, because the column holds two things a reader cannot read off
   // the screen: the tree's keys, and what the field accepts. The forms were a
   // `title` on the field and a note under the chips that only a reader who
@@ -538,10 +553,11 @@
       [["Enter"], "details, and go there"],
       [["/"], "search"],
       // The way back. Enter without it strands a reader in the detail panel,
-      // and the same key clears the search and closes this hint. It stands
-      // alone: the panel keeps its own arrows, since a type page is read with
-      // them, so Escape is the one way out and holds from anywhere in there.
-      [["Esc"], "back to the tree"]
+      // and the same key clears the search and closes this hint. The panel
+      // keeps its own arrows, since a type page is read with them, so this is
+      // the one way out — under two names, because the hand that has just
+      // pressed Enter is nearer to one of them than to the other.
+      [["Esc", "Backspace"], "back to the tree"]
     ], "tree"],
     HINT_MARKS,
     // A heading names what the row below it is, never where the reader is —
@@ -563,7 +579,7 @@
 
 
   // What the hint says the first time is not what it says when asked for.
-  // The table above is a legend — six entries and eight caps — and a legend
+  // The table above is a legend — six entries and nine caps — and a legend
   // asks a reader to learn five things before doing one, which is why it was
   // read past. The opening carries the two keys that get anyone moving and
   // points at the `?` for the rest. Written as a group of its own rather than
@@ -645,7 +661,6 @@
     var hint = document.getElementById("cd-hint");
     if (!hint) return;
     hint.parentNode.removeChild(hint);
-    hintIsAutomatic = false;
     markHelp(false);
     markSeen();
   }
@@ -654,21 +669,18 @@
     try { window.localStorage.setItem(HINT_KEY, "seen"); } catch (e) { /* private mode */ }
   }
 
-  // Using the keys takes back the hint that appeared by itself: it has just
-  // been proved superfluous. One the reader asked for stays until the reader
-  // closes it — being shown the keys and then having them snatched away for
-  // trying one is not help.
-  //
-  // A key also calls off an opening that is still waiting for its click, and
-  // for good: someone already driving with the keyboard is not the reader it
-  // is for, and greeting him with it on the next page would be worse than not
-  // greeting him at all.
-  function hintUsed() {
-    if (openingPending) {
-      openingPending();
-      markSeen();
-    }
-    if (hintIsAutomatic) hideHint();
+  // The first touch of the tree brings the opening out, and a key is as much a
+  // touch as a click. It used to be the opposite — a key called the opening off
+  // for good, on the reading that a reader already on the arrows has nothing
+  // left to be told. He has: the arrows are the guessable half, Space is not,
+  // and the reader who starts on the keys is exactly the one who never clicks
+  // and so was never told. Once out it stays until it is closed, for the same
+  // reason: being shown the keys and having them taken away for trying one is
+  // not help.
+  function hintStart() {
+    if (!openingPending) return;
+    openingPending();
+    showHint(true);
   }
 
   function setupHelp() {
@@ -683,26 +695,24 @@
   /* Not at the door. Standing there from the first paint, the hint is part of
      the furniture and is read as little as the rest of it; it arrives instead
      at the reader's first touch of the tree, when he has just shown what he
-     came for and has one question — what now. A click is the touch everyone
-     makes, so that is the trigger.
+     came for and has one question — what now.
 
-     Held so it can be called off: `hintUsed` drops it when the reader turns
-     out to be driving with the keyboard already. */
+     A click is one such touch and gets a listener here. The other is a key,
+     which `setupTreeKeys` and the global arrow handler already see before
+     anyone else does, so they call `hintStart` rather than the tree carrying a
+     second listener for the same event. The handle is kept so that whichever
+     comes first unhooks the click. */
   var openingPending = null;
 
   function setupHint() {
     if (hintSeen()) return;
     var tree = document.getElementById("cd-tree");
     if (!tree) return;
-    function opening() {
-      openingPending();
-      showHint(true);
-    }
     openingPending = function () {
-      tree.removeEventListener("click", opening);
+      tree.removeEventListener("click", hintStart);
       openingPending = null;
     };
-    tree.addEventListener("click", opening);
+    tree.addEventListener("click", hintStart);
   }
 
   function showHint(automatic) {
@@ -756,7 +766,6 @@
     // the strip opens, and it outlives the pane below it, which `fitHintToTab`
     // then keeps it in step with.
     tree.parentNode.insertBefore(hint, tree);
-    hintIsAutomatic = automatic;
     // Marks the button too: whether the hint is on offer at all is the same
     // question as which group it carries.
     fitHintToTab();
@@ -779,16 +788,28 @@
         event.preventDefault();
         return;
       }
-      if (event.key === "Escape") {
+      // Escape does the most local thing there is to do, and the panel is
+      // nearer than the hint. The hint used to come first, which was harmless
+      // while it was gone at the reader's first key; since 0019 it stands
+      // until it is closed, so the first Escape out of the panel closed the
+      // hint and left the reader where he was — in the one state where the
+      // hint's own "Esc back to the tree" was not true.
+      //
+      // Backspace answers wherever Escape answers, rather than only in the
+      // panel: a key that works in one branch of this and not the others is
+      // the "sometimes" binding 0018 took out. The text-field guard above is
+      // what keeps it out of the search field, where it still deletes; and
+      // `preventDefault` below covers the reader who has put the browser's
+      // own back navigation back on the key.
+      if (event.key === "Escape" || event.key === "Backspace") {
         if (!document.getElementById("cd-search-panel").hidden) {
           closeSearch(true);
+        } else if (inDetail(event.target)) {
+          backToTree();
         } else if (document.getElementById("cd-hint")) {
           hideHint();
-        } else if (docsAreOpen()) {
-          showPane("tree");
-          focusCursor();
         } else {
-          focusCursor();
+          backToTree();
         }
         event.preventDefault();
         return;
@@ -800,7 +821,7 @@
       // included, has handled its own keys by now.
       if (event.target === document.body || event.target === document.documentElement) {
         if (event.key.indexOf("Arrow") === 0) {
-          hintUsed();
+          hintStart();
           focusCursor();
           event.preventDefault();
         }

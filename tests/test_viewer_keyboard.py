@@ -301,6 +301,54 @@ def test_the_cursor_stands_down_once_the_keyboard_has_left(page):
     assert state(page)["outline"] == "solid 2px"
 
 
+def test_escape_leaves_the_panel_before_it_closes_the_hint(unseen):
+    """Two claimants for one key, and the panel is the nearer. Measured on the
+    real schema before this: ArrowDown, Enter, Escape left the focus on
+    `cd-detail` and took the hint instead, which is the state every first-time
+    reader is now in — since 0019 the hint stands until it is closed."""
+    assert unseen.evaluate("return !!document.getElementById('cd-hint');"), "the hint is up"
+    unseen.evaluate("document.querySelector('.cd-node.cd-cursor').focus(); return true;")
+    unseen.press("ArrowDown")
+    target = state(unseen)["cursor"]
+    unseen.press("Enter")
+    assert state(unseen)["focus"] == "cd-detail"
+    unseen.press("Escape")
+    back = state(unseen)
+    assert back["focusIsCursor"], f"focus on {back['focus']}"
+    assert back["cursor"] == target
+    # The hint is untouched: it is the next Escape's business, not this one's.
+    assert unseen.evaluate("return !!document.getElementById('cd-hint');"), "the hint stayed"
+    unseen.press("Escape")
+    assert unseen.evaluate("return !document.getElementById('cd-hint');")
+
+
+def test_backspace_is_a_second_escape(page):
+    """The hand that has just pressed Enter is nearer to it than to Escape. It
+    answers wherever Escape answers rather than in the panel alone: a key that
+    works in one branch of that resolution and not the others is the one a
+    reader has to try."""
+    page.press("ArrowDown")
+    target = state(page)["cursor"]
+    page.press("Enter")
+    assert state(page)["focus"] == "cd-detail"
+    page.press("Backspace")
+    back = state(page)
+    assert back["focusIsCursor"], f"focus on {back['focus']}"
+    assert back["cursor"] == target
+
+
+def test_backspace_is_left_to_the_search_field(page):
+    """A text field is the one place the key already means something, and the
+    guard that keeps every global key out of a field keeps this one out too.
+    What is asserted is the handler's part — the field keeps the focus and the
+    search stays open — not the deletion, which is the browser's."""
+    page.press("/")
+    assert page.evaluate("return document.activeElement.id;") == "cd-search"
+    page.press("Backspace")
+    assert page.evaluate("return document.activeElement.id;") == "cd-search"
+    assert page.evaluate("return !document.getElementById('cd-search-panel').hidden;")
+
+
 def test_the_panel_keeps_its_arrows_and_escape_is_the_way_back(page):
     """The panel claims no arrow. It had ArrowLeft, which cost the reader that
     key inside a type page and held only until he tabbed on to a link — while
@@ -409,20 +457,29 @@ def test_the_hint_waits_for_the_reader_to_touch_the_tree(page, base):
     assert page.evaluate("return !!document.getElementById('cd-hint');")
 
 
-def test_the_hint_stays_away_from_a_reader_already_on_the_keys(page, base):
-    """A key before any click says the reader has found them by himself, and
-    says it for good: the greeting would be noise on the next page too."""
+def test_the_hint_comes_out_for_a_reader_who_starts_on_the_keys(page, base):
+    """A key used to call the greeting off for good, on the reading that this
+    reader had found the keys by himself. He has found the arrows; Space is the
+    line he has not, and never clicking is how he came to miss it."""
     page.evaluate("window.localStorage.removeItem('cpacs-doc.keyboardHint'); return true;")
-    page.open(base + "/tree/cpacs/")
-    page.wait_for(TREE_READY, "the tree")
-    page.evaluate("document.querySelector('.cd-node.cd-cursor').focus(); return true;")
-    page.press("ArrowDown")
-    click_selector(page, ".cd-node")
-    assert page.evaluate("return !document.getElementById('cd-hint');")
-    page.open(base + "/tree/cpacs/")
-    page.wait_for(TREE_READY, "the tree")
-    click_selector(page, ".cd-node")
-    assert page.evaluate("return !document.getElementById('cd-hint');"), "it stays away"
+    try:
+        page.open(base + "/tree/cpacs/")
+        page.wait_for(TREE_READY, "the tree")
+        assert page.evaluate("return !document.getElementById('cd-hint');"), "not at the door"
+        page.evaluate("document.querySelector('.cd-node.cd-cursor').focus(); return true;")
+        page.press("ArrowDown")
+        assert page.evaluate("return !!document.getElementById('cd-hint');")
+        # The other way in. With the focus nowhere at all the arrow never
+        # reaches the tree; the global handler takes it there, and that is the
+        # same first touch.
+        page.open(base + "/tree/cpacs/")
+        page.wait_for(TREE_READY, "the tree")
+        page.press("ArrowDown")
+        assert page.evaluate("return !!document.getElementById('cd-hint');")
+    finally:
+        page.evaluate(
+            "window.localStorage.setItem('cpacs-doc.keyboardHint', 'seen'); return true;"
+        )
 
 
 def test_the_hint_is_shown_to_a_reader_who_has_not_used_the_keys(unseen):
@@ -462,24 +519,30 @@ def test_the_hint_is_shown_to_a_reader_who_has_not_used_the_keys(unseen):
     assert hint["keyBorder"] not in ("0px", "", None), hint["keyBorder"]
 
 
-def test_the_hint_goes_at_the_first_key_and_does_not_come_back(unseen, base):
+def test_the_hint_stays_while_the_reader_uses_the_keys(unseen):
+    """It went at the first key, which is the moment its second line stops being
+    a greeting and starts being the answer: the arrows are being pressed, so
+    Space is what is left to read."""
     unseen.evaluate("document.querySelector('.cd-node.cd-cursor').focus(); return true;")
     unseen.press("ArrowDown")
-    assert unseen.evaluate("return !document.getElementById('cd-hint');")
-    unseen.open(base + "/tree/cpacs/")
-    unseen.wait_for(TREE_READY, "the tree")
-    # The click is what would fetch it, so the click is what has to fail to.
-    click_selector(unseen, ".cd-node")
-    assert unseen.evaluate("return !document.getElementById('cd-hint');"), "it stays away"
+    unseen.press("ArrowRight")
+    unseen.press(" ")
+    assert unseen.evaluate("return !!document.getElementById('cd-hint');")
 
 
-def test_the_hint_can_be_put_away_by_hand(unseen):
+def test_the_hint_can_be_put_away_by_hand_and_does_not_come_back(unseen, base):
     spot = unseen.evaluate("""
       var box = document.querySelector('.cd-hint-close').getBoundingClientRect();
       return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
     """)
     unseen.click(spot["x"], spot["y"])
     assert unseen.evaluate("return !document.getElementById('cd-hint');")
+    # Closing it is now the only thing that says it has been read, so it is the
+    # only thing that keeps it away on the next page.
+    unseen.open(base + "/tree/cpacs/")
+    unseen.wait_for(TREE_READY, "the tree")
+    click_selector(unseen, ".cd-node")
+    assert unseen.evaluate("return !document.getElementById('cd-hint');"), "it stays away"
 
 
 def click_help(page):
@@ -526,22 +589,16 @@ def test_the_help_button_brings_the_hint_back_after_it_was_put_away(page):
 
 
 def test_a_hint_the_reader_asked_for_stays_while_the_keys_are_tried(page):
-    """The one that appears by itself goes at the first key, having been proved
-    superfluous. Snatching away the one that was asked for, because the reader
-    tried a key from it, would be the opposite of help."""
+    """Snatching a hint away because the reader tried a key from it is the
+    opposite of help. That holds for the one he asked for and, since the keys
+    no longer call it off, for the one that comes by itself: closing it is what
+    says it has been read."""
     click_help(page)
     page.evaluate("document.querySelector('.cd-node.cd-cursor').focus(); return true;")
     page.press("ArrowDown")
     assert page.evaluate("return !!document.getElementById('cd-hint');")
     page.press("Escape")
     assert page.evaluate("return !document.getElementById('cd-hint');"), "Escape closes it"
-
-
-def test_the_hint_that_came_by_itself_goes_at_the_first_key(unseen):
-    assert unseen.evaluate("return !!document.getElementById('cd-hint');")
-    unseen.evaluate("document.querySelector('.cd-node.cd-cursor').focus(); return true;")
-    unseen.press("ArrowDown")
-    assert unseen.evaluate("return !document.getElementById('cd-hint');")
 
 
 def click_selector(page, selector):
