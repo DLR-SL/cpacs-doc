@@ -1706,22 +1706,57 @@
   }
 
   var TREE_WIDTH_KEY = "cpacs-doc.treeWidth";
-  var MIN_TREE_WIDTH = 200;
+  var MIN_DETAIL_WIDTH = 200;
+
+  /* The strip is the column's chrome and none of it shrinks: the tabs are as
+     wide as their words and the two round buttons are round. A column drawn
+     narrower than the strip needs does not clip it — the row does not wrap and
+     the column does not scroll, so the buttons spill across the splitter and
+     land on the detail pane's breadcrumb. The strip is therefore the column's
+     floor, and the splitter may not go under it.
+
+     Measured rather than written down as a number: the strip is as wide as its
+     words, in whatever font the reader has, and the Handbook tab is only among
+     them where the schema has sections — 294 px against 202 px without it, at
+     the 16 px root font this page was drawn for. */
+  function stripWidth() {
+    var tabs = document.getElementById("cd-tabs");
+    if (!tabs) return 0;
+    var declared = tabs.style.width;
+    tabs.style.width = "min-content";
+    var needed = tabs.scrollWidth;
+    tabs.style.width = declared;
+    return needed;
+  }
+
+  // Set by setupSplitter: the strip gains its Handbook tab only once the model
+  // has arrived, which is after the stored width has been put in force.
+  var recheckTreeWidth = function () {};
 
   function setupSplitter() {
     var splitter = document.getElementById("cd-splitter");
     var app = document.getElementById("cd-app");
-    if (!splitter || !app) return;
+    var column = document.querySelector(".cd-column");
+    if (!splitter || !app || !column) return;
 
-    var stored = null;
-    try { stored = window.localStorage.getItem(TREE_WIDTH_KEY); } catch (e) { stored = null; }
-    if (stored) app.style.setProperty("--tree-width", stored + "px");
+    // The column rather than the tree pane: the width is the column's, and the
+    // pane holding it is hidden while the reader is in Search or the Handbook.
+    function width() { return column.getBoundingClientRect().width; }
 
     function apply(px) {
-      var limit = Math.max(MIN_TREE_WIDTH, Math.min(px, window.innerWidth - MIN_TREE_WIDTH));
+      var limit = Math.max(stripWidth(), Math.min(px, window.innerWidth - MIN_DETAIL_WIDTH));
       app.style.setProperty("--tree-width", limit + "px");
       try { window.localStorage.setItem(TREE_WIDTH_KEY, String(limit)); } catch (e) { /* private mode */ }
     }
+    // Only where the strip has outgrown the column: a width the reader has
+    // never chosen has no business being written to storage as if they had.
+    recheckTreeWidth = function () { if (width() < stripWidth()) apply(width()); };
+
+    var stored = null;
+    try { stored = window.localStorage.getItem(TREE_WIDTH_KEY); } catch (e) { stored = null; }
+    // Through the clamp rather than straight on to the property: a width put
+    // there before the strip was a floor can be narrower than the strip.
+    if (stored) apply(parseFloat(stored));
 
     splitter.addEventListener("pointerdown", function (event) {
       event.preventDefault();
@@ -1739,7 +1774,7 @@
     // Keyboard equivalent, so the splitter is not a mouse-only control.
     splitter.addEventListener("keydown", function (event) {
       var step = event.shiftKey ? 64 : 16;
-      var current = document.getElementById("cd-tree").getBoundingClientRect().width;
+      var current = width();
       if (event.key === "ArrowLeft") { apply(current - step); event.preventDefault(); }
       if (event.key === "ArrowRight") { apply(current + step); event.preventDefault(); }
     });
@@ -2268,6 +2303,8 @@
     if (sections().length) {
       document.getElementById("cd-tab-docs").hidden = false;
       label("cd-docs", "cd-tab-docs");
+      // The strip has just taken its final width; the column may not be under it.
+      recheckTreeWidth();
     }
 
     tabs.addEventListener("click", function (event) {
