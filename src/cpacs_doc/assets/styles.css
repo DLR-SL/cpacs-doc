@@ -332,6 +332,11 @@ td code { white-space: nowrap; }
 /* The group row reads as a heading for the rows beneath it, so it carries a
    tint of its own. This is colour marking a role, not encoding a level. */
 .cd-group td { border-bottom: 0; padding-bottom: 0.15rem; padding-top: 0.7rem; }
+/* The first cell of a table is flush left, which is right for a name and wrong
+   for this row: the tint runs the width of the row, and the mark stood against
+   its edge with no air on that side while it has 0.45rem to the word on the
+   other. The same 0.45rem here puts it in a well rather than in a corner. */
+.cd-group td:first-child { padding-left: 0.45rem; }
 .cd-group { background: var(--group-tint); }
 .cd-group-label { display: inline-flex; align-items: center; gap: 0.45rem; }
 .cd-group-term {
