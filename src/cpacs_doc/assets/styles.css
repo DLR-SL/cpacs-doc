@@ -6,25 +6,41 @@
 :root {
   color-scheme: light dark;
 
-  --ink: #16191d;
-  --ink-soft: #5b6570;
-  --rule: #dcdfe3;
-  --rule-strong: #9aa2ab;
-  --field: rgba(120, 130, 140, 0.09);
+  /* Paper rather than a lit panel. Reference documentation is opened dozens of
+     times a day and read for years, and #16191d on #ffffff is 17.6 to 1 — a
+     ratio that is faultless on a chart and tiring to sit in. The page comes
+     down and the ink comes up until they meet at 12.8, which is still half
+     again what AAA asks of body text (7) and no longer glares.
+
+     The ground is stated rather than left to the browser's canvas: without it
+     the page was whatever white the engine paints, and a colour the stylesheet
+     never names cannot be tuned against the ink that sits on it.
+
+     Warm, because the cast is what makes it read as paper — the whole neutral
+     scale carries it, so nothing on the page looks tinted against anything
+     else. The links, the alarm and the three code hues stay where they were:
+     they are the only saturated things here and they still measure 6.1, 7.0
+     and 5.4 and up against this ground. */
+  --page: #faf8f3;
+  --ink: #2c2e31;
+  --ink-soft: #63686e;
+  --rule: #e3dfd7;
+  --rule-strong: #a49e94;
+  --field: rgba(140, 130, 115, 0.10);
   --link: #1d5fa8;
   /* The focus ring, which was --link and had no business being it: a link is
-     read, a ring is only glanced at, and at the link's strength — 6.5 to 1
-     against the page, 5.9 against a selected row — it shouted every time the
+     read, a ring is only glanced at, and at the link's strength — 6.1 to 1
+     against the page, 5.5 against a selected row — it shouted every time the
      keyboard moved. Quieted to roughly 4, which keeps the 3:1 a focus
      indicator owes (WCAG 2.4.11) even on the tightest ground it meets, the
-     --field of the row the cursor stands on. Measured there: 3.7 and 3.9. */
+     --field of the row the cursor stands on. Measured there: 3.4 and 3.4. */
   --focus: #4b81bd;
   --alarm: #a3241c;
   /* Figures are drawn for paper: dark strokes and labels, mostly on a
      transparent ground (62 of 98). They are set on a light plate rather than
      inverted, because a filter cannot tell a line drawing from a colour
      illustration and would wreck the latter to save the former. */
-  --plate: #ffffff;
+  --plate: #fdfbf7;
   --plate-edge: rgba(0, 0, 0, 0.08);
   --guide: rgba(0, 0, 0, 0.13);
   --group-tint: rgba(0, 0, 0, 0.035);
@@ -33,8 +49,9 @@
 
   /* XML examples. Three hues carry the three things a reader looks for in an
      instance document — element, attribute, value — and everything else stays
-     the text colour. Measured against the block background: 6.5, 6.7 and 5.4
-     to 1. Colour is not the only signal; the syntax says the same thing. */
+     the text colour. Measured against the block background: 6.1, 6.2 and 5.0
+     to 1 on the light page, 7.4, 6.8 and 7.2 on the dark one. Colour is not
+     the only signal; the syntax says the same thing. */
   --code-tag: #1c5f75;
   --code-attr: #7a3e86;
   --code-value: #8a5a1e;
@@ -77,9 +94,10 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ink: #e3e6ea;
-    --ink-soft: #99a2ad;
-    --rule: #31363c;
+    --page: #1c1d1f;
+    --ink: #d6d8db;
+    --ink-soft: #949aa2;
+    --rule: #34363a;
     --rule-strong: #5c646d;
     --field: rgba(150, 160, 172, 0.11);
     --link: #74b3f0;
@@ -100,9 +118,10 @@
 }
 
 :root[data-theme="dark"] {
-  --ink: #e3e6ea;
-  --ink-soft: #99a2ad;
-  --rule: #31363c;
+  --page: #1c1d1f;
+  --ink: #d6d8db;
+  --ink-soft: #949aa2;
+  --rule: #34363a;
   --rule-strong: #5c646d;
   --field: rgba(150, 160, 172, 0.11);
   --link: #74b3f0;
@@ -122,6 +141,7 @@
 body {
   font: var(--step-2) / 1.62 var(--face-text);
   color: var(--ink);
+  background: var(--page);
   margin: 0 auto;
   max-width: 58rem;
   padding: 2.5rem 1.25rem 6rem;
@@ -536,6 +556,10 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 }
 .cd-splitter:hover, .cd-splitter:focus-visible { background: var(--rule-strong); outline: none; }
 
+/* One ground for both columns. The tree carried a shade of its own for a
+   while, to say which side navigates and which is read; the splitter says that
+   already, and a second ground turned every window into two rectangles that
+   had to be told apart before either could be read. */
 .cd-column { display: flex; flex-direction: column; min-width: 0; }
 /* The panel is the pane, so the field keeps its place while the rows move.
    Nothing is clipped here: the rows do their own scrolling, and the field's

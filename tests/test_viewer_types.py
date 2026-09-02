@@ -238,14 +238,21 @@ def test_a_name_that_leads_off_the_site_is_set_quieter_than_one_that_does_not(br
       out.builtin = getComputedStyle(builtin).color;
       out.builtinUnderline = getComputedStyle(builtin).textDecorationLine;
       out.inside = inside ? getComputedStyle(inside).color : null;
-      out.soft = getComputedStyle(document.documentElement)
-        .getPropertyValue('--ink-soft').trim();
+      // Resolved rather than read as a string: what the assertion is about is
+      // that the name takes the palette's soft ink, whatever that is set to,
+      // and a hex literal in a test turns every tuning of the palette into a
+      // failure that says nothing.
+      var probe = document.createElement("span");
+      probe.style.color = "var(--ink-soft)";
+      document.body.appendChild(probe);
+      out.soft = getComputedStyle(probe).color;
+      probe.remove();
       return out;
     """)
     assert ink["builtin"] != ink["inside"]
     assert ink["builtinUnderline"] == "underline"
     # The soft ink, not a colour of its own: one palette, two roles.
-    assert ink["soft"] in ("#5b6570", "#99a2ad")
+    assert ink["builtin"] == ink["soft"]
 
 
 def test_a_row_says_what_sits_behind_the_type_link(browser, base):
