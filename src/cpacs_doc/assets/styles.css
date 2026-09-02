@@ -9,38 +9,45 @@
   /* Paper rather than a lit panel. Reference documentation is opened dozens of
      times a day and read for years, and #16191d on #ffffff is 17.6 to 1 — a
      ratio that is faultless on a chart and tiring to sit in. The page comes
-     down and the ink comes up until they meet at 12.8, which is still half
+     down and the ink comes up until they meet at 12.7, which is still half
      again what AAA asks of body text (7) and no longer glares.
 
      The ground is stated rather than left to the browser's canvas: without it
      the page was whatever white the engine paints, and a colour the stylesheet
      never names cannot be tuned against the ink that sits on it.
 
-     Warm, because the cast is what makes it read as paper — the whole neutral
-     scale carries it, so nothing on the page looks tinted against anything
-     else. The links, the alarm and the three code hues stay where they were:
-     they are the only saturated things here and they still measure 6.1, 7.0
-     and 5.4 and up against this ground. */
-  --page: #faf8f3;
-  --ink: #2c2e31;
-  --ink-soft: #63686e;
-  --rule: #e3dfd7;
-  --rule-strong: #a49e94;
-  --field: rgba(140, 130, 115, 0.10);
+     The cast is what makes it read as paper, and it has to run through the
+     whole neutral scale or it reads as something laid over the page instead.
+     Measured as red minus blue: the page +4, the ink +1, the soft ink +6, the
+     two rules +6 and +8. A warm ground was tried once under the ink this
+     palette started with, which is blue-grey at -5 and -11, and the page then
+     looked like a screen with a blue filter on it rather than like paper —
+     the cast has to be in the ink, not only under it. It is kept small: three
+     or four steps out of 255, enough to be warm and not enough to be a colour.
+
+     The links, the alarm and the three code hues stay where they were: they
+     are the only saturated things here and they still measure 6.2, 7.2 and 5.2
+     and up against this ground. */
+  --page: #fcfbf8;
+  --ink: #313030;
+  --ink-soft: #6a6864;
+  --rule: #e7e4e1;
+  --rule-strong: #a5a29d;
+  --field: rgba(140, 132, 120, 0.09);
   --link: #1d5fa8;
   /* The focus ring, which was --link and had no business being it: a link is
-     read, a ring is only glanced at, and at the link's strength — 6.1 to 1
-     against the page, 5.5 against a selected row — it shouted every time the
+     read, a ring is only glanced at, and at the link's strength — 6.2 to 1
+     against the page, 5.7 against a selected row — it shouted every time the
      keyboard moved. Quieted to roughly 4, which keeps the 3:1 a focus
      indicator owes (WCAG 2.4.11) even on the tightest ground it meets, the
-     --field of the row the cursor stands on. Measured there: 3.4 and 3.4. */
+     --field of the row the cursor stands on. Measured there: 3.6 and 3.4. */
   --focus: #4b81bd;
   --alarm: #a3241c;
   /* Figures are drawn for paper: dark strokes and labels, mostly on a
      transparent ground (62 of 98). They are set on a light plate rather than
      inverted, because a filter cannot tell a line drawing from a colour
      illustration and would wreck the latter to save the former. */
-  --plate: #fdfbf7;
+  --plate: #fefdfb;
   --plate-edge: rgba(0, 0, 0, 0.08);
   --guide: rgba(0, 0, 0, 0.13);
   --group-tint: rgba(0, 0, 0, 0.035);
@@ -49,7 +56,7 @@
 
   /* XML examples. Three hues carry the three things a reader looks for in an
      instance document — element, attribute, value — and everything else stays
-     the text colour. Measured against the block background: 6.1, 6.2 and 5.0
+     the text colour. Measured against the block background: 6.3, 6.5 and 5.2
      to 1 on the light page, 7.4, 6.8 and 7.2 on the dark one. Colour is not
      the only signal; the syntax says the same thing. */
   --code-tag: #1c5f75;
