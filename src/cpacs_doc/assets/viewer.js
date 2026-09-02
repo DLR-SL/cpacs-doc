@@ -1593,6 +1593,43 @@
     }
   }
 
+  /* The path as an XPath, built from the model and not read off the screen.
+     The crumbs are separate buttons with " / " between them, so a mouse
+     selection of the line brings those spaces with it and what lands in a mail
+     is not a path. The root comes from the declaration, as it does for the URL
+     (`select`), rather than from the word written in the first crumb.
+
+     No positional predicates. The tree is the schema's, not an instance's, so
+     there is no index to state and inventing `[1]` would say something about a
+     document nobody here has seen. */
+  function xpathFor(path) {
+    return "/" + [declaration(state.model.tree).name].concat(path).join("/");
+  }
+
+  var COPY_LABEL = "copy";
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+    // `navigator.clipboard` needs a secure context, which a site served over
+    // plain http on an intranet is not — and that is where this viewer is
+    // deployed. The field has to be in the document for the selection to
+    // reach it; it is kept off screen rather than hidden, since a field with
+    // `display: none` cannot be selected.
+    var field = document.createElement("textarea");
+    field.value = text;
+    field.setAttribute("readonly", "");
+    field.style.position = "fixed";
+    field.style.top = "-1000px";
+    document.body.appendChild(field);
+    field.select();
+    var copied = false;
+    try { copied = document.execCommand("copy"); } catch (e) { copied = false; }
+    document.body.removeChild(field);
+    return copied ? Promise.resolve() : Promise.reject(new Error("copy refused"));
+  }
+
   function renderBreadcrumb() {
     var nav = element("nav", "cd-breadcrumb");
     var rootLink = element("button", "cd-crumb", "cpacs");
@@ -1609,6 +1646,31 @@
       })(target));
       nav.appendChild(crumb);
     }
+
+    var xpath = xpathFor(state.path);
+    var copy = element("button", "cd-copy", COPY_LABEL);
+    copy.type = "button";
+    copy.title = xpath;
+    // The word is the accessible name, so that changing it is what a reader
+    // who cannot see the button hears. An `aria-label` would fix the name to
+    // "copy" and leave the outcome unsaid.
+    copy.setAttribute("aria-live", "polite");
+    copy.addEventListener("click", function () {
+      function says(word) {
+        copy.textContent = word;
+        copy.classList.add("cd-copied");
+        window.setTimeout(function () {
+          copy.textContent = COPY_LABEL;
+          copy.classList.remove("cd-copied");
+        }, 1400);
+      }
+      // Says what happened rather than offering a way round it: there is
+      // nothing selected for the reader to copy by hand, and the path is on
+      // the button's `title` either way.
+      copyText(xpath).then(function () { says("copied"); },
+                           function () { says("not copied"); });
+    });
+    nav.appendChild(copy);
     return nav;
   }
 

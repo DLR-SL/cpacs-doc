@@ -175,6 +175,18 @@
 
 ### Closed
 
+**The path is handed over, not selected** (2026-09-02, `decisions/0022`). The
+breadcrumb is one button per segment with ` / ` between them, so a mouse
+selection of it yields `cpacs / header / name` — which is what has been going
+into mails. A `copy` button at the right end puts it on the clipboard as
+`/cpacs/header/name`, built from the model and with no positional predicates,
+since the tree is the schema's and there is no index to state. Over plain http
+`navigator.clipboard` does not exist, so the older selection path stands behind
+it, and a refusal is written on the button rather than reported as success —
+saying "copied" when nothing was is the one answer the reader cannot recover
+from. Measured on the real schema at ten segments: the line wraps, 0 px
+sideways at 628 px of panel and still 0 at 102 px.
+
 **Backspace is a second Escape** (2026-09-02, `decisions/0021`). Bound after
 0020 had declined it: the ordering fault it would have papered over is fixed,
 and what remains is that the hand is on the right of the keyboard after Enter.

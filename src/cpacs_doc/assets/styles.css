@@ -978,6 +978,26 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 }
 .cd-breadcrumb .cd-crumb { font-family: var(--face-code); text-transform: none; letter-spacing: 0; }
 
+/* An action, not a place. The crumbs are underlined in --link because each is
+   somewhere to go; this one goes nowhere, so it takes a hairline and the muted
+   ink and keeps the nav's own uppercase, which is what tells a label from the
+   path beside it. */
+.cd-copy {
+  margin-left: 0.55rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85em;
+  line-height: 1;
+  padding: 0.2rem 0.4rem;
+  color: var(--ink-soft);
+  vertical-align: 0.05em;
+}
+.cd-copy:hover,
+.cd-copy.cd-copied { color: var(--ink); border-color: var(--ink-soft); }
+
 .cd-elementdoc { font-size: var(--step-3); line-height: 1.5; }
 
 /* What the type lends the node, marked as borrowed. The words of the place
