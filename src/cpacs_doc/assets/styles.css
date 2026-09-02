@@ -147,6 +147,13 @@ code {
   margin: 0 0 0.9rem;
 }
 
+/* A schema name is one word with no break in it, and the heading is the one
+   place where that word is the whole content. Left to `normal` it does not
+   wrap — it runs out of the pane and takes the end of the name with it:
+   `landingGearInterfaceLongFloorBeamsConnection` needs 576 px where the panel
+   offers 360 at a wide tree column, and 628 where it offers 612 at the
+   default one. `anywhere` rather than `break-word`, as `code` has it, so the
+   name also stops setting a floor under the panel it stands in. */
 h1 {
   font-family: var(--face-code);
   font-size: var(--step-5);
@@ -154,6 +161,7 @@ h1 {
   letter-spacing: -0.01em;
   line-height: 1.15;
   margin: 0 0 0.35rem;
+  overflow-wrap: anywhere;
 }
 
 /* The head's own line: where the element or the type stands, how often, what
