@@ -530,7 +530,12 @@
     ["", "key", [
       [["\u2191", "\u2193"], "move"],
       [["\u2192", "\u2190"], "open, close"],
-      [["Enter"], "details"],
+      // Two keys commit the same selection and differ only in where the
+      // keyboard is left standing. Nothing on the screen tells them apart, so
+      // the table is the only place that can, and it takes both captions to do
+      // it: "details" alone on either line would make the other redundant.
+      [["Space"], "details"],
+      [["Enter"], "details, and go there"],
       [["/"], "search"],
       // The way back. Enter without it strands a reader in the detail panel,
       // and the same key clears the search and closes this hint. ArrowLeft
@@ -558,7 +563,7 @@
 
 
   // What the hint says the first time is not what it says when asked for.
-  // The table above is a legend — five entries and eight caps — and a legend
+  // The table above is a legend — six entries and nine caps — and a legend
   // asks a reader to learn five things before doing one, which is why it was
   // read past. The opening carries the two keys that get anyone moving and
   // points at the `?` for the rest. Written as a group of its own rather than
@@ -575,7 +580,7 @@
   var HINT_OPENING = [
     ["Keys", "key", [
       [["↑", "↓"], "move"],
-      [["Enter"], "details"],
+      [["Space"], "details"],
       [[], "more under ?"]
     ], "tree"]
   ];

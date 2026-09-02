@@ -288,14 +288,14 @@ def test_the_question_mark_strip_carries_the_query_forms_too(page):
     """)
     assert "type:" in forms and "@" in forms
     # A form is typed, a key is pressed: only the keys are set in relief, and
-    # the keys belong to the tree. Eight caps over five entries, because two of
+    # the keys belong to the tree. Nine caps over six entries, because two of
     # them name a pair: the arrows that open and close, and the two ways back.
     click(page, "#cd-tab-tree")
     assert visible_groups(page) == ["", "Legend"]
     assert page.evaluate("""
       return document.querySelectorAll(
         '#cd-hint .cd-hint-line[data-tab="tree"] kbd').length;
-    """) == 8
+    """) == 9
 
 
 def test_the_handbook_offers_no_hint_and_says_so_on_the_button(page):
