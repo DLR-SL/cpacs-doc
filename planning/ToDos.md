@@ -175,6 +175,20 @@
 
 ### Closed
 
+**Two keys commit, one key comes back** (2026-09-02, `decisions/0018`). Readers
+asked for a second key that shows the detail page without taking the keyboard
+out of the tree. Space has done that since 0010 and was named in neither the
+opening nor the table behind the `?`, so the key existed and could not be
+found; it is in both now, and the opening carries it in Enter's place. The
+other half is the reverse trade: ArrowLeft no longer steps out of the detail
+panel. It held only on the panel itself, so it was gone as soon as the reader
+tabbed on to a link and Escape had to be learned regardless, and it cost the
+panel a key it has use for — the pane still scrolls 376 px sideways on
+`wingType`, `fuselageType` and `genericMassType` (measured 2026-08-30, above).
+The panel now claims no key at all; `setupDetailKeys()` is gone. This
+supersedes `decisions/0016` on ArrowLeft and `decisions/0017` on the wording of
+the opening; both stand otherwise.
+
 **The tree says where the keyboard is** (2026-09-01, `decisions/0016`). The
 cursor row and the focused element carried the same `2px solid` ring, so after
 Enter the tree still said "you are here" while `activeElement` was `#cd-detail`

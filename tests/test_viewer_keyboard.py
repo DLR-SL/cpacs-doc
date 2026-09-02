@@ -301,36 +301,33 @@ def test_the_cursor_stands_down_once_the_keyboard_has_left(page):
     assert state(page)["outline"] == "solid 2px"
 
 
-def test_arrow_left_steps_out_of_the_detail_panel(page):
-    """The key that steps out of a node steps out of the panel too. It is the
-    one a reader reaches for after Enter, and until now it scrolled the panel
-    instead."""
+def test_the_panel_keeps_its_arrows_and_escape_is_the_way_back(page):
+    """The panel claims no arrow. It had ArrowLeft, which cost the reader that
+    key inside a type page and held only until he tabbed on to a link — while
+    Escape had to be learned anyway, and works from either place."""
     page.press("ArrowDown")
     target = state(page)["cursor"]
     page.press("Enter")
     assert state(page)["focus"] == "cd-detail"
     page.press("ArrowLeft")
-    back = state(page)
-    assert back["focusIsCursor"], f"focus on {back['focus']}"
-    # Stepping out is not stepping away: the row is the one Enter was pressed
-    # on, not its parent, and the selection behind the panel is untouched.
-    assert back["cursor"] == target
-
-
-def test_arrow_left_inside_the_panel_is_left_to_the_panel(page):
-    """A link or a table that scrolls sideways owns the key once the reader has
-    tabbed on to it; only the state Enter leaves behind is claimed."""
-    page.press("ArrowDown")
-    page.press("Enter")
+    held = state(page)
+    assert not held["focusIsCursor"], "the panel's own key was taken"
+    assert held["focus"] == "cd-detail"
+    # Also once the reader has tabbed on: no state of the panel gives the key up.
     moved = page.evaluate(
         "var link = document.querySelector('#cd-detail a, #cd-detail button');"
         "if (!link) return false;"
         "link.focus(); return document.activeElement !== document.getElementById('cd-detail');"
     )
-    if not moved:
-        pytest.skip("nothing focusable in the panel for this fixture")
-    page.press("ArrowLeft")
-    assert not state(page)["focusIsCursor"], "the panel's own key was taken"
+    if moved:
+        page.press("ArrowLeft")
+        assert not state(page)["focusIsCursor"], "the panel's own key was taken"
+    # Escape comes back to the row Enter was pressed on, not to its parent, and
+    # the selection behind the panel is untouched.
+    page.press("Escape")
+    back = state(page)
+    assert back["focusIsCursor"], f"focus on {back['focus']}"
+    assert back["cursor"] == target
 
 
 def test_the_keys_work_right_after_a_click(page):

@@ -538,10 +538,10 @@
       [["Enter"], "details, and go there"],
       [["/"], "search"],
       // The way back. Enter without it strands a reader in the detail panel,
-      // and the same key clears the search and closes this hint. ArrowLeft
-      // stands beside it and is named twice on this line on purpose: it steps
-      // out of a node and out of the panel, which is one movement, not two.
-      [["Esc", "←"], "back to the tree"]
+      // and the same key clears the search and closes this hint. It stands
+      // alone: the panel keeps its own arrows, since a type page is read with
+      // them, so Escape is the one way out and holds from anywhere in there.
+      [["Esc"], "back to the tree"]
     ], "tree"],
     HINT_MARKS,
     // A heading names what the row below it is, never where the reader is —
@@ -563,7 +563,7 @@
 
 
   // What the hint says the first time is not what it says when asked for.
-  // The table above is a legend — six entries and nine caps — and a legend
+  // The table above is a legend — six entries and eight caps — and a legend
   // asks a reader to learn five things before doing one, which is why it was
   // read past. The opening carries the two keys that get anyone moving and
   // points at the `?` for the rest. Written as a group of its own rather than
@@ -831,28 +831,11 @@
     });
   }
 
-  /* The way out of the detail panel, in the direction the tree already uses.
-     Enter hands the keyboard over and Escape hands it back, but Escape has to
-     be learned; ArrowLeft is already in the fingers from stepping out of a
-     node, and it means the same thing one pane further out. Up and Down are
-     left alone: on a type page that runs past the fold they are how it is
-     read.
-
-     Only an event the panel itself received — that is, the state Enter leaves
-     behind. Once the reader has tabbed on to a link or into a table that
-     scrolls sideways, ArrowLeft is that table's key, and Escape is still the
-     way back. */
-  function setupDetailKeys() {
-    var panel = document.getElementById("cd-detail");
-    if (!panel) return;
-    panel.addEventListener("keydown", function (event) {
-      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-      if (event.key !== "ArrowLeft" || event.target !== panel) return;
-      hintUsed();
-      focusCursor();
-      event.preventDefault();
-    });
-  }
+  /* The detail panel claims no key of its own. Escape is the way back, and
+     every arrow is the panel's: the type pages run past the fold and carry
+     tables that scroll sideways (0014), so ← and → are how one is read, not a
+     way out of it. One key back, learned once, beats two that hold only until
+     the reader tabs on to a link. */
 
   function select(path) {
     state.shownType = null;
@@ -2332,7 +2315,6 @@
     setupTreeKeys();
     setupListKeys("cd-results");
     setupListKeys("cd-docs");
-    setupDetailKeys();
     setupGlobalKeys();
     setupHelp();
 
