@@ -6,10 +6,11 @@ size, same leading — so on the 41,004 nodes of the real schema that carry both
 nothing said which was which, and on the 12,980 that carry only the type's, a
 general sentence read as a statement about this place.
 
-What belongs to the place stays unmarked; what is borrowed names its owner on
-a line of its own, with a tick beside it. The prose keeps the margin either
-way — on many nodes it is the substance of the page — so what is measured here
-is the attribution, the nesting, and that nothing is indented.
+What belongs to the place stays unmarked; what is borrowed names its owner on a
+line of its own, under a bar across the measure. The prose keeps the margin
+either way — on many nodes it is the substance of the page — so what is measured
+here is the attribution, the rank it is set in, the nesting, and that nothing is
+indented.
 """
 
 from __future__ import annotations
@@ -37,11 +38,35 @@ PANEL = r"""
     own: own ? own.textContent.trim() : null,
     ownIsBorrowed: !!(own && borrowed && borrowed.contains(own)),
     head: head ? head.textContent.replace(/\s+/g, ' ').trim() : null,
+    // The two parts read separately. What stands between them on screen is the
+    // row's gap, which puts no character into `textContent` — and the route is
+    // a button, so nothing runs together in the accessibility tree either.
+    label: head && head.querySelector('.cd-borrowed-label')
+      ? head.querySelector('.cd-borrowed-label').textContent.replace(/\s+/g, ' ').trim()
+      : null,
     headLink: head && head.querySelector('.cd-crumb')
       ? head.querySelector('.cd-crumb').textContent.trim() : null,
+    // The label is everything before the route, and none of it may be a
+    // control: that is what sent readers out of the panel.
+    labelIsPlain: head
+      ? !head.querySelector('code button, button code')
+        && (!head.querySelector('.cd-crumb')
+            || !!head.querySelector('.cd-borrowed-route .cd-crumb'))
+      : null,
+    labelWeight: head ? getComputedStyle(head).fontWeight : null,
+    sizes: head ? [
+      parseFloat(getComputedStyle(head).fontSize),
+      parseFloat(getComputedStyle(
+        head.querySelector('.cd-borrowed-route') || head).fontSize),
+      parseFloat(getComputedStyle(borrowed.querySelector('.cd-summary')).fontSize)
+    ] : null,
     borrowedText: borrowed ? borrowed.textContent.replace(/\s+/g, ' ').trim() : null,
     tablesInside: borrowed ? borrowed.querySelectorAll('table').length : null,
-    mark: head ? getComputedStyle(head, '::before').width : null,
+    // The crossbar, which replaced the tick: it runs the whole measure above
+    // the label, so it is the block's own top border and not a mark on the
+    // line. Measured as a width, and as how far it reaches.
+    mark: borrowed ? getComputedStyle(borrowed).borderTopWidth : null,
+    markRuns: borrowed ? Math.round(borrowed.getBoundingClientRect().width) : null,
     // The borrowed prose keeps the margin the place's own words have: it is
     // often the substance of the page, not an aside to the line above it.
     indent: borrowed && own
@@ -67,12 +92,36 @@ def test_the_words_of_the_place_stand_outside_the_borrowed_block(browser, base):
 
 def test_the_borrowed_block_says_whose_words_they_are(browser, base):
     panel = open_node(browser, base, "translation/")
-    assert panel["head"] == "About the type pointType"
-    # The name is the link into the type, not decoration on a label.
-    assert panel["headLink"] == "pointType"
-    # The mark sits on the attribution, not down the side of the block.
-    assert panel["mark"] == "2px"
+    # The line labels the block. "About the type pointType" announced a topic,
+    # and readers took it for a heading over a link and clicked through — onto
+    # a panel carrying this same prose and these same tables, without the
+    # element's own head and words.
+    assert panel["label"] == "pointType documentation"
+    # Nothing in the label is clickable. The name is what the block is called;
+    # the only link says where it leads, and stands after the label.
+    assert panel["labelIsPlain"], "the label carries no link"
+    assert panel["headLink"] == "show only the type"
+    # The mark is a bar across the measure, above the line, not a tick beside
+    # it, and it is one stroke as the tick was. It has to reach: what it marks
+    # is the join, which a mark at the margin was not saying.
+    assert panel["mark"] == "1px"
+    assert panel["markRuns"] > 300, f"the bar spans {panel['markRuns']}px"
+    # The prose still starts where the place's own words start.
     assert panel["indent"] == 0
+
+
+def test_the_label_outranks_the_route_that_used_to_outrank_it(browser, base):
+    """Measured on the real schema before this: the link held 9.4 to 1 against
+    the page where the label held 8.1, underlined and standing first, while the
+    label was 31 % smaller than the prose it introduced. So the eye found one
+    thing on the line and it was the way out."""
+    panel = open_node(browser, base, "translation/")
+    label, route, prose = panel["sizes"]
+    assert label > route, f"label {label}px, route {route}px"
+    # Not a footnote to the block any more. It stays under the prose, since the
+    # prose is what the reader came to read.
+    assert route < label <= prose, f"label {label}px against prose {prose}px"
+    assert panel["labelWeight"] in ("600", "bold")
 
 
 def test_a_place_that_says_nothing_of_its_own_still_marks_what_it_borrows(browser, base):
@@ -80,7 +129,7 @@ def test_a_place_that_says_nothing_of_its_own_still_marks_what_it_borrows(browse
     answer to why the panel reads like a general description."""
     panel = open_node(browser, base, "scaling/")
     assert panel["own"] is None
-    assert panel["head"] == "About the type pointType"
+    assert panel["label"] == "pointType documentation"
     assert "The components are optional" in panel["borrowedText"]
 
 

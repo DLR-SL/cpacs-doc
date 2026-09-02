@@ -1014,23 +1014,53 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
    own words have, and what is marked is where the owner changes.
 
    The tick is decoration; the line beside it says the same thing in words. */
-.cd-borrowed { margin: 1.8rem 0 0; }
+/* The crossbar. It runs the whole measure, above the label rather than beside
+   it, so what it marks is the join — where the place's own words stop and the
+   type's begin — which proximity alone was not saying.
+
+   Above and not through the label. A rule with the label knocked out of its
+   middle needs the label painted in the page's own ground, a second pair of
+   values to keep in step across the themes; and a rule that merely fills what
+   the label leaves came out a stub, because the label and the route take most
+   of a 44rem measure between them.
+
+   It replaces the tick rather than joining it: 0015 counted one stroke in the
+   reading part of this page, and there is still one. A bar across the measure
+   is far longer than a tick was tall, so it takes --rule where the tick took
+   --rule-strong. */
+/* The air is above the bar, not under it: 29 px over 13, so the bar belongs to
+   the block it opens rather than floating between the two. */
+.cd-borrowed {
+  margin: 1.8rem 0 0;
+  padding-top: 0.65rem;
+  border-top: 1px solid var(--rule);
+}
+/* A heading over the block, not a caption on the link that used to open it.
+   At --step-0 it was 13.12 px under 19.04 px of prose — 31 % smaller than the
+   text it introduces, which is the proportion of a footnote — so it read as
+   something hanging off the name rather than as the title of what follows.
+   The weight is what makes it a heading; it stays under the h2 of the tables
+   (--step-3, 600) so the block does not outrank them, and it keeps --ink-soft,
+   so the gain is in rank and not in loudness. */
 .cd-borrowed-head {
-  position: relative;
-  padding-left: 0.9rem;
-  font-size: var(--step-0);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: var(--step-2);
+  font-weight: 600;
+  /* The label holds one line, so the body's 1.62 buys it nothing and spends
+     5 px of half-leading above the words — a fifth of the gap under the bar,
+     put there by a setting meant for paragraphs. */
+  line-height: 1.35;
   color: var(--ink-soft);
   margin: 0 0 0.55rem;
 }
-.cd-borrowed-head::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.2em;
-  bottom: 0.2em;
-  width: 2px;
-  border-radius: 1px;
-  background: var(--rule-strong);
+/* The way to the type, after the label rather than inside it, and set at the
+   size the whole line used to have. The label is what the eye lands on; this
+   is read once the reader has decided he wants the type and not this place. */
+.cd-borrowed-route {
+  font-size: var(--step-0);
+  font-weight: 400;
 }
 .cd-borrowed-head code { font-size: inherit; }
 .cd-error { padding: 3rem 0; }

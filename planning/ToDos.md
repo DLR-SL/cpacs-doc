@@ -175,6 +175,46 @@
 
 ### Closed
 
+**The label outranks the route** (2026-09-02, `decisions/0024`). 0023's rename
+did not stop the clicking, and measuring the line says why: the link held
+9.4 to 1 against the page where the label held 8.1, underlined, in a hue of its
+own and standing first, while the label was 31 % smaller than the 19.04 px
+prose it introduced. So the affordance outranked the label, and the label did
+not own the block — two faults in what the line *is*, neither of which a rename
+touches. The name is plain text now, the route stands after it and says where
+it goes (`show only the type`), and the label is `--step-2` at weight 600
+where it was `--step-0` at 400. Measured after: label 16 px/600 and first,
+route 13.12 px and last, prose unchanged. The route keeps the link colour on
+purpose — it is the only control on the line and has to look like one.
+
+A crossbar came back into it at the end, having been declined in 0015 and again
+in 0023: a hairline across the measure, above the line, as the block's own
+`border-top`. Both earlier refusals were about a rail down the *side*, which
+fences the prose and makes an aside of what is often the substance of the
+panel; a bar above marks the join instead, which is what was not being seen. It
+replaces the tick rather than joining it, so the reading part of the page still
+carries one stroke, and it takes `--rule` — across a 44 rem measure the tick's
+`--rule-strong` would be the loudest thing on the page. Two forms were drawn
+and dropped: the label knocked out of the middle of a rule, which needs a page
+background the app does not paint (the canvas is the UA's, by `color-scheme`),
+and a bar filling only what the label leaves, which came out a stub because the
+label and the route take most of the measure between them.
+
+**The line labels the block** (2026-09-02, `decisions/0023`). `About the type
+<name>` was read as a heading over a link, and the click cost the reader the
+element's head and its own words in exchange for three lines of metadata —
+`typeCell` swaps the panel, and the type's panel shows the same prose and the
+same tables the node panel had already appended, adding only the derivation
+line, the citable page and the usage list. The line now reads `<name>
+documentation`: it names what stands below rather than announcing a subject,
+the name keeps the link, and no stroke is added. The sketch that came with the
+report put the label on a rule and on a filled ground; 0015 counted 1 stroke of
+50 in the reading part of that panel and moved the mark off the side of the
+block on purpose, and a filled label reads as the button this is meant to stop
+looking like. If the wording alone does not stop the clicks, the next step is
+splitting the line — plain name as the label, a short link at the end naming
+what the type panel actually adds.
+
 **The path is handed over, not selected** (2026-09-02, `decisions/0022`). The
 breadcrumb is one button per segment with ` / ` between them, so a mouse
 selection of it yields `cpacs / header / name` — which is what has been going

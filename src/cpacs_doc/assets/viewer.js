@@ -1007,12 +1007,43 @@
   // read as a statement about this place. What belongs to the place stays
   // unmarked, being what the reader came for; what is borrowed says whose
   // it is. The rail is decoration only: the attribution carries it in words.
+  //
+  // The line labels the block; it does not announce a topic. "About the type
+  // X" was read as a heading over a link — the reader clicked it to find out
+  // more and swapped the panel for the type's own, which shows this same prose
+  // and these same tables and adds only the derivation line, the citable page
+  // and the usage list. So the click cost him the element's head and words and
+  // returned three lines of metadata.
+  //
+  // Renaming it was not enough, and measuring the line says why: the link was
+  // the strongest thing on it — 9.4 to 1 against the page where the label held
+  // 8.1, underlined, in a hue of its own, and standing first — while the label
+  // was 31 % smaller than the prose it introduced and so read as a caption on
+  // the link rather than a heading over the block. Both are addressed here:
+  // the name is plain text, and the route to the type stands after the label,
+  // smaller, saying what it leads to.
   function appendBorrowedProse(panel, typeName, type) {
     if (!typeProse(type)) return;
     var borrowed = element("section", "cd-borrowed");
     var head = element("p", "cd-borrowed-head");
-    head.appendChild(document.createTextNode("About the type "));
-    head.appendChild(typeCell(typeName));
+    // The label is one flex item, not two: a bare text node beside the `code`
+    // would be an anonymous item of its own and take the row's gap between the
+    // name and the word.
+    var label = element("span", "cd-borrowed-label");
+    label.appendChild(element("code", null, typeLabel(typeName)));
+    label.appendChild(document.createTextNode(" documentation"));
+    head.appendChild(label);
+    // Only where there is a panel to go to. A type absent from this schema is
+    // named and not linked, as `typeCell` has it.
+    if (state.model.types[typeName]) {
+      // No separator written in: the row's gap is what stands between them
+      // now, and a middot on top of it would space them twice.
+      var route = element("span", "cd-borrowed-route");
+      var link = element("button", "cd-crumb", "show only the type");
+      link.addEventListener("click", function () { showType(typeName); });
+      route.appendChild(link);
+      head.appendChild(route);
+    }
     borrowed.appendChild(head);
     appendTypeProse(borrowed, type);
     panel.appendChild(borrowed);
