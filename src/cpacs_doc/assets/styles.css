@@ -581,11 +581,22 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 
 /* The tree column is resizable rather than fixed: instance paths run to depth
    22, and no single default is right for a shallow and a deep view alike. */
+/* The window, less the body's own padding, and no more: the two panes divide
+   it between them and the page itself does not scroll (0014). Stated here as a
+   height rather than on each pane as a `max-height` guess at how much chrome
+   stands above them — that guess was 5rem, the hint is 4.6rem more, and the
+   first key of a first visit brings the hint out (0019). The column then grew
+   past the window, the page took a scrollbar it is not supposed to have, and
+   the arrows a reader presses in the detail panel scrolled the page 70px and
+   then nothing: on a type whose panel does not overflow, that is the whole
+   effect of the key. Measured 2026-09-03 at 1500 × 950, Firefox 155 and
+   Chrome alike. */
 .cd-app {
   display: grid;
   grid-template-columns: var(--tree-width, 28rem) auto 1fr;
   gap: 0 1rem;
-  align-items: start;
+  align-items: stretch;
+  height: calc(100vh - 2.2rem);
 }
 .cd-splitter {
   align-self: stretch;
@@ -601,7 +612,10 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
    while, to say which side navigates and which is read; the splitter says that
    already, and a second ground turned every window into two rectangles that
    had to be told apart before either could be read. */
-.cd-column { display: flex; flex-direction: column; min-width: 0; }
+/* `min-height: 0` so the tree may shrink below its content: without it a
+   flex item refuses to, and the hint above it would push the column past
+   the window again. */
+.cd-column { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 /* The panel is the pane, so the field keeps its place while the rows move.
    Nothing is clipped here: the rows do their own scrolling, and the field's
    focus ring reaches past its own box. */
@@ -733,7 +747,10 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   text-align: left;
 }
 
-.cd-pane { max-height: calc(100vh - 5rem); overflow: auto; }
+/* Each pane takes what the row gives it and scrolls inside that. The tree
+   is a flex child of the column, the detail panel a grid item stretched to
+   the same row; both need the `min-height: 0` for the same reason. */
+.cd-pane { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .cd-pane-detail { padding-right: 1rem; }
 /* Detail text keeps a readable measure even though the pane is wide. Tables
    and "Used by" do not: their content is names and instance paths, which are
@@ -1164,7 +1181,9 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-empty { color: var(--ink-soft); }
 
 @media (max-width: 48rem) {
-  .cd-app { grid-template-columns: 1fr; }
+  /* One column, stacked: here the page is the thing that scrolls, so the app
+     takes its content's height and the panes take theirs. */
+  .cd-app { grid-template-columns: 1fr; height: auto; }
   .cd-splitter { display: none; }
-  .cd-pane { max-height: none; }
+  .cd-pane { flex: none; }
 }

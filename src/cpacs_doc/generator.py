@@ -979,7 +979,14 @@ def router_html() -> str:
         '<button id="cd-help" class="cd-help" type="button" aria-expanded="false"'
         ' title="Keys and query forms" aria-label="Keys and query forms">?</button>'
         "</div>\n"
-        '<div id="cd-tree" class="cd-pane"></div>\n'
+        # `tabindex="-1"`: a scroll container that carries no tabindex of its
+        # own is a tab stop in Firefox 136 and later. One Tab out of the detail
+        # panel landed on this pane rather than on the first link inside the
+        # panel, and the arrows 0018 gives the panel then moved the tree cursor
+        # instead of scrolling what the reader was looking at. Chrome, which
+        # exempts a scroller that holds focusable children, never did it. The
+        # rows are the tab stops here, and they keep their own tabindex.
+        '<div id="cd-tree" class="cd-pane" tabindex="-1"></div>\n'
         # The field is the tab's own content, and the rows scroll under it
         # rather than with it.
         '<div id="cd-search-panel" class="cd-pane cd-search-panel" hidden>'
