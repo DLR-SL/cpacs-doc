@@ -219,18 +219,18 @@ def _usage_section(name: str, usage: dict, first_paths: dict) -> str:
                  f'path{"s" if count != 1 else ""}</span></h3>'
                  f'<ul class="cd-usage-list">{listed}</ul>')
 
-    # Folded away: it answers a question that is asked now and then, and it is
-    # long for the types that are used everywhere. `details` rather than a
-    # button of our own, because it opens with the keyboard, is announced as
-    # what it is, and works on a page with no script at all.
     schema = ""
     if users:
         schema = (f'<h3>In the schema <span class="cd-inherited">· {len(users)} '
                   f'declaration{"s" if len(users) != 1 else ""}</span></h3>'
                   + _scrolling(f"<table><tr><th>Type</th><th>Name</th></tr>{rows}</table>"))
 
-    return (f'<details class="cd-usage"><summary><h2>Used by</h2></summary>'
-            f"{where}{schema}</details>")
+    # A section like the ones above it, not a fold. It was folded on the
+    # grounds that it is asked for now and then, which made every reader who
+    # does ask pay a click at every type — and it hid the one answer neither
+    # predecessor could give, where the type stands in a document.
+    return (f'<section class="cd-usage"><h2>Used by</h2>'
+            f"{where}{schema}</section>")
 
 
 def _write_docs(output: Path, sections: list, types: dict, doc_type: str | None) -> int:

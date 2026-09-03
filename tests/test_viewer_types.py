@@ -375,23 +375,32 @@ def test_a_type_says_where_it_is_used(browser, base):
     """)
     assert opened, "the type could not be opened"
     used = browser.evaluate(r"""
-      var box = document.querySelector('#cd-detail details.cd-usage');
+      var pane = document.getElementById('cd-detail');
+      var box = pane.querySelector('section.cd-usage');
       if (!box) return null;
-      // Folded until asked: what is inside is only measured once it is open.
-      var wasOpen = box.open;
-      box.open = true;
       var table = box.querySelector('table');
       var heads = [];
       box.querySelectorAll('h3').forEach(function (h) {
         heads.push(h.textContent.replace(/\s+/g, ' ').trim());
       });
-      return { section: true, closedByDefault: !wasOpen,
+      // The measure, not the laid-out width: the pane is narrower than the
+      // measure at this window size, so the two agree there whatever the rule
+      // says. `100%` against the `44rem` a paragraph keeps is the difference.
+      return { folds: pane.querySelectorAll('.cd-usage details, details.cd-usage').length,
+               measure: getComputedStyle(box).maxWidth,
+               tableMeasure: getComputedStyle(pane.querySelector('table')).maxWidth,
+               proseMeasure: getComputedStyle(pane.querySelector('h1')).maxWidth,
                items: table ? table.textContent.replace(/\s+/g, ' ').trim() : null,
                heads: heads };
     """)
     assert used is not None, "no Used by section"
-    assert used["section"]
-    assert used["closedByDefault"], "it is not what a reader came for"
+    # Read without a click, the way the tables above it are: it carries the one
+    # answer the tree is for, where the type stands in a document.
+    assert used["folds"] == 0, "it is folded again"
+    # And it takes the pane, as those tables do, rather than the reading
+    # measure the prose keeps: these are paths, not sentences.
+    assert used["measure"] == used["tableMeasure"], used
+    assert used["measure"] != used["proseMeasure"], used
     # `headerType` is the type of two children of the root in this fixture.
     assert "cpacsType" in used["items"]
     # The document first, then the schema.
@@ -412,8 +421,7 @@ def test_the_path_count_shows_the_paths_it_counts(browser, base):
       return false;
     """)
     listed = browser.evaluate(r"""
-      var box = document.querySelector('#cd-detail details.cd-usage');
-      box.open = true;
+      var box = document.querySelector('#cd-detail section.cd-usage');
       var out = [];
       box.querySelectorAll('.cd-usage-list button').forEach(function (b) {
         out.push(b.textContent);

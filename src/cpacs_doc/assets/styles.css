@@ -498,12 +498,6 @@ figcaption {
 /* Where a type is used. The count is a line of its own — not `.cd-kind`, which
    heads a page and carries the rule under it; here that rule read as the end of
    the section, with the paths stranded below it. */
-/* Not what a reader came for, so it is folded until asked. The heading keeps
-   its place in the document; only the marker beside it says it can be opened. */
-.cd-usage > summary { cursor: pointer; }
-.cd-usage > summary h2 { display: inline; }
-.cd-usage[open] > summary { margin-bottom: 0.4rem; }
-
 .cd-usage-count {
   color: var(--ink-soft);
   font-size: var(--step-1);
@@ -511,16 +505,45 @@ figcaption {
 }
 .cd-usage-count > summary { cursor: pointer; color: var(--link); width: max-content; }
 
-/* The paths the count opens, tied to it by a rule down their left, the way a
-   code block is tied to what introduces it. */
+/* Which level the list is at, not what it holds: both lists under "Used by"
+   are elements, and a document is what tells one from the schema. A step down
+   from the `h2` above rather than the browser's `h3`, which is 700 against
+   that heading's 600 and a third of a pixel smaller — a subheading that
+   outweighed the heading it sits under. */
+.cd-usage h3 {
+  font-size: var(--step-1);
+  font-weight: 600;
+  margin: 1.5rem 0 0.2rem;
+}
+.cd-usage h3:first-of-type { margin-top: 0.7rem; }
+
 .cd-usage-list {
   list-style: none;
   margin: 0.4rem 0 0.9rem;
-  padding: 0.1rem 0 0.1rem 0.9rem;
-  border-left: 2px solid var(--rule-strong);
+  padding: 0.1rem 0 0.1rem 1.15rem;
   font-size: var(--step-1);
   line-height: 1.8;
 }
+/* A dot per item says where an item begins, which matters for a path long
+   enough to wrap: without one it begins twice and the eye cannot tell which.
+   Drawn rather than set as a marker: at this size a bullet glyph is a
+   different weight in every face, and the point is that it stays quieter than
+   the paths it counts off. */
+.cd-usage-list li { position: relative; }
+.cd-usage-list li::before {
+  content: "";
+  position: absolute;
+  left: -0.75rem;
+  /* Half the line height: the centre of the first line, whatever the item
+     wraps to below it. */
+  top: 0.9em;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--rule-strong);
+}
+/* Not an item: it says how many were left out. */
+.cd-usage-list li.cd-inherited::before { content: none; }
 .cd-usage-list .cd-crumb { overflow-wrap: anywhere; text-align: left; }
 
 .cd-type-index {
@@ -712,9 +735,12 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 
 .cd-pane { max-height: calc(100vh - 5rem); overflow: auto; }
 .cd-pane-detail { padding-right: 1rem; }
-/* Detail text keeps a readable measure even though the pane is wide. */
+/* Detail text keeps a readable measure even though the pane is wide. Tables
+   and "Used by" do not: their content is names and instance paths, which are
+   not read as prose and wrap into a ladder when they are held to a measure. */
 .cd-pane-detail > * { max-width: 44rem; }
-.cd-pane-detail table, .cd-pane-detail img, .cd-pane-detail pre { max-width: 100%; }
+.cd-pane-detail table, .cd-pane-detail img, .cd-pane-detail pre,
+.cd-pane-detail .cd-usage { max-width: 100%; }
 .cd-pane-detail h1 { font-size: var(--step-4); }
 
 /* Three states, not two: a reader who has expressed no preference follows the

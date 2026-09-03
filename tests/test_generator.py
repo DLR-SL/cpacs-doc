@@ -485,9 +485,10 @@ def test_the_used_by_section_names_the_declarations_and_counts_the_paths(model, 
     # Stated, not linked: a page cannot show 28,120 paths, and a link to the
     # first would promise the count and deliver one. The way in is the
     # "Show in tree" link at the head of the page.
-    usage = page.split('<details class="cd-usage">')[1]
-    # Folded away, and open with the keyboard on a page with no script at all.
-    assert "<summary><h2>Used by</h2></summary>" in usage
+    usage = page.split('<section class="cd-usage">')[1]
+    # Shown, not folded: the paths are the one answer neither predecessor could
+    # give, and a click at every type to reach them is a click too many.
+    assert "<details" not in usage
     # The document first, then the schema: the headings name the level, since
     # both lists are elements.
     assert usage.index("In a dataset") < usage.index("In the schema")

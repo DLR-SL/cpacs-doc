@@ -31,7 +31,6 @@
     searchEntries: null,  // built on first search, not on load
     searchFilter: "all",  // which kind the results are narrowed to, page-lifetime
     usage: null,          // reverse index, built on first type view
-    usageOpen: false,     // whether "Used by" stands open, page-lifetime
     shownType: null,   // type displayed in place of the selected node's detail
     shownSection: null, // documentation section displayed in its place
     tab: "tree"        // place in the left column the reader last chose
@@ -1590,16 +1589,14 @@
     var count = index.counts[typeName] || 0;
     if (!users.length && !count) return;
 
-    // Folded away: it answers a question that is asked now and then, and for a
-    // type used everywhere it is long. Whether it stands open is remembered
-    // for as long as the page is open, so comparing several types does not
-    // mean opening it again at each one.
-    var box = element("details", "cd-usage");
-    box.open = state.usageOpen;
-    var head = element("summary");
-    head.appendChild(element("h2", null, "Used by"));
-    box.appendChild(head);
-    box.addEventListener("toggle", function () { state.usageOpen = box.open; });
+    // A section like the ones above it, not a fold. It was folded on the
+    // grounds that it is asked for now and then, which made every reader who
+    // does ask pay a click at every type — and it hid the one answer the tree
+    // is for, where the type stands in a document. A section of its own also
+    // takes the pane's width, as the attribute and child tables do, instead of
+    // the reading measure a fold inherits.
+    var box = element("section", "cd-usage");
+    box.appendChild(element("h2", null, "Used by"));
     panel.appendChild(box);
     panel = box;
 
