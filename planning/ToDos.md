@@ -175,6 +175,17 @@
 
 ### Closed
 
+**The Occurrence tip ran out of its own box** (2026-09-04). The term sits in a
+`th`, and `th` is `nowrap` so a column head does not break in two. The tip
+inherited it and held its 344 characters on one 688 px line inside the 352 px
+its `max-width` allows, so the sentence ran off the white ground and across the
+page — nothing clips it, the box being what carries the ground. `.cd-tip` says
+`white-space: normal` now, which is right wherever a tip stands, not only in a
+head. Swept afterwards over every tip on `wingType`, `systemTypeType` and a
+node panel: none overflows. Held by `tests/test_page_tables.py`, which measures
+the text against the box and states the premise that the tip is long enough to
+need more than one line.
+
 **The type is named, and the name is the link** (2026-09-03, `decisions/0026`).
 Third revision of one line, and this one answers the readers who know the
 schema best: they run down a panel by its headings and passed

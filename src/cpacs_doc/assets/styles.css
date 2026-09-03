@@ -380,6 +380,13 @@ td code { white-space: nowrap; }
   z-index: 5;
   width: max-content;
   max-width: 22rem;
+  /* Said outright, because a tip is prose and stands wherever its term does.
+     The term on the Occurrence heading is in a `th`, and `th` is `nowrap` so a
+     column head does not break in two — which the tip inherited: it held its
+     344 characters on one 688 px line inside the 352 px its own max-width
+     allows, and the sentence ran out of the box and across the page. Nothing
+     clips it, since the box is what carries the ground. */
+  white-space: normal;
   padding: 0.5rem 0.7rem;
   background: var(--tip-bg);
   color: var(--tip-ink);

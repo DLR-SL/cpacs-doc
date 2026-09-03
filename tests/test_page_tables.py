@@ -92,3 +92,31 @@ def test_a_tip_on_the_last_row_is_drawn_whole(browser, base):
     assert measured["height"] > 0
     assert measured["overTheTerm"], measured
     assert measured["below"] <= 0 and measured["above"] <= 0, measured
+
+
+def test_a_tip_stays_inside_the_box_behind_it(page):
+    """The term on the *Occurrence* heading stands in a `th`, and `th` is
+    `nowrap` so a column head does not break in two. The tip inherited it: it
+    held its sentence on one 688 px line inside the 352 px its own `max-width`
+    allows, and the words ran out of the white ground and across the page.
+    Nothing clips them — the box is what carries the ground."""
+    measured = page.evaluate("""
+      var term = document.querySelector('.cd-note-term');
+      if (!term) return null;
+      term.focus();
+      var tip = term.querySelector('.cd-tip');
+      var style = getComputedStyle(tip);
+      var box = tip.getBoundingClientRect();
+      var range = document.createRange();
+      range.selectNodeContents(tip);
+      var text = range.getBoundingClientRect();
+      return {
+        over: Math.round(text.right - (box.right - parseFloat(style.paddingRight))),
+        lines: Math.round(text.height / parseFloat(style.lineHeight))
+      };
+    """)
+    assert measured is not None, "no note term on this page"
+    # The premise: a tip short enough to fit on one line would pass the next
+    # assertion without the rule that makes it wrap.
+    assert measured["lines"] > 1, measured
+    assert measured["over"] <= 1, measured
