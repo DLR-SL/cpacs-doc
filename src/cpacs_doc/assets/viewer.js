@@ -7,6 +7,10 @@
  * instead — everything before the first "/tree/" segment. "tree" occurs nowhere
  * as an element name in the instance tree, so the split is unambiguous.
  *
+ * The same file is also published as one document with the model inlined
+ * (`build --single`), read from a disk rather than served. Its address lives in
+ * the fragment: file:// lets a page change nothing else about its URL.
+ *
  * Only expanded nodes are put into the DOM. The full tree has 54,552 nodes;
  * rendering it in one go is not a performance concern to be optimised later,
  * it is the reason the renderer is written the way it is.
@@ -17,6 +21,7 @@
 
   var TREE_SEGMENT = "/tree/";
   var MODEL_FILE = "/cpacs-doc-model.json";
+  var MODEL_ELEMENT = "cd-model";
   var ROOT_TOKEN = "%ROOT%";
 
   var state = {
@@ -36,16 +41,37 @@
     tab: "tree"        // place in the left column the reader last chose
   };
 
+  function singleFile() {
+    // The inlined model is what makes this one document, and that decides both
+    // how it is addressed and which links it may offer. The question is put to
+    // the document rather than kept in `state`, because `parseLocation` runs
+    // before there is a model to record it in.
+    return document.getElementById(MODEL_ELEMENT) !== null;
+  }
+
+  function segmentsOf(rest) {
+    return rest.split("/").filter(function (s) { return s.length > 0; });
+  }
+
   function parseLocation() {
     var pathname = decodeURIComponent(window.location.pathname);
     var index = pathname.indexOf(TREE_SEGMENT);
     if (index === -1) {
-      return null;
+      // One file is opened under its own name, so its path says nothing about
+      // where the reader is; the fragment carries that instead. An absent
+      // fragment is the root of the tree rather than a 404 — there is no other
+      // document here that could have been meant.
+      if (!singleFile()) return null;
+      var fragment = decodeURIComponent(window.location.hash.slice(1));
+      var at = fragment.indexOf(TREE_SEGMENT);
+      return {
+        root: ".",
+        segments: at === -1 ? [] : segmentsOf(fragment.slice(at + TREE_SEGMENT.length))
+      };
     }
-    var rest = pathname.slice(index + TREE_SEGMENT.length);
     return {
       root: pathname.slice(0, index),
-      segments: rest.split("/").filter(function (s) { return s.length > 0; })
+      segments: segmentsOf(pathname.slice(index + TREE_SEGMENT.length))
     };
   }
 
@@ -866,7 +892,10 @@
     // The root element is part of the URL: it is part of an instance path, and
     // the "show in tree" links on type pages are written that way.
     var segments = [declaration(state.model.tree).name].concat(path);
-    var url = state.root + TREE_SEGMENT + segments.join("/") + "/";
+    var address = TREE_SEGMENT + segments.join("/") + "/";
+    // The fragment is the only part of a file:// URL a page may change:
+    // pushState to a path throws a SecurityError against a null origin.
+    var url = singleFile() ? "#" + address : state.root + address;
     window.history.pushState({ path: path }, "", url);
     renderTree();
     renderDetail();
@@ -1440,10 +1469,14 @@
     if (type.compositor) {
       meta.appendChild(document.createTextNode(" \u00B7 " + type.compositor));
     }
-    meta.appendChild(document.createTextNode(" \u00B7 "));
-    var page = element("a", null, "citable page");
-    page.href = typeHref(typeName);
-    meta.appendChild(page);
+    // Nothing to cite when the documentation is one file: the pages the
+    // link would reach are not written in that form.
+    if (!singleFile()) {
+      meta.appendChild(document.createTextNode(" \u00B7 "));
+      var page = element("a", null, "citable page");
+      page.href = typeHref(typeName);
+      meta.appendChild(page);
+    }
     panel.appendChild(meta);
 
     appendTypeBody(panel, type);
@@ -1470,11 +1503,13 @@
 
     panel.appendChild(element("h1", null, section.title));
 
-    var meta = element("p", "cd-kind");
-    var page = element("a", null, "citable page");
-    page.href = state.root + "/doc/" + section.slug + "/index.html";
-    meta.appendChild(page);
-    panel.appendChild(meta);
+    if (!singleFile()) {
+      var meta = element("p", "cd-kind");
+      var page = element("a", null, "citable page");
+      page.href = state.root + "/doc/" + section.slug + "/index.html";
+      meta.appendChild(page);
+      panel.appendChild(meta);
+    }
 
     var body = element("div", "cd-remarks");
     // Rendered once, by the generator, as everything else here is.
@@ -2464,43 +2499,67 @@
     setupGlobalKeys();
     setupHelp();
 
+    function show(model) {
+      state.model = model;
+      indexTree();
+      var rootName = declaration(model.tree).name;
+      var segments = location.segments;
+      // The root element is part of the URL but not of the internal path.
+      if (segments.length && segments[0] === rootName) segments = segments.slice(1);
+      state.path = segments;
+      state.cursor = segments;
+      expandAncestors(segments);
+      renderTree();
+      renderDetail();
+      setupTabs();
+      setupHint();
+    }
+
+    var inline = document.getElementById(MODEL_ELEMENT);
+    if (inline) {
+      // One file: the model is read out of the document, because a browser
+      // refuses `fetch` on a file:// URL and that is where this form is opened.
+      try {
+        show(JSON.parse(inline.textContent));
+      } catch (error) {
+        fail("The documentation model could not be read: " + error.message);
+      }
+      return;
+    }
+
     fetch(state.root + MODEL_FILE)
       .then(function (response) {
         if (!response.ok) throw new Error("model unavailable (" + response.status + ")");
         return response.json();
       })
-      .then(function (model) {
-        state.model = model;
-        indexTree();
-        var rootName = declaration(model.tree).name;
-        var segments = location.segments;
-        // The root element is part of the URL but not of the internal path.
-        if (segments.length && segments[0] === rootName) segments = segments.slice(1);
-        state.path = segments;
-        state.cursor = segments;
-        expandAncestors(segments);
-        renderTree();
-        renderDetail();
-        setupTabs();
-        setupHint();
-      })
+      .then(show)
       .catch(function (error) {
         fail("The documentation model could not be loaded: " + error.message);
       });
   }
 
-  window.addEventListener("popstate", function () {
+  function restore() {
     var location = parseLocation();
     if (!location || !state.model) return;
     var segments = location.segments;
     var rootName = declaration(state.model.tree).name;
     if (segments.length && segments[0] === rootName) segments = segments.slice(1);
+    // The address names a tree path, so that is what the panel must show: a
+    // type or a section standing in front of it belongs to the place the
+    // reader has just left. `select` clears them for the same reason.
+    state.shownType = null;
+    state.shownSection = null;
     state.path = segments;
     state.cursor = segments;
     expandAncestors(segments);
     renderTree();
     renderDetail();
-  });
+  }
+
+  window.addEventListener("popstate", restore);
+  // One file addresses itself by fragment, and a fragment the reader edits by
+  // hand fires this event alone.
+  window.addEventListener("hashchange", restore);
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", start);

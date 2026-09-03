@@ -12,6 +12,8 @@ version.
 
 from __future__ import annotations
 
+import base64
+import json
 import shutil
 from importlib import resources
 from dataclasses import dataclass, field
@@ -31,6 +33,24 @@ MEDIA_DIRECTORY = "media"
 ASSET_DIRECTORY = "assets"
 
 STYLESHEET = "styles.css"
+
+# The one-file form, read from a disk rather than from a server: the model sits
+# in the document because a browser refuses `fetch` on file://, and the figures
+# sit in it because one file is the point. Nothing travels beside it, so the
+# only pages it holds are the ones the viewer draws.
+SINGLE_NAME = "cpacs-doc.html"
+MODEL_ELEMENT = "cd-model"
+
+# The suffixes the media catalogue actually uses — 76 png and 22 jpg in CPACS
+# 3.5.1. Stated here for the reason serve.py states its own: mimetypes consults
+# the Windows registry, which would make the output a property of the machine.
+IMAGE_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".svg": "image/svg+xml",
+}
 
 # Substituted for the path back to the output root in rendered fragments.
 ROOT_TOKEN = "%ROOT%"
@@ -943,8 +963,12 @@ def _write_assets(directory: Path) -> None:
         (directory / name).write_text(asset(name), encoding="utf-8")
 
 
-def router_html() -> str:
+def router_html(model_script: str = "") -> str:
     """The single not-found document that serves every tree path.
+
+    `model_script` is empty in the deployed form, which fetches the model from
+    a known address. The one-file form passes the model in, and its presence in
+    the document is what tells the viewer it is being read from a disk.
 
     Its stylesheet is inlined rather than linked: the page is served from
     arbitrary depth and cannot resolve a relative URL, and it does not know its
@@ -1003,6 +1027,7 @@ def router_html() -> str:
         ' tabindex="0" aria-label="Resize the tree pane"></div>\n'
         '<div id="cd-detail" class="cd-pane cd-pane-detail" tabindex="-1"></div>\n'
         "</div>\n"
+        f"{model_script}"
         f"<script>\n{asset('viewer.js')}</script>\n"
         "</body>\n</html>\n"
     )
@@ -1010,3 +1035,81 @@ def router_html() -> str:
 
 def _write_router(output: Path) -> None:
     (output / "404.html").write_text(router_html(), encoding="utf-8")
+
+
+def single_html(model: dict, *, media_root: Path | None = None,
+                result: GeneratorResult | None = None) -> str:
+    """The viewer, its model and its figures as one document."""
+    payload = json.dumps(model, ensure_ascii=False, separators=(",", ":"))
+    payload, embedded = _embed_media(payload, model, media_root, result)
+    if result is not None:
+        result.assets = embedded
+    # "<" is the one thing that ends a script block. Escaped — which leaves
+    # valid JSON and costs 65 KB on the 4.7 MB CPACS model — no documentation
+    # fragment can close the element it is carried in.
+    payload = payload.replace("<", "\\u003c")
+    return router_html(
+        model_script=f'<script type="application/json" id="{MODEL_ELEMENT}">{payload}</script>\n'
+    )
+
+
+def _embed_media(payload: str, model: dict, media_root: Path | None,
+                 result: GeneratorResult | None) -> tuple[str, int]:
+    """Replace every figure reference in the model with the figure itself."""
+    media = model.get("media", {})
+    if not media:
+        return payload, 0
+    if media_root is None:
+        if result is not None:
+            result.findings.append(
+                Finding(
+                    "warning",
+                    "GENERATOR_MEDIA_ROOT_MISSING",
+                    f"{len(media)} figures are referenced but no media root was given; "
+                    f"images will not resolve",
+                    SINGLE_NAME,
+                )
+            )
+        return payload, 0
+
+    embedded = 0
+    for image_id, entry in sorted(media.items()):
+        reference = f"{ROOT_TOKEN}/{MEDIA_DIRECTORY}/{entry['file']}"
+        # A catalogue entry no documentation mentions is not carried: this file
+        # is loaded whole, so what nothing references is weight and nothing else.
+        if reference not in payload:
+            continue
+        source = Path(media_root) / entry["file"]
+        if not source.exists():
+            if result is not None:
+                result.findings.append(
+                    Finding("error", "GENERATOR_MEDIA_MISSING",
+                            f"{image_id}: {source} not found", SINGLE_NAME)
+                )
+            continue
+        media_type = IMAGE_TYPES.get(source.suffix.lower())
+        if media_type is None:
+            if result is not None:
+                result.findings.append(
+                    Finding("warning", "GENERATOR_MEDIA_TYPE_UNKNOWN",
+                            f"{image_id}: no media type for {source.suffix!r}; "
+                            f"the figure stays a reference", SINGLE_NAME)
+                )
+            continue
+        data = base64.b64encode(source.read_bytes()).decode("ascii")
+        payload = payload.replace(reference, f"data:{media_type};base64,{data}")
+        embedded += 1
+    return payload, embedded
+
+
+def generate_single(model: dict, output: Path, *,
+                    media_root: Path | None = None) -> GeneratorResult:
+    """Write the whole documentation as one file into `output`."""
+    result = GeneratorResult()
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=True)
+    (output / SINGLE_NAME).write_text(
+        single_html(model, media_root=media_root, result=result), encoding="utf-8"
+    )
+    result.pages = 1
+    return result

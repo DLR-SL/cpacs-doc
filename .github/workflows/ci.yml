@@ -53,6 +53,11 @@ jobs:
     # fails on findings of severity error — in the schema, not in the code.
     runs-on: ubuntu-latest
     needs: test
+    permissions:
+      contents: read
+      # To delete the one-file builds this run supersedes. Nothing else here
+      # writes anything: the site leaves as a Pages artifact.
+      actions: write
     steps:
       - uses: actions/checkout@v4
 
@@ -79,14 +84,67 @@ jobs:
       - name: Report
         run: uv run cpacs-doc report cpacs/schema/cpacs_schema.xsd --limit 0
 
-      - name: Build the model and the site
+      - name: Build the model, the site and the one file
         run: |
-          uv run cpacs-doc build cpacs/schema/cpacs_schema.xsd --site -o build
+          uv run cpacs-doc build cpacs/schema/cpacs_schema.xsd --site --single -o build
           touch build/.nojekyll
+          # Taken out of the Pages tree: what is deployed stays the site, and
+          # the one file is 20 MB that no page there links to.
+          mkdir single
+          mv build/cpacs-doc.html single/
 
       - uses: actions/upload-pages-artifact@v3
         with:
           path: build
+
+      - name: Upload the one file
+        uses: actions/upload-artifact@v4
+        with:
+          # A stable name, which is what makes "keep the newest" below mean
+          # anything. The upload is zipped, so it costs about 12 MB of the
+          # repository's storage rather than the 20 MB it is on disk.
+          name: cpacs-doc-single
+          path: single/cpacs-doc.html
+          # The backstop, for a branch that stops building before the step
+          # below ever runs again on it — a merged pull request, mostly.
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Delete the one-file builds this run supersedes
+        # Retention alone would keep a fortnight of uploads per branch, and only
+        # the newest says anything about the schema as it is now. Deleting after
+        # the upload rather than before it means a failed upload cannot leave a
+        # branch with nothing to download. A fork's token is read-only and
+        # cannot delete; there the retention date is the whole logic.
+        if: github.event.pull_request.head.repo.fork != true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const name = "cpacs-doc-single";
+            const { owner, repo } = context.repo;
+            const { data: current } = await github.rest.actions.getWorkflowRun({
+              owner, repo, run_id: context.runId,
+            });
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              { owner, repo, name, per_page: 100 },
+            );
+            // Per branch: a pull request's own build is not superseded by main's.
+            const superseded = artifacts.filter((artifact) =>
+              // The name is asked of the API as well; checked again here so a
+              // parameter the client drops cannot widen this to other uploads.
+              artifact.name === name
+              && artifact.workflow_run
+              && artifact.workflow_run.head_branch === current.head_branch
+              && artifact.workflow_run.id !== current.id
+            );
+            for (const artifact of superseded) {
+              core.info(`deleting ${artifact.id} from run ${artifact.workflow_run.id}`);
+              await github.rest.actions.deleteArtifact({
+                owner, repo, artifact_id: artifact.id,
+              });
+            }
+            core.info(`kept this run's ${name}, deleted ${superseded.length} older`);
 
   preview:
     # A preview of the generated documentation, not a release. It tracks

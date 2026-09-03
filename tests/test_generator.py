@@ -507,3 +507,94 @@ def test_a_type_used_everywhere_gets_a_count_rather_than_a_list(model, tmp_path)
     generator.generate(model, tmp_path)
     page = (tmp_path / "type" / "baseType" / "index.html").read_text(encoding="utf-8")
     assert "and 6 more" in page, "31 users, 25 shown"
+
+
+# ---- the one-file form ----
+#
+# What `--site` spreads over 1,341 files, `--single` puts into one that opens
+# from a disk. The properties that makes it need are all about being read
+# without a server: nothing may be fetched, and nothing may be linked that is
+# not in the file.
+
+
+def model_payload(html: str) -> dict:
+    """The model back out of the document, the way the viewer reads it."""
+    opening = f'<script type="application/json" id="{generator.MODEL_ELEMENT}">'
+    start = html.index(opening) + len(opening)
+    return json.loads(html[start:html.index("</script>", start)])
+
+
+def test_one_file_carries_the_whole_model(model, tmp_path):
+    result = generator.generate_single(model, tmp_path)
+    assert result.pages == 1
+    html = (tmp_path / generator.SINGLE_NAME).read_text(encoding="utf-8")
+    assert model_payload(html) == model
+    # The viewer and its stylesheet travel in the same document, as they do in
+    # the router page this is built from.
+    assert "cd-app" in html and "function parseLocation" in html
+
+
+def test_the_deployed_router_carries_no_model(model, tmp_path):
+    """Its model is fetched from a known address, and the presence of an
+    inlined one is what tells the viewer it is being read from a disk."""
+    generator.generate(model, tmp_path)
+    router = (tmp_path / "404.html").read_text(encoding="utf-8")
+    assert f'id="{generator.MODEL_ELEMENT}"' not in router
+
+
+def test_documentation_cannot_close_the_element_it_is_carried_in(model, tmp_path):
+    """A fragment holding "</script>" would end the block early and leave the
+    rest of the model in the page as text. Escaping "<" is what prevents it,
+    and the model must survive the escaping unchanged."""
+    model["types"]["wingType"]["documentation"]["remarksHtml"] = (
+        "<p>An example: &lt;/script&gt; and </script> inside.</p>"
+    )
+    generator.generate_single(model, tmp_path)
+    html = (tmp_path / generator.SINGLE_NAME).read_text(encoding="utf-8")
+    assert model_payload(html) == model
+    # Three script elements: the theme, the model, the viewer. No fourth end
+    # tag from the model's own content.
+    assert html.count("</script>") == 3
+
+
+def test_a_figure_is_embedded_rather_than_referenced(model, tmp_path):
+    media_root = tmp_path / "figures"
+    (media_root / "figures").mkdir(parents=True)
+    (media_root / "figures" / "a.png").write_bytes(b"\x89PNG\r\n\x1a\n0123456789")
+    model["media"] = {"a": {"file": "figures/a.png", "alt": "A"}}
+
+    result = generator.generate_single(model, tmp_path, media_root=media_root)
+
+    assert result.assets == 1
+    html = (tmp_path / generator.SINGLE_NAME).read_text(encoding="utf-8")
+    assert "data:image/png;base64," in html
+    # Nothing is left that would go looking for a directory beside the file.
+    assert generator.ROOT_TOKEN + "/media/" not in html
+
+
+def test_a_figure_no_documentation_mentions_is_left_out(model, tmp_path):
+    """The file is loaded whole, so an unreferenced catalogue entry is weight
+    and nothing else — 14 of the 98 in CPACS 3.5.1."""
+    media_root = tmp_path / "figures"
+    (media_root / "figures").mkdir(parents=True)
+    (media_root / "figures" / "unused.png").write_bytes(b"\x89PNG\r\n\x1a\n0123456789")
+    model["media"] = {"unused": {"file": "figures/unused.png", "alt": "U"}}
+
+    result = generator.generate_single(model, tmp_path, media_root=media_root)
+
+    assert result.assets == 0
+    html = (tmp_path / generator.SINGLE_NAME).read_text(encoding="utf-8")
+    assert "base64" not in json.dumps(model_payload(html))
+
+
+def test_a_figure_that_is_referenced_but_missing_is_reported(model, tmp_path):
+    model["media"] = {"a": {"file": "figures/a.png", "alt": "A"}}
+    result = generator.generate_single(model, tmp_path, media_root=tmp_path / "nowhere")
+    assert result.assets == 0
+    assert [f.code for f in result.findings] == ["GENERATOR_MEDIA_MISSING"]
+
+
+def test_without_a_media_root_the_figures_are_reported_rather_than_dropped(model, tmp_path):
+    model["media"] = {"a": {"file": "figures/a.png", "alt": "A"}}
+    result = generator.generate_single(model, tmp_path)
+    assert [f.code for f in result.findings] == ["GENERATOR_MEDIA_ROOT_MISSING"]

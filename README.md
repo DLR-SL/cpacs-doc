@@ -200,6 +200,14 @@ Writes `build/cpacs-doc-model.json` and prints its size. `--site` additionally
 generates the static type pages, `--media-root` overrides the directory the
 catalogue's file paths resolve against (default: the catalogue's own directory).
 
+`--single` writes `build/cpacs-doc.html` instead: the viewer, the model and the
+figures in one document, which opens from a disk with no server behind it — 20.6
+MB for CPACS 3.5.1, with 84 of the 98 catalogue figures embedded as data URIs
+and the 14 nothing references left out. It is addressed by fragment
+(`cpacs-doc.html#/tree/cpacs/vehicles/`), because a browser lets a `file://`
+page change nothing else about its URL, and it offers no links to citable pages,
+because this form does not write any.
+
 ### `serve` — the mode for working on the schema
 
 ```

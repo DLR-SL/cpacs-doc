@@ -138,6 +138,8 @@ def main(argv: list[str] | None = None) -> int:
     common(build_command)
     build_command.add_argument("-o", "--output", type=Path, default=Path("build"),
                                help="output directory (default: build)")
+    build_command.add_argument("--single", action="store_true",
+                               help="also write the whole documentation as one HTML file")
     build_command.add_argument("--site", action="store_true",
                                help="also write the static type pages")
     build_command.add_argument("--media-root", type=Path,
@@ -213,14 +215,22 @@ def main(argv: list[str] | None = None) -> int:
         written = model_module.write(model, args.output / DEFAULT_MODEL_NAME)
         print(f"model: {written} ({written.stat().st_size / 1e6:.1f} MB)")
 
+        media_root = args.media_root
+        if media_root is None and media_catalogue is not None:
+            media_root = media_catalogue.base_dir
+
         if args.site:
-            media_root = args.media_root
-            if media_root is None and media_catalogue is not None:
-                media_root = media_catalogue.base_dir
             site = generator_module.generate(model, args.output, media_root=media_root)
             report.extend(site.findings)
             docs = f", {site.docs} documentation sections" if site.docs else ""
             print(f"site: {args.output} ({site.pages} pages{docs}, {site.assets} figures)")
+
+        if args.single:
+            single = generator_module.generate_single(model, args.output, media_root=media_root)
+            report.extend(single.findings)
+            written = args.output / generator_module.SINGLE_NAME
+            print(f"single: {written} ({written.stat().st_size / 1e6:.1f} MB, "
+                  f"{single.assets} figures embedded)")
 
     _write_statistics(catalogue, tree, media_catalogue)
     report.write(sys.stdout, limit=None if args.limit == 0 else args.limit)
