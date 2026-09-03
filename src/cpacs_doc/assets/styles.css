@@ -335,8 +335,14 @@ td code { white-space: nowrap; }
 /* The first cell of a table is flush left, which is right for a name and wrong
    for this row: the tint runs the width of the row, and the mark stood against
    its edge with no air on that side while it has 0.45rem to the word on the
-   other. The same 0.45rem here puts it in a well rather than in a corner. */
-.cd-group td:first-child { padding-left: 0.45rem; }
+   other. The same 0.45rem here puts it in a well rather than in a corner.
+   Only where the row is not indented: a nested group carries `td.cd-indent`
+   and its depth says where the cell starts. Without `:not()` this rule wins on
+   specificity — a class, a type and a pseudo-class against a type and a class
+   — and every group in the table sat at 0.45rem whatever its depth, so a
+   `choice` stood to the left of the elements it is a sibling of and the
+   sequences inside it began where the outermost one does. */
+.cd-group td:first-child:not(.cd-indent) { padding-left: 0.45rem; }
 .cd-group { background: var(--group-tint); }
 .cd-group-label { display: inline-flex; align-items: center; gap: 0.45rem; }
 .cd-group-term {
