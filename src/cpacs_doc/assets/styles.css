@@ -1153,13 +1153,16 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
    At --step-0 it was 13.12 px under 19.04 px of prose — 31 % smaller than the
    text it introduces, which is the proportion of a footnote — so it read as
    something hanging off the name rather than as the title of what follows.
-   The weight is what makes it a heading; it stays under the h2 of the tables
-   (--step-3, 600) so the block does not outrank them, and it keeps --ink-soft,
-   so the gain is in rank and not in loudness. */
+   The weight is what makes it a heading; it keeps --ink-soft, so the gain is
+   in rank and not in loudness.
+
+   The line was raised to --step-3 for one revision, to stand among the h2 of
+   the tables, and comes back down now that the name carries the link: it is
+   the only thing on the line set in the link's hue and underlined, which is
+   the strongest mark this palette has, and a whole step of size on top of it
+   made the block louder than the sections around it. What was missing was
+   never size — it was a signpost the eye recognises. */
 .cd-borrowed-head {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
   font-size: var(--step-2);
   font-weight: 600;
   /* The label holds one line, so the body's 1.62 buys it nothing and spends
@@ -1169,14 +1172,10 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   color: var(--ink-soft);
   margin: 0 0 0.55rem;
 }
-/* The way to the type, after the label rather than inside it, and set at the
-   size the whole line used to have. The label is what the eye lands on; this
-   is read once the reader has decided he wants the type and not this place. */
-.cd-borrowed-route {
-  font-size: var(--step-0);
-  font-weight: 400;
-}
 .cd-borrowed-head code { font-size: inherit; }
+/* The word is the signpost, the name is the answer. The word stays soft; the
+   name is a link and takes the link's own hue, which is what the eye finds. */
+.cd-borrowed-kind { color: var(--ink-soft); }
 .cd-error { padding: 3rem 0; }
 .cd-empty { color: var(--ink-soft); }
 

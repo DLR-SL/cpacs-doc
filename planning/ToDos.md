@@ -175,6 +175,93 @@
 
 ### Closed
 
+**The type is named, and the name is the link** (2026-09-03, `decisions/0026`).
+Third revision of one line, and this one answers the readers who know the
+schema best: they run down a panel by its headings and passed
+`doorsType documentation` over, because it puts the unknown word where the eye
+lands and the known one at the end. It reads `Type: <name>` now, and the name
+is the link into the type panel again — written by `typeCell`, like every other
+type name in the viewer. `show only the type` is gone with the span it stood
+in.
+
+Raising the line to `--step-3`, the size of `Attributes` and `Child elements`,
+was tried first and works; it is not what was missing. With the link back on
+the name, the hue and the underline are a stronger mark than a step of size,
+and the line sits at `--step-2`/600 again — under the headings and under the
+19.04 px prose it introduces, and found anyway. Measured after: 16 px at 600,
+the word in `--ink-soft`, the name in `--link`.
+
+This reverses 0024 in the name being plain text, which 0024 had good reason
+for: the only control on the line was also the name of the block, so the
+affordance and the label were the same words and the affordance won. What
+changed is the word in front. `Type: doorsType` is a statement about this
+place, and the naming no longer depends on the name. What 0024 decided about
+the crossbar stands. The click still costs what 0023 counted — the type panel
+drops the element's head and its own words for three lines of metadata — and
+the open answer is still to bring those three into the borrowed block and let
+the link go.
+
+**The panes divide the window** (2026-09-03, `decisions/0025`). 0014 one level
+out, and it was written as a constant: both panes carried
+`max-height: calc(100vh - 5rem)`, a guess at the chrome above them that the
+keyboard hint is 4.6 rem too large for — and 0019 is what brings the hint out,
+on the reader's first key or click of a first visit. Measured 2026-09-03 at
+1500 × 950, Chrome and Firefox 155 alike: the column stands 984 px in a 915 px
+row and the document takes 69 px of scroll it is not supposed to have.
+
+It reached us as "the arrow keys do not work in the detail pane, in Firefox".
+Enter hands the keyboard to the panel (0018) and the arrows are the panel's;
+with 69 px of page under the layout the first arrow scrolled the page, the
+second reached the end of it, and after that the key did nothing — which on a
+type whose panel has nothing of its own to scroll is the whole of what it does.
+Firefox is where it was seen, not where it lived.
+
+`.cd-app` states its height now (`calc(100vh - 2.2rem)`) and stretches its
+items; the panes flex into the row with `min-height: 0` instead of guessing.
+The one-column layout resets both, since there the page is what scrolls.
+
+Two things came out of the same investigation. `#cd-tree` carries
+`tabindex="-1"`: Firefox 136 and later make a scroll container without one a
+tab stop, so a single Tab out of the detail panel landed on the tree pane and
+the arrows then moved the tree cursor while the panel still looked like where
+the reader was. And `tests/cdp.py` cannot drive Firefox at all — 129 removed
+CDP for WebDriver BiDi — so the reproduction was made with a throwaway BiDi
+driver over the same `WebSocket` class, and nothing of it is in the repository.
+
+Held by `tests/test_viewer_layout.py` on `fixtures/crowd.xsd`, whose 70
+elements under the root are what make the tree long enough for the question to
+mean anything: the keyboard fixture's tree is a dozen rows, and no arrangement
+of the chrome can push that past the window. Three tests, the first stating
+that premise so the other two cannot pass by measuring nothing.
+
+**Two smaller things in the viewer** (2026-09-03). No decision behind either;
+both are here because a reader can see the difference.
+
+*The child table's groups were not indented.* Every compositor row sat at
+0.45 rem whatever its depth, so a `choice` stood to the left of the elements it
+is a sibling of and the two sequences inside it began where the outermost one
+does — the one thing the column exists to show. `.cd-group td:first-child`
+outweighs `td.cd-indent` on specificity, a class and a pseudo-class against a
+class, so the well the outermost group sits in was applied to all of them. The
+rule is `:not(.cd-indent)` now. As a side effect the indent guides line up with
+the group marks, which they were always drawn to do: a guide for level *d*
+stands at `d × 1.4rem + 0.45rem` and a mark's centre at `d × 1.4rem +
+0.475rem`. Held by `tests/test_page_indent.py`, which measures where the rows
+start rather than reading the markup — the depth travels as a custom property,
+so the markup says nothing about it.
+
+*"Used by" is a section, not a fold.* It was folded on the grounds that it is
+asked for now and then, which made every reader who does ask pay a click at
+every type — and what it hid is the one answer neither predecessor could give,
+where the type stands in a document. It also inherited the reading measure a
+fold gets in the detail pane (44 rem) while the tables beside it take the pane;
+it takes the pane now too, since instance paths are not read as prose. The path
+list lost the rule down its left and gained a dot per item, which says where an
+item begins — a path long enough to wrap begins twice, and the rule could not
+tell the reader which. `In a dataset` and `In the schema` had no rule at all
+and ran on the browser's `h3`: 18.72 px at weight 700, heavier than the
+`h2` above them and a third of a pixel smaller. They are `--step-1` at 600.
+
 **The label outranks the route** (2026-09-02, `decisions/0024`). 0023's rename
 did not stop the clicking, and measuring the line says why: the link held
 9.4 to 1 against the page where the label held 8.1, underlined, in a hue of its

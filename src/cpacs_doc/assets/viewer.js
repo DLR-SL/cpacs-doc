@@ -1025,24 +1025,22 @@
     if (!typeProse(type)) return;
     var borrowed = element("section", "cd-borrowed");
     var head = element("p", "cd-borrowed-head");
-    // The label is one flex item, not two: a bare text node beside the `code`
-    // would be an anonymous item of its own and take the row's gap between the
-    // name and the word.
+    // The category word first, the name after it, and the name is the link.
+    // `<name> documentation` put the unknown word where the eye lands and the
+    // known one at the end, so a reader running down the panel met a name he
+    // did not recognise and passed the line over — and the readers who know
+    // the schema best are the ones who report doing it. `Type:` is the word
+    // they are looking for, and what follows it is the answer.
+    //
+    // `typeCell`, so this line says a type name the way every other line in
+    // the viewer says one: a type absent from the schema is named and not
+    // linked, which cannot arise here — a type with no entry has no prose to
+    // lend — and an anonymous type is labelled with its base.
     var label = element("span", "cd-borrowed-label");
-    label.appendChild(element("code", null, typeLabel(typeName)));
-    label.appendChild(document.createTextNode(" documentation"));
+    label.appendChild(element("span", "cd-borrowed-kind", "Type:"));
+    label.appendChild(document.createTextNode(" "));
+    label.appendChild(typeCell(typeName));
     head.appendChild(label);
-    // Only where there is a panel to go to. A type absent from this schema is
-    // named and not linked, as `typeCell` has it.
-    if (state.model.types[typeName]) {
-      // No separator written in: the row's gap is what stands between them
-      // now, and a middot on top of it would space them twice.
-      var route = element("span", "cd-borrowed-route");
-      var link = element("button", "cd-crumb", "show only the type");
-      link.addEventListener("click", function () { showType(typeName); });
-      route.appendChild(link);
-      head.appendChild(route);
-    }
     borrowed.appendChild(head);
     appendTypeProse(borrowed, type);
     panel.appendChild(borrowed);

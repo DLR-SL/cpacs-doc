@@ -38,28 +38,30 @@ PANEL = r"""
     own: own ? own.textContent.trim() : null,
     ownIsBorrowed: !!(own && borrowed && borrowed.contains(own)),
     head: head ? head.textContent.replace(/\s+/g, ' ').trim() : null,
-    // The two parts read separately. What stands between them on screen is the
-    // row's gap, which puts no character into `textContent` — and the route is
-    // a button, so nothing runs together in the accessibility tree either.
     label: head && head.querySelector('.cd-borrowed-label')
       ? head.querySelector('.cd-borrowed-label').textContent.replace(/\s+/g, ' ').trim()
       : null,
+    // The name is the one control on the line, and the word before it is not.
     headLink: head && head.querySelector('.cd-crumb')
       ? head.querySelector('.cd-crumb').textContent.trim() : null,
-    // The label is everything before the route, and none of it may be a
-    // control: that is what sent readers out of the panel.
-    labelIsPlain: head
-      ? !head.querySelector('code button, button code')
-        && (!head.querySelector('.cd-crumb')
-            || !!head.querySelector('.cd-borrowed-route .cd-crumb'))
-      : null,
+    kindIsPlain: head && head.querySelector('.cd-borrowed-kind')
+      ? !head.querySelector('.cd-borrowed-kind .cd-crumb') : null,
     labelWeight: head ? getComputedStyle(head).fontWeight : null,
+    // Three sizes on one panel: the line, the section headings it stands
+    // among, and the prose it introduces.
     sizes: head ? [
       parseFloat(getComputedStyle(head).fontSize),
-      parseFloat(getComputedStyle(
-        head.querySelector('.cd-borrowed-route') || head).fontSize),
       parseFloat(getComputedStyle(borrowed.querySelector('.cd-summary')).fontSize)
     ] : null,
+    sectionSize: panel.querySelector('h2')
+      ? parseFloat(getComputedStyle(panel.querySelector('h2')).fontSize) : null,
+    // What the eye finds on the line. The word keeps the soft ink; the name
+    // takes the link's, which is the strongest mark this palette has.
+    kindInk: head && head.querySelector('.cd-borrowed-kind')
+      ? getComputedStyle(head.querySelector('.cd-borrowed-kind')).color : null,
+    nameInk: head && head.querySelector('.cd-crumb')
+      ? getComputedStyle(head.querySelector('.cd-crumb')).color : null,
+    linkInk: getComputedStyle(panel.querySelector('.cd-breadcrumb .cd-crumb')).color,
     borrowedText: borrowed ? borrowed.textContent.replace(/\s+/g, ' ').trim() : null,
     tablesInside: borrowed ? borrowed.querySelectorAll('table').length : null,
     // The crossbar, which replaced the tick: it runs the whole measure above
@@ -95,12 +97,14 @@ def test_the_borrowed_block_says_whose_words_they_are(browser, base):
     # The line labels the block. "About the type pointType" announced a topic,
     # and readers took it for a heading over a link and clicked through — onto
     # a panel carrying this same prose and these same tables, without the
-    # element's own head and words.
-    assert panel["label"] == "pointType documentation"
-    # Nothing in the label is clickable. The name is what the block is called;
-    # the only link says where it leads, and stands after the label.
-    assert panel["labelIsPlain"], "the label carries no link"
-    assert panel["headLink"] == "show only the type"
+    # element's own head and words. `pointType documentation` then put the
+    # unknown word first and the known one last, and an eye running down the
+    # panel passed over it; the category word leads now.
+    assert panel["label"] == "Type: pointType"
+    # The name is the link, and the word before it is not: the reader who wants
+    # the type reaches for the name, which is where he would reach anyway.
+    assert panel["headLink"] == "pointType"
+    assert panel["kindIsPlain"], "the category word is not a control"
     # The mark is a bar across the measure, above the line, not a tick beside
     # it, and it is one stroke as the tick was. It has to reach: what it marks
     # is the join, which a mark at the margin was not saying.
@@ -110,17 +114,29 @@ def test_the_borrowed_block_says_whose_words_they_are(browser, base):
     assert panel["indent"] == 0
 
 
-def test_the_label_outranks_the_route_that_used_to_outrank_it(browser, base):
-    """Measured on the real schema before this: the link held 9.4 to 1 against
-    the page where the label held 8.1, underlined and standing first, while the
-    label was 31 % smaller than the prose it introduced. So the eye found one
-    thing on the line and it was the way out."""
+def test_the_name_is_what_the_eye_finds_on_the_line(browser, base):
+    """The line was passed over when it read `<name> documentation` at
+    --step-0, and again when the name was plain text at --step-2 with the route
+    beside it. What was missing was a mark the eye recognises, not size: the
+    name carries the link's hue and its underline, and nothing else on the line
+    does."""
     panel = open_node(browser, base, "translation/")
-    label, route, prose = panel["sizes"]
-    assert label > route, f"label {label}px, route {route}px"
-    # Not a footnote to the block any more. It stays under the prose, since the
-    # prose is what the reader came to read.
-    assert route < label <= prose, f"label {label}px against prose {prose}px"
+    assert panel["nameInk"] == panel["linkInk"], panel["nameInk"]
+    assert panel["kindInk"] != panel["nameInk"], panel["kindInk"]
+
+
+def test_the_line_ranks_under_the_headings_and_under_the_prose(browser, base):
+    """A step under `Attributes` and `Child elements`, so the block does not
+    outrank the sections around it, and under the prose, which is what the
+    reader came to read. It was raised to their size for one revision, while
+    the name was still plain text; with the link on the name that step made it
+    the loudest thing on the panel."""
+    panel = open_node(browser, base, "translation/")
+    label, prose = panel["sizes"]
+    assert label < panel["sectionSize"], f"label {label}px, headings {panel['sectionSize']}px"
+    assert label < prose, f"label {label}px against prose {prose}px"
+    # The weight is what still makes it a heading rather than a caption: at
+    # --step-0 and 400 it was 31 % smaller than the prose it introduces.
     assert panel["labelWeight"] in ("600", "bold")
 
 
@@ -129,7 +145,7 @@ def test_a_place_that_says_nothing_of_its_own_still_marks_what_it_borrows(browse
     answer to why the panel reads like a general description."""
     panel = open_node(browser, base, "scaling/")
     assert panel["own"] is None
-    assert panel["label"] == "pointType documentation"
+    assert panel["label"] == "Type: pointType"
     assert "The components are optional" in panel["borrowedText"]
 
 
