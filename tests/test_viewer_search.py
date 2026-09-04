@@ -161,3 +161,51 @@ def test_choosing_a_chip_takes_the_prefix_out_of_the_field(page):
       return false;
     """)
     assert page.evaluate("return document.getElementById('cd-search').value;") == "qq"
+
+
+# Where the ring the keyboard leaves behind is painted, against the box the
+# panel may paint in. `clientWidth`/`clientHeight` rather than the rect, so a
+# scrollbar the panel has taken does not count as room.
+RING = r"""
+  var row = document.activeElement;
+  var panel = document.getElementById('cd-results');
+  var style = window.getComputedStyle(row);
+  var reach = parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth);
+  var r = row.getBoundingClientRect();
+  var p = panel.getBoundingClientRect();
+  return {
+    row: row.className,
+    ring: style.outlineStyle,
+    top: Math.round((r.top - reach) - p.top),
+    bottom: Math.round((p.top + panel.clientHeight) - (r.bottom + reach)),
+    left: Math.round((r.left - reach) - p.left),
+    right: Math.round((p.left + panel.clientWidth) - (r.right + reach))
+  };
+"""
+
+
+def test_the_ring_on_a_result_is_not_cut_off_by_the_pane(page):
+    """The rows fill the width of a pane that scrolls, and the arrow that moves
+    the focus parks the row flush against the pane's edge. A ring drawn outside
+    the row is then cut off — on both sides always, and along the edge the row
+    was brought to as soon as the reader is past the first screenful. So it is
+    drawn inside the row instead, as it is on the tree's nodes.
+    """
+    page.evaluate("document.getElementById('cd-tab-search').click(); return true;")
+    look_for(page, "qq")
+    page.evaluate("document.getElementById('cd-search').focus(); return true;")
+    # Into the list, and then far enough down that the pane has had to scroll.
+    for _ in range(30):
+        page.press("ArrowDown")
+    bottom = page.evaluate(RING)
+    assert "cd-result" in bottom["row"], "the arrows did not reach the results"
+    assert bottom["ring"] == "solid", "the focused row carries no ring"
+    for side in ("top", "bottom", "left", "right"):
+        assert bottom[side] >= 0, "the ring is cut off at the %s: %r" % (side, bottom)
+
+    # And on the way back, where the row is brought to the other edge.
+    for _ in range(25):
+        page.press("ArrowUp")
+    top = page.evaluate(RING)
+    for side in ("top", "bottom", "left", "right"):
+        assert top[side] >= 0, "the ring is cut off at the %s: %r" % (side, top)

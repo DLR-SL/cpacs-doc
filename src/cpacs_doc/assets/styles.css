@@ -703,6 +703,13 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 }
 .cd-result:hover, .cd-result:focus-visible,
 .cd-place:hover, .cd-place:focus-visible { background: var(--field); }
+/* Pulled inside the row, as on the tree's nodes and for the same reason: the
+   rows fill the width of a pane that scrolls, so a ring drawn outside them is
+   cut off left and right, and `focus()` parks the row flush against the top or
+   bottom edge, where the same happens again. The list is walked with the
+   arrows, so that is the ordinary case and not the corner one. */
+.cd-result:focus-visible,
+.cd-place:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 /* The tree's own column width, so a name that folds starts where a name that
    does not would. Not `.cd-group-mark`: that one is the compositor's, over in
    the child-elements table. */
