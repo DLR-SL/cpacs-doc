@@ -38,6 +38,30 @@ def test_subscript_and_superscript():
     assert findings == []
 
 
+def test_tigl_alert_is_a_labelled_aside():
+    """A note on how TiGL treats the data, kept apart from the tool-neutral text."""
+    html, findings = render(
+        '<ddue:alert class="tigl"><ddue:para>TiGL 3.5 counts from 0.</ddue:para></ddue:alert>'
+    )
+    assert html == (
+        '<aside class="cd-alert cd-alert-tigl" role="note">'
+        '<p class="cd-alert-label">TiGL</p><p>TiGL 3.5 counts from 0.</p></aside>'
+    )
+    assert findings == []
+
+
+def test_note_alert():
+    html, findings = render('<ddue:alert class="note"><ddue:para>Mind the sign.</ddue:para></ddue:alert>')
+    assert html.startswith('<aside class="cd-alert cd-alert-note" role="note"><p class="cd-alert-label">Note</p>')
+    assert findings == []
+
+
+def test_unknown_alert_class_is_reported_and_rendered_as_note():
+    html, findings = render('<ddue:alert class="danger"><ddue:para>x</ddue:para></ddue:alert>')
+    assert 'class="cd-alert cd-alert-note"' in html
+    assert [f.code for f in findings] == ["RENDER_ALERT_CLASS_UNKNOWN"]
+
+
 def test_text_is_escaped():
     html, _ = render("<ddue:para>a &lt; b &amp; c</ddue:para>")
     assert html == "<p>a &lt; b &amp; c</p>"

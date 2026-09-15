@@ -42,6 +42,10 @@
      indicator owes (WCAG 2.4.11) even on the tightest ground it meets, the
      --field of the row the cursor stands on. Measured there: 3.6 and 3.4. */
   --focus: #4b81bd;
+  /* The rule beside a note (`ddue:alert`). A quiet blue, so that it reads as
+     an aside and not as a warning; 3.9 to 1 against the page, the 3:1 a
+     non-text mark needs, and the label carries the kind in words. */
+  --note-rule: #4b81bd;
   --alarm: #a3241c;
   /* Figures are drawn for paper: dark strokes and labels, mostly on a
      transparent ground (62 of 98). They are set on a light plate rather than
@@ -109,6 +113,7 @@
     --field: rgba(150, 160, 172, 0.11);
     --link: #74b3f0;
     --focus: #4f80b0;
+    --note-rule: #6a9bd2;
     --alarm: #e8837b;
     /* Slightly off white, so a full-page-width figure does not glare against
        a dark page. */
@@ -133,6 +138,7 @@
   --field: rgba(150, 160, 172, 0.11);
   --link: #74b3f0;
   --focus: #4f80b0;
+  --note-rule: #6a9bd2;
   --alarm: #e8837b;
   --plate: #edeff1;
   --plate-edge: rgba(255, 255, 255, 0.14);
@@ -469,6 +475,24 @@ pre, .cd-code {
 .cd-code .cd-punct { color: var(--ink-soft); }
 .cd-code .cd-meta { color: var(--ink-soft); }
 .cd-code .cd-comment { color: var(--ink-soft); font-style: italic; }
+
+/* A note beside the normative text (`ddue:alert`), e.g. how TiGL treats the
+   data. Set like a code block — a rule on the left, no box — but on the page
+   ground and with a coloured rule, so that the two do not read as one kind. */
+.cd-alert {
+  border-left: 2px solid var(--note-rule);
+  padding: 0.15rem 0 0.15rem 0.9rem;
+  margin: 1rem 0;
+}
+.cd-alert > :last-child { margin-bottom: 0; }
+/* Not set in capitals: the label is also a name, and "TiGL" is written so. */
+.cd-alert .cd-alert-label {
+  margin: 0 0 0.2rem;
+  font-size: var(--step-0);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.cd-alert .cd-alert-label + p { margin-top: 0; }
 
 figure { margin: 1.6rem 0; }
 .cd-image {

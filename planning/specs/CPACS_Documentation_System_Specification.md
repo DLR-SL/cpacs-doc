@@ -379,6 +379,7 @@ Steps 2 and 3 are **combined**, not treated as alternatives: the element one-lin
 | `definitionTable`, `definedTerm`, `definition` | `<dl>`, `<dt>`, `<dd>` | 1 / 2 / 2 |
 | `superscript` | `<sup>` | 2 |
 | `subscript` | `<sub>` | 0 (added as counterpart of `superscript`) |
+| `alert` with `class="note"` or `class="tigl"` | `<aside role="note">` with a label (`Note`, `TiGL`) | 0 (added for notes set apart from the normative text) |
 | `math` | MathML/KaTeX | 1 |
 
 Unknown `ddue` elements raise a warning in the build report and are passed through as plain text — never silently discarded.

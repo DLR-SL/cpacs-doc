@@ -45,6 +45,13 @@ INLINE_TAGS = {
 
 LIST_CLASSES = {"bullet": "ul", "ordered": "ol"}
 
+# `ddue:alert` sets a note apart from the normative text of the schema. CPACS is
+# a tool-independent standard, but most readers process it with TiGL; a `tigl`
+# alert says how TiGL treats the data where that differs from or goes beyond
+# the text around it. The label names the kind, so that the distinction does
+# not rest on the colour of the rule alone.
+ALERT_LABELS = {"note": "Note", "tigl": "TiGL"}
+
 
 @dataclass
 class RenderContext:
@@ -142,6 +149,23 @@ def _list(node, context):
         )
         tag = "ul"
     return _wrap(tag, node, context, css="list")
+
+
+def _alert(node, context):
+    kind = node.get("class")
+    if kind not in ALERT_LABELS:
+        context.report(
+            "warning",
+            "RENDER_ALERT_CLASS_UNKNOWN",
+            f"ddue:alert with class {kind!r}; rendered as note",
+            node,
+        )
+        kind = "note"
+    inner = "".join(_children(node, context))
+    return (
+        f'<aside class="{CLASS_PREFIX}alert {CLASS_PREFIX}alert-{kind}" role="note">'
+        f'<p class="{CLASS_PREFIX}alert-label">{ALERT_LABELS[kind]}</p>{inner.strip()}</aside>'
+    )
 
 
 # All 50 code blocks in CPACS 3.5.1 are `language="XML"`, and every one of them
@@ -285,6 +309,7 @@ _HANDLERS = {
     "para": _block("p"),
     "list": _list,
     "listItem": _block("li"),
+    "alert": _alert,
     "definitionTable": _block("dl", "definitions"),
     "definedTerm": _block("dt"),
     "definition": _block("dd"),
