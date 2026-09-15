@@ -40,6 +40,7 @@ INLINE_TAGS = {
     "emphasis": "em",
     "codeInline": "code",
     "superscript": "sup",
+    "subscript": "sub",
 }
 
 LIST_CLASSES = {"bullet": "ul", "ordered": "ol"}

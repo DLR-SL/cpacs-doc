@@ -29,6 +29,15 @@ def test_paragraph_and_inline_markup():
     assert findings == []
 
 
+def test_subscript_and_superscript():
+    html, findings = render(
+        "<ddue:para>R<ddue:subscript>LE</ddue:subscript>/c = "
+        "B<ddue:subscript>0</ddue:subscript><ddue:superscript>2</ddue:superscript>/2</ddue:para>"
+    )
+    assert html == "<p>R<sub>LE</sub>/c = B<sub>0</sub><sup>2</sup>/2</p>"
+    assert findings == []
+
+
 def test_text_is_escaped():
     html, _ = render("<ddue:para>a &lt; b &amp; c</ddue:para>")
     assert html == "<p>a &lt; b &amp; c</p>"

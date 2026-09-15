@@ -29,16 +29,18 @@ DDUE = "http://ddue.schemas.microsoft.com/authoring/2003/5"
 SD = "http://schemas.xsddoc.codeplex.com/schemaDoc/2009/3"
 XLINK = "http://www.w3.org/1999/xlink"
 
-# Measured against DLR-SL/CPACS develop, commit 4beeef8. An element outside this
-# set means the vocabulary has grown and the renderer needs a decision, so it is
-# reported instead of being passed through untranslated.
+# Measured against DLR-SL/CPACS develop, commit 4beeef8, plus `subscript` as the
+# counterpart of `superscript` (added for formula symbols such as B₀ or R_LE).
+# An element outside this set means the vocabulary has grown and the renderer
+# needs a decision, so it is reported instead of being passed through
+# untranslated.
 KNOWN_DDUE = frozenset(
     {
         "code", "codeInline", "content", "definedTerm", "definition",
         "definitionTable", "emphasis", "entry", "externalLink", "image",
         "legacyBold", "legacyItalic", "linkText", "linkUri", "list", "listItem",
-        "math", "mediaLink", "para", "remarks", "row", "section", "summary",
-        "superscript", "table", "title",
+        "math", "mediaLink", "para", "remarks", "row", "section", "subscript",
+        "summary", "superscript", "table", "title",
     }
 )
 
