@@ -330,7 +330,7 @@ class Handler(BaseHTTPRequestHandler):
             if section is None:
                 self._router()
                 return
-            html = generator.doc_page_html(section)
+            html = generator.doc_page_html(section, model.get("types", {}))
         self._send(with_live_reload(html).encode("utf-8"), CONTENT_TYPES[".html"])
 
     def _router(self) -> None:

@@ -21,8 +21,8 @@ def model():
                 "documentation": {
                     "summaryHtml": "<p>A wing.</p>",
                     "remarksHtml": '<img class="cd-image" src="%ROOT%/media/figures/a.png" alt="A">'
-                    '<span class="cd-xref" data-type="baseType">baseType</span>'
-                    '<span class="cd-xref" data-type="goneType">goneType</span>',
+                    '<code class="cd-xref" data-type="baseType">baseType</code>'
+                    '<code class="cd-xref" data-type="goneType">goneType</code>',
                 },
                 "attributes": [
                     {"name": "uID", "type": "xsd:ID", "use": "required", "inherited": False,
@@ -133,8 +133,22 @@ def test_root_placeholder_is_resolved_against_page_depth(model, tmp_path):
 def test_cross_references_resolve_to_links_and_unknown_targets_stay_text(model, tmp_path):
     generator.generate(model, tmp_path)
     html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
-    assert 'href="../baseType/index.html"><code>baseType</code>' in html
+    assert '<a href="../../type/baseType/index.html"><code>baseType</code></a>' in html
     assert "<code>goneType</code>" in html
+    assert "cd-xref" not in html
+
+
+def test_a_hand_written_reference_keeps_its_own_words(model, tmp_path):
+    """`ddue:link` reaches the generator as a `span`: the label is the author's,
+    so it is linked as it stands rather than being replaced by the type name."""
+    model["types"]["wingType"]["documentation"]["remarksHtml"] += (
+        '<span class="cd-xref" data-type="baseType">the base of everything</span>'
+        '<span class="cd-xref" data-type="goneType">a type with no page</span>'
+    )
+    generator.generate(model, tmp_path)
+    html = (tmp_path / "type" / "wingType" / "index.html").read_text(encoding="utf-8")
+    assert '<a href="../../type/baseType/index.html">the base of everything</a>' in html
+    assert "a type with no page" in html
     assert "cd-xref" not in html
 
 

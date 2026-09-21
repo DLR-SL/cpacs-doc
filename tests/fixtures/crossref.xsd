@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:ddue="http://ddue.schemas.microsoft.com/authoring/2003/5"
+            xmlns:sd="http://schemas.xsddoc.codeplex.com/schemaDoc/2009/3"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            elementFormDefault="qualified">
+
+    <xsd:complexType name="wingSectionType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <sd:schemaDoc>
+                    <ddue:summary><ddue:para>A station along the span.</ddue:para></ddue:summary>
+                </sd:schemaDoc>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="eta" type="xsd:double"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="wingType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <sd:schemaDoc>
+                    <ddue:summary><ddue:para>A wing.</ddue:para></ddue:summary>
+                    <ddue:remarks>
+                        <ddue:content>
+                            <ddue:para>Its airfoils sit in a <ddue:codeInline>wingSectionType</ddue:codeInline>.</ddue:para>
+                            <ddue:para>The same shape describes <ddue:link xlink:href="wingSectionType">a rotor blade</ddue:link>.</ddue:para>
+                            <ddue:para>The <ddue:codeInline>sections</ddue:codeInline> are its stations.</ddue:para>
+                        </ddue:content>
+                    </ddue:remarks>
+                </sd:schemaDoc>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:sequence>
+            <xsd:element name="sections" type="wingSectionType"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:element name="cpacs">
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="wing" type="wingType"/>
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+</xsd:schema>

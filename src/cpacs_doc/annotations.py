@@ -30,18 +30,19 @@ SD = "http://schemas.xsddoc.codeplex.com/schemaDoc/2009/3"
 XLINK = "http://www.w3.org/1999/xlink"
 
 # Measured against DLR-SL/CPACS develop, commit 4beeef8, plus `subscript` as the
-# counterpart of `superscript` (added for formula symbols such as B₀ or R_LE)
-# and `alert` for notes set apart from the normative text, e.g. on how TiGL
-# treats the data. An element outside this set means the vocabulary has grown
-# and the renderer needs a decision, so it is reported instead of being passed
-# through untranslated.
+# counterpart of `superscript` (added for formula symbols such as B₀ or R_LE),
+# `alert` for notes set apart from the normative text, e.g. on how TiGL treats
+# the data, and `link` for a cross reference an author sets by hand where the
+# type name alone does not carry one. An element outside this set means the
+# vocabulary has grown and the renderer needs a decision, so it is reported
+# instead of being passed through untranslated.
 KNOWN_DDUE = frozenset(
     {
         "alert", "code", "codeInline", "content", "definedTerm", "definition",
         "definitionTable", "emphasis", "entry", "externalLink", "image",
-        "legacyBold", "legacyItalic", "linkText", "linkUri", "list", "listItem",
-        "math", "mediaLink", "para", "remarks", "row", "section", "subscript",
-        "summary", "superscript", "table", "title",
+        "legacyBold", "legacyItalic", "link", "linkText", "linkUri", "list",
+        "listItem", "math", "mediaLink", "para", "remarks", "row", "section",
+        "subscript", "summary", "superscript", "table", "title",
     }
 )
 

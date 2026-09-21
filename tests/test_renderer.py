@@ -210,7 +210,7 @@ def test_sandcastle_cross_reference_becomes_a_marked_span():
     )
     context = renderer.RenderContext()
     html = renderer.render(etree.fromstring(fragment), context)
-    assert 'class="cd-xref" data-type="wingType"' in html
+    assert '<code class="cd-xref" data-type="wingType">wingType</code>' in html
     assert context.findings == []
 
 
@@ -219,3 +219,116 @@ def test_unresolved_image_is_a_warning_when_no_catalogue_was_supplied():
     lacks the entry is an error."""
     _, findings = render('<ddue:mediaLink><ddue:image xlink:href="gone"/></ddue:mediaLink>')
     assert [(f.severity, f.code) for f in findings] == [("warning", "RENDER_IMAGE_UNRESOLVED")]
+
+
+# --- Cross references -------------------------------------------------------
+#
+# Two ways into the same marker. A type name written as `ddue:codeInline` is a
+# reference to that type and is recognised without the author doing anything
+# (243 of them in CPACS 3.5.1); `ddue:link` is what an author writes where the
+# name alone is not the reference — a different wording, or a target the rule
+# cannot see. Neither resolves here: the renderer records the target and the
+# generator, which knows the URL layout, turns it into an anchor.
+
+CATALOGUE = frozenset({"wingType", "wingSectionType"})
+
+
+def test_a_type_name_in_code_inline_becomes_a_cross_reference():
+    html, findings = render(
+        "<ddue:para>Its airfoils sit in a <ddue:codeInline>wingSectionType</ddue:codeInline>.</ddue:para>",
+        type_names=CATALOGUE,
+    )
+    assert html == (
+        '<p>Its airfoils sit in a <code class="cd-xref" '
+        'data-type="wingSectionType">wingSectionType</code>.</p>'
+    )
+    assert findings == []
+
+
+def test_code_inline_that_names_no_type_stays_plain_code():
+    """Element names, attribute values and literals are `codeInline` too, and
+    63% of the occurrences in CPACS 3.5.1 are one of those."""
+    html, findings = render(
+        "<ddue:para>The <ddue:codeInline>sections</ddue:codeInline> of a wing.</ddue:para>",
+        type_names=CATALOGUE,
+    )
+    assert html == "<p>The <code>sections</code> of a wing.</p>"
+    assert findings == []
+
+
+def test_without_a_catalogue_nothing_is_linked_automatically():
+    """No catalogue is a deliberate choice by the caller, as with the media
+    entries — not a reference that failed to resolve."""
+    html, findings = render("<ddue:para><ddue:codeInline>wingType</ddue:codeInline></ddue:para>")
+    assert html == "<p><code>wingType</code></p>"
+    assert findings == []
+
+
+def test_code_inline_holding_markup_is_not_a_reference():
+    """The rule reads the text as written. Anything with structure inside it is
+    not a bare type name, whatever the letters add up to."""
+    html, findings = render(
+        "<ddue:para><ddue:codeInline>wing<ddue:subscript>Type</ddue:subscript></ddue:codeInline></ddue:para>",
+        type_names=CATALOGUE,
+    )
+    assert html == "<p><code>wing<sub>Type</sub></code></p>"
+    assert findings == []
+
+
+def test_an_explicit_link_keeps_the_words_the_author_wrote():
+    html, findings = render(
+        '<ddue:para>See the <ddue:link xlink:href="wingSectionType">sections of a wing'
+        "</ddue:link>.</ddue:para>",
+        type_names=CATALOGUE,
+    )
+    assert html == (
+        '<p>See the <span class="cd-xref" data-type="wingSectionType">'
+        "sections of a wing</span>.</p>"
+    )
+    assert findings == []
+
+
+def test_an_empty_link_is_labelled_with_its_target():
+    html, findings = render(
+        '<ddue:para>See <ddue:link xlink:href="wingType"/>.</ddue:para>', type_names=CATALOGUE
+    )
+    assert html == '<p>See <span class="cd-xref" data-type="wingType">wingType</span>.</p>'
+    assert findings == []
+
+
+def test_a_link_without_a_target_is_an_error_and_keeps_its_text():
+    html, findings = render("<ddue:para>See <ddue:link>a wing</ddue:link>.</ddue:para>",
+                            type_names=CATALOGUE)
+    assert html == "<p>See a wing.</p>"
+    assert [(f.severity, f.code) for f in findings] == [("error", "RENDER_LINK_WITHOUT_TARGET")]
+
+
+def test_a_link_to_an_unknown_type_is_an_error():
+    """The one thing an explicit link buys over an attribute nobody reads: a
+    typo in the target is reported rather than rendered as ordinary prose."""
+    html, findings = render(
+        '<ddue:para>See <ddue:link xlink:href="wingTpye">a wing</ddue:link>.</ddue:para>',
+        type_names=CATALOGUE,
+    )
+    assert html == "<p>See a wing.</p>"
+    assert [(f.severity, f.code) for f in findings] == [("error", "RENDER_LINK_UNRESOLVED")]
+
+
+def test_a_link_without_a_catalogue_to_check_against_is_a_warning():
+    _, findings = render('<ddue:para><ddue:link xlink:href="wingType">a wing</ddue:link></ddue:para>')
+    assert [(f.severity, f.code) for f in findings] == [("warning", "RENDER_LINK_UNRESOLVED")]
+
+
+def test_a_type_name_inside_a_hand_written_link_is_not_linked_again():
+    """Nesting one anchor inside another is invalid markup, and the author has
+    already said where these words lead."""
+    html, findings = render(
+        '<ddue:para><ddue:link xlink:href="wingType">see <ddue:codeInline>wingSectionType'
+        "</ddue:codeInline></ddue:link></ddue:para>",
+        type_names=CATALOGUE,
+    )
+    assert html == (
+        '<p><span class="cd-xref" data-type="wingType">see '
+        "<code>wingSectionType</code></span></p>"
+    )
+    assert findings == []

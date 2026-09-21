@@ -38,7 +38,6 @@ INLINE_TAGS = {
     "legacyBold": "strong",
     "legacyItalic": "em",
     "emphasis": "em",
-    "codeInline": "code",
     "superscript": "sup",
     "subscript": "sub",
 }
@@ -58,6 +57,10 @@ class RenderContext:
     # image id -> {"file", "alt"}. None means no catalogue was supplied, which
     # is a deliberate choice by the caller rather than a broken reference.
     media: dict[str, dict] | None = None
+    # Every type name the schema declares, for the cross references below. None
+    # means no catalogue was supplied, as with `media`: nothing is linked and
+    # nothing is reported.
+    type_names: frozenset[str] | None = None
     # Placeholder for the path back to the output root. The renderer cannot know
     # how deep the page consuming this fragment sits, and the same fragment is
     # used by pages at different depths and by the viewer. Whoever writes the
@@ -280,14 +283,88 @@ def _entity_reference(node, context):
     The target is written as `Empty#T/<typeName>`; only the type name after the
     last slash carries meaning here. Resolution against the catalogue happens in
     the generator, which knows the URL layout — this stage marks the reference
-    and leaves the target in a data attribute.
+    and leaves the target in a data attribute. It names a type, so it is
+    marked the way rule A marks one.
     """
     raw = " ".join("".join(node.itertext()).split())
     target = raw.rsplit("/", 1)[-1] if raw else ""
     if not target:
         context.report("warning", "RENDER_XREF_EMPTY", "xsd:xmlEntityReference without a target", node)
         return ""
-    return f'<span class="{CLASS_PREFIX}xref" data-type="{escape(target)}">{escape(target)}</span>'
+    return _xref("code", target, escape(target))
+
+
+def _xref(tag: str, target: str, inner: str) -> str:
+    """The marker a cross reference leaves behind.
+
+    The renderer does not resolve it: the same fragment is read by pages at
+    three different depths and by the viewer, and none of them may have the URL
+    layout baked in. `code` carries a type name, which is schema vocabulary and
+    is set as such; `span` carries the words an author chose instead.
+    """
+    return f'<{tag} class="{CLASS_PREFIX}xref" data-type="{escape(target)}">{inner}</{tag}>'
+
+
+def _inside_link(node) -> bool:
+    """Whether this node sits inside a `ddue:link`.
+
+    A reference inside a reference is not a second reference: the author has
+    already said where these words lead, and marking a type name within the
+    label would nest one anchor inside another.
+    """
+    parent = node.getparent()
+    while parent is not None:
+        if parent.tag == q(DDUE, "link"):
+            return True
+        parent = parent.getparent()
+    return False
+
+
+def _code_inline(node, context):
+    """`codeInline` naming a type is a reference to it (rule A).
+
+    The guidelines have element and type names written as `codeInline`, so the
+    text is already there; what it lacks is the link. 243 of the 1,103
+    occurrences in CPACS 3.5.1 are exactly a global type name, none of them
+    names the type it stands in, and nothing else in the schema is spelled that
+    way — so the name alone decides, with no annotation to keep up to date.
+
+    Element names are deliberately not resolved here. 186 element names are
+    declared with more than one type, so the name on its own does not say which
+    page it means; an author who wants that link writes `ddue:link`.
+    """
+    inner = "".join(_children(node, context))
+    names = context.type_names
+    if names is not None and len(node) == 0 and not _inside_link(node):
+        text = " ".join((node.text or "").split())
+        if text in names:
+            return _xref("code", text, escape(text))
+    return f"<code>{inner}</code>"
+
+
+def _link(node, context):
+    """`ddue:link` — the reference an author sets by hand.
+
+    What rule A cannot do: name a type in words of the author's own ("the rotor
+    blades"), or send a reader from an element name to the type behind it,
+    which the bare name does not identify. The target is a type name either
+    way, in `xlink:href`, as `ddue:image` names its media entry. An empty
+    element takes its target as its label.
+
+    Unlike an attribute on `codeInline`, a wrong target here is reported: the
+    vocabulary is closed and this element exists to be checked.
+    """
+    target = (node.get(q(XLINK, "href")) or "").strip()
+    inner = "".join(_children(node, context)).strip()
+    if not target:
+        context.report("error", "RENDER_LINK_WITHOUT_TARGET", "ddue:link without xlink:href", node)
+        return inner
+    label = inner or escape(target)
+    if context.type_names is None or target not in context.type_names:
+        severity = "warning" if context.type_names is None else "error"
+        context.report(severity, "RENDER_LINK_UNRESOLVED", f"no type named {target!r}", node)
+        return label
+    return _xref("span", target, label)
 
 
 def _external_link(node, context):
@@ -320,6 +397,8 @@ _HANDLERS = {
     "code": _code,
     "mediaLink": _block("figure", "figure"),
     "image": _image,
+    "codeInline": _code_inline,
+    "link": _link,
     "externalLink": _external_link,
     # linkUri and linkText are consumed by their externalLink parent.
     "linkUri": lambda node, context: "",

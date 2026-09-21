@@ -377,7 +377,9 @@ def render_all(catalogue, media_catalogue, source: str, *,
         if media_catalogue is not None
         else None
     )
-    context = renderer.RenderContext(media=entries, source=source)
+    context = renderer.RenderContext(
+        media=entries, source=source, type_names=frozenset(catalogue.types)
+    )
     rendered: dict[str, RenderedDocumentation] = {}
     for name, info in catalogue.types.items():
         context.owner = f"{info.kind} {name}"

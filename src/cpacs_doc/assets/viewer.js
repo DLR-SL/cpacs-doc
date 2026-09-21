@@ -912,6 +912,45 @@
     return state.root + "/type/" + typeName.split("/").join("--") + "/index.html";
   }
 
+  /* ---- cross references in the prose ----
+   *
+   * The fragments arrive with the renderer's markers on them: a type name the
+   * schema wrote as `codeInline`, or the words an author chose in a
+   * `ddue:link`. The static pages turn each into an anchor; here they become
+   * anchors that switch the panel instead of loading a page, so that the tree
+   * and its selection survive the click — the same bargain `typeCell` makes.
+   * The href is real all the same, so the reader can open one in a new tab or
+   * copy its address.
+   *
+   * A marker whose target has no entry in the model keeps its text and loses
+   * its link, exactly as the generator leaves it.
+   */
+  function resolveCrossReferences(root) {
+    var markers = root.querySelectorAll(".cd-xref[data-type]");
+    for (var i = 0; i < markers.length; i++) {
+      var marker = markers[i];
+      var typeName = marker.getAttribute("data-type");
+      marker.removeAttribute("data-type");
+      if (!state.model.types[typeName]) continue;
+      var link = element("a", "cd-xref-link");
+      link.href = typeHref(typeName);
+      link.addEventListener("click", crossReferenceHandler(typeName));
+      marker.parentNode.insertBefore(link, marker);
+      link.appendChild(marker);
+    }
+  }
+
+  function crossReferenceHandler(typeName) {
+    return function (event) {
+      // Anything the reader meant as "open this somewhere else" is left to the
+      // browser and the href.
+      if (event.button !== 0 || event.metaKey || event.ctrlKey ||
+          event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      showType(typeName);
+    };
+  }
+
   function renderDetail() {
     var panel = document.getElementById("cd-detail");
     panel.textContent = "";
@@ -1087,11 +1126,13 @@
     if (type.documentation.summaryHtml) {
       var summary = element("div", "cd-summary");
       summary.innerHTML = withRoot(type.documentation.summaryHtml);
+      resolveCrossReferences(summary);
       panel.appendChild(summary);
     }
     if (type.documentation.remarksHtml) {
       var remarks = element("div", "cd-remarks");
       remarks.innerHTML = withRoot(type.documentation.remarksHtml);
+      resolveCrossReferences(remarks);
       panel.appendChild(remarks);
     }
   }
@@ -1514,6 +1555,7 @@
     var body = element("div", "cd-remarks");
     // Rendered once, by the generator, as everything else here is.
     body.innerHTML = withRoot(section.html);
+    resolveCrossReferences(body);
     panel.appendChild(body);
   }
 

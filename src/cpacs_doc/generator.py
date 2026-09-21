@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import shutil
 from importlib import resources
 from dataclasses import dataclass, field
@@ -265,21 +266,24 @@ def _write_docs(output: Path, sections: list, types: dict, doc_type: str | None)
     for section in sections:
         target = output / DOC_DIRECTORY / section["slug"] / "index.html"
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(doc_page_html(section), encoding="utf-8")
+        target.write_text(doc_page_html(section, types), encoding="utf-8")
     (output / DOC_DIRECTORY / "index.html").write_text(
         doc_index_html(sections, types, doc_type), encoding="utf-8"
     )
     return len(sections)
 
 
-def doc_page_html(section: dict) -> str:
+def doc_page_html(section: dict, types: dict) -> str:
     body = (
         '<nav class="cd-breadcrumb"><a href="../index.html">Documentation</a>'
         ' · <a href="../../index.html">Types</a></nav>'
         f'<h1>{escape(section["title"])}</h1>'
         f'<div class="cd-remarks">{section["html"]}</div>'
     )
-    return _substitute_root(_document(section["title"], 2, body), depth=2)
+    # The handbook cites types as freely as a type page does: `cpacsType`, whose
+    # sections these are, names 23 of them.
+    page = _resolve_cross_references(_document(section["title"], 2, body), types)
+    return _substitute_root(page, depth=2)
 
 
 def doc_index_html(sections: list, types: dict, doc_type: str | None) -> str:
@@ -303,7 +307,8 @@ def doc_index_html(sections: list, types: dict, doc_type: str | None) -> str:
         f'<div class="cd-remarks">{around}</div>'
         f'<ul class="cd-doc-index">{items}</ul>'
     )
-    return _substitute_root(_document("Documentation", 1, body), depth=1)
+    page = _resolve_cross_references(_document("Documentation", 1, body), types)
+    return _substitute_root(page, depth=1)
 
 
 # The reader's choice of palette, applied before anything is painted and
@@ -897,25 +902,35 @@ def _source_line(entry) -> str:
     return ""
 
 
+# The two shapes a cross reference leaves the renderer in: `code` around a
+# type name it recognised, `span` around the words an author chose. Nothing
+# nests inside either, so the non-greedy body is unambiguous.
+_XREF = re.compile(r'<(code|span) class="cd-xref" data-type="([^"]+)">(.*?)</\1>', re.DOTALL)
+
+
 def _resolve_cross_references(html: str, types: dict) -> str:
     """Turn the renderer's `cd-xref` markers into links.
 
     The renderer records the target type name but not a URL, because it does not
-    know the page layout. Resolution happens here, where it does.
+    know the page layout. Resolution happens here, where it does — against the
+    root placeholder rather than a sibling path, because type pages and
+    documentation pages sit at the same depth but in different directories.
+
+    A target without a page keeps its text and loses the link. The renderer has
+    already reported the ones worth reporting; a name that resolves in the
+    schema but has no page is a choice made when the site was written, not a
+    mistake in the documentation.
     """
-    import re
 
     def replace(match):
-        target = match.group(1)
+        tag, target, inner = match.groups()
+        body = f"<code>{inner}</code>" if tag == "code" else inner
         if target not in types:
-            return f"<code>{escape(target)}</code>"
-        return f'<a href="../{escape(slug(target))}/index.html"><code>{escape(target)}</code></a>'
+            return body
+        href = f"{ROOT_TOKEN}/{TYPES_DIRECTORY}/{slug(target)}/index.html"
+        return f'<a href="{escape(href)}">{body}</a>'
 
-    return re.sub(
-        r'<span class="cd-xref" data-type="([^"]+)">[^<]*</span>',
-        replace,
-        html,
-    )
+    return _XREF.sub(replace, html)
 
 
 def index_html(types: dict, statistics: dict, meta: dict, has_docs: bool = False) -> str:
