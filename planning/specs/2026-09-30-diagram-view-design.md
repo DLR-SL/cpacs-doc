@@ -19,7 +19,7 @@ any box in one click.
 **Success criteria.**
 
 - `/diagram/<path>/` opens the diagram with the ancestors of `<path>` expanded,
-  the element at `<path>` selected and centred.
+  the element at `<path>` selected and centered.
 - Every element box shows name, cardinality (optional, repeated) and type; the
   type name opens the type documentation.
 - The diagram is usable with the keyboard alone and with mouse zoom and pan.
@@ -159,7 +159,7 @@ Recursive, over the **visible** subtree only, in two passes:
    plus the gaps between them, and at least its own box height.
 2. Top-down: a box stands at the top of its subtree — XSDDiagram's *Top*
    alignment, the only one offered (not *Center* or *Bottom*); a compositor
-   that is its parent's only child is centred on the parent's box so the line
+   that is its parent's only child is centered on the parent's box so the line
    runs straight. Children are stacked from the top.
 
 x is per parent (amended 2026-09-30): the children of a box start 20 px past
@@ -179,7 +179,7 @@ so that the box that was expanded or collapsed stays where it was on screen.
 
 - Without a path: the root `cpacs` expanded one level, at 100 %, from the top
   left.
-- With a path: ancestors expanded, target selected and centred, overlay open
+- With a path: ancestors expanded, target selected and centered, overlay open
   with the target's documentation.
 - The set of expanded paths is the diagram's own. It is not shared with the
   tree, which keeps its own `state.expanded`.
@@ -234,7 +234,7 @@ button work without code.
 
 - Drag on empty canvas pans. Wheel scrolls vertically, Shift+wheel
   horizontally, Ctrl+wheel zooms around the pointer.
-- A small toolbar, bottom left: `−`, `+`, `100 %`, "Fit", "Centre selection".
+- A small toolbar, bottom left: `−`, `+`, `100 %`, "Fit", "Center selection".
 - Zoom range 25 %–200 %. The zoom level lasts for the page's lifetime; it is
   not in the URL.
 - Implemented as one `transform` on the root `<g>`.
@@ -289,7 +289,7 @@ Follows 0010 and 0016–0021, adapted to two dimensions.
   compositors drawn as their symbols; a recursive node has no expander.
 - Layout: no two boxes overlap (`getBBox()`); every box stands at the top of its
   subtree, and a lone compositor lines up with its parent; boxes of one depth share their x.
-- Routing: `/diagram/a/b/` expands the ancestors, selects `b`, centres it;
+- Routing: `/diagram/a/b/` expands the ancestors, selects `b`, centers it;
   a click pushes the URL; the one-file form works on `#/diagram/…`.
 - Overlay: selecting opens it with the element documentation; the type name
   shows the type documentation; its `href` is `/type/<name>/index.html`;
@@ -335,7 +335,7 @@ place on screen. The tree view is not affected.
   not in the middle: its parent element whole at the left edge of what is
   visible (where that keeps the box in the left half; otherwise the box at
   30 % of the width), the box a sixth of the height from the top. Its subtree
-  hangs below and to the right of it. The *Centre* button still centres.
+  hangs below and to the right of it. The *Center* button still centers.
 - **Narrow windows (≤ 48rem):** the documentation is a sheet along the bottom,
   58 % of the height, instead of a column over the right edge; the diagram
   keeps its boxes clear of whichever the overlay covers.
@@ -343,7 +343,7 @@ place on screen. The tree view is not affected.
   the first cell its heading, empty cells left out. The tree's panel keeps
   its tables. Tips inside the overlay take no room until shown.
 - **Toolbar:** zoom out, the current scale (which resets to 100 %), zoom in
-  as one joined control; then *Fit*, *Centre*, and apart from them *Expert*.
+  as one joined control; then *Fit*, *Center*, and apart from them *Expert*.
 - **Targets:** the expander's clickable area is 24 px square around its 10 px
   drawing.
 - **Motion:** the boxes an expand brings in fade in from their parent's side

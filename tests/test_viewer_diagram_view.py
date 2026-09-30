@@ -58,7 +58,7 @@ def expert_on(page):
     page.wait_for("return !!document.querySelector('.cd-dg-type-text');", "the type lines")
 
 
-def centre(page, selector: str):
+def center(page, selector: str):
     return page.evaluate(
         f"var r = document.querySelector({json.dumps(selector)}).getBoundingClientRect();"
         " return [r.left + r.width / 2, r.top + r.height / 2];"
@@ -107,12 +107,12 @@ def test_the_diagram_fills_the_width(viewer, base):
     assert width > 0.9
 
 
-def test_a_path_selects_centres_and_documents(viewer, base):
+def test_a_path_selects_centers_and_documents(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/wings/wing/span/")
     assert selected(page) == "wings/wing/span"
     assert overlay_open(page)
     assert page.evaluate(HEADING) == "span"
-    x, y = centre(page, item("wings/wing/span"))
+    x, y = center(page, item("wings/wing/span"))
     visible = page.evaluate(
         "var d = document.getElementById('cd-diagram').getBoundingClientRect();"
         " var o = document.getElementById('cd-detail').getBoundingClientRect();"
@@ -124,7 +124,7 @@ def test_a_path_selects_centres_and_documents(viewer, base):
 
 def test_a_click_selects_and_writes_the_address(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/")
-    page.click(*centre(page, item("header")))
+    page.click(*center(page, item("header")))
     page.wait_for("return location.pathname === '/diagram/cpacs/header/';", "the address")
     assert page.evaluate(HEADING) == "header"
     assert overlay_open(page)
@@ -133,7 +133,7 @@ def test_a_click_selects_and_writes_the_address(viewer, base):
 
 def test_the_type_line_opens_the_type_documentation(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/", expert=True)
-    page.click(*centre(page, item("header", ".cd-dg-type-text")))
+    page.click(*center(page, item("header", ".cd-dg-type-text")))
     page.wait_for(
         "return (document.querySelector('#cd-detail h1') || {}).textContent === 'settingsType';",
         "the type",
@@ -145,9 +145,9 @@ def test_the_type_line_opens_the_type_documentation(viewer, base):
 def test_the_overlay_closes_with_its_button_and_with_escape(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/header/")
     assert overlay_open(page)
-    page.click(*centre(page, "#cd-overlay-close"))
+    page.click(*center(page, "#cd-overlay-close"))
     assert overlay_open(page) is False
-    page.click(*centre(page, item("wings")))
+    page.click(*center(page, item("wings")))
     assert overlay_open(page)
     page.press("Escape")
     assert overlay_open(page) is False
@@ -156,11 +156,11 @@ def test_the_overlay_closes_with_its_button_and_with_escape(viewer, base):
 def test_the_tabs_switch_views_and_keep_the_selection(viewer, base):
     viewer.open(base + "/tree/cpacs/wings/")
     viewer.wait_for("return !!document.querySelector('.cd-node');", "the tree")
-    viewer.click(*centre(viewer, "#cd-tab-diagram"))
+    viewer.click(*center(viewer, "#cd-tab-diagram"))
     viewer.wait_for(DRAWN, "the diagram")
     assert viewer.evaluate("return location.pathname;") == "/diagram/cpacs/wings/"
     assert selected(viewer) == "wings"
-    viewer.click(*centre(viewer, "#cd-tab-tree"))
+    viewer.click(*center(viewer, "#cd-tab-tree"))
     viewer.wait_for("return location.pathname === '/tree/cpacs/wings/';", "the tree address")
     assert viewer.evaluate(
         "return document.getElementById('cd-tree').offsetParent !== null"
@@ -173,9 +173,9 @@ def test_back_returns_across_views(viewer, base):
     """Review Focus 4: the view follows the address, both ways."""
     viewer.open(base + "/tree/cpacs/header/")
     viewer.wait_for("return !!document.querySelector('.cd-node');", "the tree")
-    viewer.click(*centre(viewer, "#cd-tab-diagram"))
+    viewer.click(*center(viewer, "#cd-tab-diagram"))
     viewer.wait_for(DRAWN, "the diagram")
-    viewer.click(*centre(viewer, item("wings")))
+    viewer.click(*center(viewer, item("wings")))
     viewer.wait_for("return location.pathname === '/diagram/cpacs/wings/';", "the click")
     viewer.evaluate("history.back(); return true;")
     viewer.wait_for("return location.pathname === '/diagram/cpacs/header/';", "back once")
@@ -220,7 +220,7 @@ def test_the_one_file_form_opens_the_diagram_from_its_fragment(viewer, single):
         "return document.querySelector('.cd-dg-item[data-path=\"header\"] a.cd-dg-type')"
         ".hasAttribute('href');"
     ) is False
-    viewer.click(*centre(viewer, item("wings")))
+    viewer.click(*center(viewer, item("wings")))
     viewer.wait_for("return location.hash === '#/diagram/cpacs/wings/';", "the fragment")
 
 
@@ -312,10 +312,10 @@ def on_canvas(page):
 def test_ctrl_wheel_zooms_around_the_pointer(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/")
     ratio = page.evaluate("return window.devicePixelRatio;")
-    x, y = centre(page, item("header"))
+    x, y = center(page, item("header"))
     page.wheel(x, y, -200, ctrl=True)
     assert transform(page)[2] > 1
-    after = centre(page, item("header"))
+    after = center(page, item("header"))
     assert abs(after[0] - x) < 1.5 and abs(after[1] - y) < 1.5
     # The browser's own zoom stayed out of it (Review Focus 5).
     assert page.evaluate("return window.devicePixelRatio;") == ratio
@@ -342,20 +342,20 @@ def test_dragging_the_canvas_pans(viewer, base):
 
 def test_the_zoom_buttons_step_and_reset(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/")
-    page.click(*centre(page, "#cd-dg-zoom-in"))
+    page.click(*center(page, "#cd-dg-zoom-in"))
     assert abs(transform(page)[2] - 1.25) < 1e-6
-    page.click(*centre(page, "#cd-dg-zoom-out"))
-    page.click(*centre(page, "#cd-dg-zoom-out"))
+    page.click(*center(page, "#cd-dg-zoom-out"))
+    page.click(*center(page, "#cd-dg-zoom-out"))
     assert abs(transform(page)[2] - 0.8) < 1e-6
-    page.click(*centre(page, "#cd-dg-zoom-reset"))
+    page.click(*center(page, "#cd-dg-zoom-reset"))
     assert transform(page)[2] == 1
 
 
 def test_fit_brings_everything_into_view(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/wings/wing/sections/section/profile/")
-    page.click(*centre(page, "#cd-overlay-close"))
+    page.click(*center(page, "#cd-overlay-close"))
     page.wheel(*on_canvas(page), 2000)
-    page.click(*centre(page, "#cd-dg-fit"))
+    page.click(*center(page, "#cd-dg-fit"))
     assert page.evaluate("""
       var pane = document.getElementById('cd-diagram').getBoundingClientRect();
       var out = [];
@@ -368,11 +368,11 @@ def test_fit_brings_everything_into_view(viewer, base):
     """) == []
 
 
-def test_centre_puts_the_selection_beside_the_overlay(viewer, base):
+def test_center_puts_the_selection_beside_the_overlay(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/header/")
     page.wheel(*on_canvas(page), 400)
-    page.click(*centre(page, "#cd-dg-centre"))
-    x, y = centre(page, item("header"))
+    page.click(*center(page, "#cd-dg-center"))
+    x, y = center(page, item("header"))
     middle = page.evaluate(
         "var d = document.getElementById('cd-diagram').getBoundingClientRect();"
         " var o = document.getElementById('cd-detail').getBoundingClientRect();"
@@ -527,7 +527,7 @@ def test_a_cursor_off_screen_pans_along(viewer, base):
 
 def test_the_help_shows_the_diagram_keys(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/")
-    page.click(*centre(page, "#cd-help"))
+    page.click(*center(page, "#cd-help"))
     assert page.evaluate("""
       var line = document.querySelector('#cd-hint .cd-hint-line[data-tab="diagram"]');
       return !!line && !line.hidden && line.textContent.indexOf('zoom') !== -1;
@@ -586,7 +586,7 @@ def test_the_drawing_takes_touch_drags_itself(viewer, base):
 
 
 def test_the_bare_diagram_starts_top_left_at_full_size(viewer, base):
-    """Spec 4.3: only a path that names a box centres it."""
+    """Spec 4.3: only a path that names a box centers it."""
     page = at(viewer, base, "/diagram/cpacs/")
     left, top = page.evaluate(
         "var d = document.getElementById('cd-diagram').getBoundingClientRect();"
@@ -656,7 +656,7 @@ def test_the_type_line_speaks_up_on_hover(viewer, base):
     )
     fill = "return getComputedStyle(document.querySelector('.cd-dg-item[data-path=\"header\"] .cd-dg-type-text')).fill;"
     assert page.evaluate(fill) != link
-    x, y = centre(page, item("header"))
+    x, y = center(page, item("header"))
     page.command("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": x, "y": y})
     assert page.evaluate(fill) == link
 
@@ -756,9 +756,9 @@ def test_the_zoom_readout_follows_the_scale(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/")
     readout = "return document.getElementById('cd-dg-zoom-reset').textContent;"
     assert page.evaluate(readout) == "100 %"
-    page.click(*centre(page, "#cd-dg-zoom-in"))
+    page.click(*center(page, "#cd-dg-zoom-in"))
     assert page.evaluate(readout) == "125 %"
-    page.click(*centre(page, "#cd-dg-zoom-reset"))
+    page.click(*center(page, "#cd-dg-zoom-reset"))
     assert page.evaluate(readout) == "100 %"
 
 
@@ -791,7 +791,7 @@ def test_new_children_arrive_with_a_short_fade(viewer, base):
 
 def test_the_zoom_readout_follows_the_wheel(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/")
-    x, y = centre(page, item("header"))
+    x, y = center(page, item("header"))
     page.wheel(x, y, -200, ctrl=True)
     scale = transform(page)[2]
     assert scale > 1
@@ -809,5 +809,5 @@ def test_a_click_on_empty_canvas_clears_the_selection_and_the_address(viewer, ba
     assert overlay_open(page) is False
     page = at(viewer, base, "/diagram/cpacs/")
     assert page.evaluate("return document.querySelectorAll('.cd-dg-selected').length;") == 0
-    page.click(*centre(page, item("")))
+    page.click(*center(page, item("")))
     assert selected(page) == ""

@@ -196,7 +196,7 @@ def _lone_groups(boxes):
 
 
 def test_a_box_stands_at_the_top_of_its_subtree(page):
-    """XSDDiagram's Top alignment: a box is not centred on its children."""
+    """XSDDiagram's Top alignment: a box is not centered on its children."""
     boxes = laid_out(page)["boxes"]
     by_key, _, lone = _lone_groups(boxes)
 

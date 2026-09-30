@@ -18,7 +18,7 @@
   var LINE_TWO = 34;       // a box holding the name and the type under it
   var GROUP_W = 36;
   var GROUP_H = 18;
-  var EXPANDER = 10;       // side of the +/- square, centred on the right edge
+  var EXPANDER = 10;       // side of the +/- square, centered on the right edge
   var STACK = 3;           // offset of the second frame behind a repeated item
   var CARD_ROOM = 12;      // room under a box for its cardinality
   var COLUMN_GAP = 20;     // from a box to the column of its children
@@ -185,7 +185,7 @@
    * top down, a box stands at the top of its subtree and its children are
    * stacked from there: XSDDiagram's Top alignment, the only one offered, so
    * every reader sees the same picture. A compositor that is its parent's only
-   * child is centred on the parent, as in XSDDiagram. Children start just
+   * child is centered on the parent, as in XSDDiagram. Children start just
    * past their own parent, again as XSDDiagram does: aligning every depth
    * across the whole drawing let one long name stretch every branch.
    */
@@ -229,7 +229,7 @@
       box.x = parent ? parent.x + parent.w + COLUMN_GAP : 0;
       if (box.item.kind === "group" && parent && parent.children.length === 1) {
         // The one exception to Top: a compositor alone under its parent is
-        // centred on the parent's box, so the connector runs straight.
+        // centered on the parent's box, so the connector runs straight.
         box.y = parent.y + (parent.h - box.h) / 2;
       } else {
         box.y = top;
@@ -696,7 +696,7 @@
 
     // Where reading starts: the chosen box in the upper left of what is
     // visible. With the Top alignment its subtree hangs down and to the right
-    // of it, and a centred box left half of the window empty above it.
+    // of it, and a centered box left half of the window empty above it.
     // The parent stands whole at the left edge where that keeps the box in
     // the left half, so the reader sees what it hangs from.
     function settle(box) {
@@ -895,7 +895,7 @@
       function () { setScale(1); });
     toolButton(zoomGroup, "cd-dg-zoom-in", "+", "Zoom in", function () { zoomBy(1.25); });
     toolButton(toolbar, "cd-dg-fit", "Fit", "Fit the diagram into the window", fit);
-    toolButton(toolbar, "cd-dg-centre", "Centre", "Centre the selection",
+    toolButton(toolbar, "cd-dg-center", "Center", "Center the selection",
       function () { reveal(byKey[selectedKey] || byKey[cursorKey], true); });
     applyView();
     // A switch, not an action, so it says whether it is on. Kept apart from

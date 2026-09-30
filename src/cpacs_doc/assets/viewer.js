@@ -975,7 +975,7 @@
       if (!state.diagram) {
         state.diagram = window.CpacsDiagram.mount(document.getElementById("cd-diagram"), diagramApi());
       }
-      // Only a path that names a box is centred; the bare diagram starts at
+      // Only a path that names a box is centered; the bare diagram starts at
       // the top left (spec 4.3).
       state.diagram.show(state.path, state.path.length > 0);
     } else {
@@ -2783,7 +2783,7 @@
       if (location.view === "diagram") {
         // An address that names a place asks for its documentation; the bare
         // diagram does not. Opened before the view is set up, so the place is
-        // centred in what the overlay leaves visible.
+        // centered in what the overlay leaves visible.
         if (segments.length) openOverlay();
         setView("diagram", false);
       }
