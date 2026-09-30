@@ -248,6 +248,9 @@ class Browser:
             self._session = attached["sessionId"]
             self.command("Page.enable")
             self.command("Runtime.enable")
+        # Chrome keeps 50 history entries and then drops the oldest, so a test
+        # that counts entries would fail once enough earlier tests had navigated.
+        self.command("Page.resetNavigationHistory")
         self.command("Page.navigate", {"url": url})
         # Navigation answers when the document is committed, not when its
         # stylesheet is in force. A test that measures or clicks before then
