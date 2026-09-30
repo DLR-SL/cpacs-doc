@@ -162,8 +162,10 @@ Recursive, over the **visible** subtree only, in two passes:
    that is its parent's only child is centred on the parent's box so the line
    runs straight. Children are stacked from the top.
 
-x is per depth: every column is as wide as its widest box, so boxes of one
-depth align. Box width is the larger of name and type line, plus padding and
+x is per parent (amended 2026-09-30): the children of a box start 20 px past
+that box, as in XSDDiagram, so siblings align and one long name widens only
+its own branch. (The first version aligned every depth across the whole
+drawing, which let a single long name stretch every branch.) Box width is the larger of name and type line, plus padding and
 the expander. Text is measured once per string by a hidden `<text>` probe
 (`getComputedTextLength()`), cached.
 

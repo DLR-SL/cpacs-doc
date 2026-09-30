@@ -21,7 +21,7 @@
   var EXPANDER = 10;       // side of the +/- square, centred on the right edge
   var STACK = 3;           // offset of the second frame behind a repeated item
   var CARD_ROOM = 12;      // room under a box for its cardinality
-  var COLUMN_GAP = 30;     // from the widest box of a column to the next column
+  var COLUMN_GAP = 20;     // from a box to the column of its children
   var ROW_GAP = 8;         // between sibling subtrees
   var MARGIN = 24;         // between the drawing and the edge of the pane
   var ZOOM_MIN = 0.25;
@@ -185,13 +185,12 @@
    * top down, a box stands at the top of its subtree and its children are
    * stacked from there: XSDDiagram's Top alignment, the only one offered, so
    * every reader sees the same picture. A compositor that is its parent's only
-   * child is centred on the parent, as in XSDDiagram. A depth is a column as wide as
-   * its widest box, so boxes of one depth line up — calmer than XSDDiagram's
-   * per-box indent, and the column is what the keyboard moves along.
+   * child is centred on the parent, as in XSDDiagram. Children start just
+   * past their own parent, again as XSDDiagram does: aligning every depth
+   * across the whole drawing let one long name stretch every branch.
    */
   function layout(root, children, isOpen, measure) {
     var boxes = [];
-    var widths = [];
 
     function collect(item, depth, parent) {
       var size = measure(item);
@@ -201,7 +200,6 @@
         slot: size.h + CARD_ROOM + STACK, span: 0, inner: 0
       };
       boxes.push(box);
-      widths[depth] = Math.max(widths[depth] || 0, size.w);
       if (isOpen(item)) {
         var list = children(item);
         for (var i = 0; i < list.length; i++) {
@@ -221,9 +219,11 @@
       return box.span;
     }
 
-    function place(box, top, columns) {
-      box.x = columns[box.depth];
+    // Children start just past their own parent, as in XSDDiagram, so one
+    // long name widens its own branch and not every branch at its depth.
+    function place(box, top) {
       var parent = box.parent;
+      box.x = parent ? parent.x + parent.w + COLUMN_GAP : 0;
       if (box.item.kind === "group" && parent && parent.children.length === 1) {
         // The one exception to Top: a compositor alone under its parent is
         // centred on the parent's box, so the connector runs straight.
@@ -233,35 +233,27 @@
       }
       var cursor = top;
       for (var i = 0; i < box.children.length; i++) {
-        place(box.children[i], cursor, columns);
+        place(box.children[i], cursor);
         cursor += box.children[i].span + ROW_GAP;
       }
     }
 
-    if (!root) return { boxes: [], width: 0, height: 0, columns: [] };
+    if (!root) return { boxes: [], width: 0, height: 0 };
     var top = collect(root, 0, null);
-    var columns = [0];
-    for (var d = 0; d < widths.length; d++) {
-      columns[d + 1] = columns[d] + widths[d] + COLUMN_GAP;
-    }
     measureSpan(top);
-    place(top, 0, columns);
+    place(top, 0);
 
     // Nothing should sit above the top; kept as a guard for the geometry.
     var least = 0;
     var height = 0;
+    var width = 0;
     for (var i = 0; i < boxes.length; i++) least = Math.min(least, boxes[i].y);
     for (var j = 0; j < boxes.length; j++) {
       boxes[j].y -= least;
       height = Math.max(height, boxes[j].y + boxes[j].slot);
+      width = Math.max(width, boxes[j].x + boxes[j].w + STACK + EXPANDER);
     }
-    var last = widths.length - 1;
-    return {
-      boxes: boxes,
-      width: columns[last] + widths[last] + STACK + EXPANDER,
-      height: height,
-      columns: columns
-    };
+    return { boxes: boxes, width: width, height: height };
   }
 
 
@@ -441,7 +433,7 @@
     function connector(box) {
       var cy = box.y + box.h / 2;
       var from = box.x + box.w + (box.item.kind === "element" ? EXPANDER / 2 : 0);
-      var bus = current.columns[box.depth + 1] - COLUMN_GAP / 2;
+      var bus = box.x + box.w + COLUMN_GAP / 2;
       var top = cy;
       var bottom = cy;
       var d = "M" + from + " " + cy + "H" + bus;
@@ -474,7 +466,7 @@
         var parent = child.parent;
         if (!parent || !route[child.item.key]) continue;
         var from = parent.x + parent.w + (parent.item.kind === "element" ? EXPANDER / 2 : 0);
-        var bus = current.columns[parent.depth + 1] - COLUMN_GAP / 2;
+        var bus = parent.x + parent.w + COLUMN_GAP / 2;
         d += "M" + from + " " + (parent.y + parent.h / 2) + "H" + bus
           + "V" + (child.y + child.h / 2) + "H" + child.x;
       }

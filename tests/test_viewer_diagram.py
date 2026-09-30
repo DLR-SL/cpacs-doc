@@ -226,17 +226,30 @@ def test_a_lone_compositor_lines_up_with_its_parent(page):
         assert abs((group["y"] + group["h"] / 2) - (owner["y"] + owner["h"] / 2)) < 0.5
 
 
-def test_a_depth_is_a_column(page):
-    """Boxes of one depth share their x, and a column starts past the widest
-    box of the one before it."""
+def test_children_start_right_of_their_own_parent(page):
+    """As in XSDDiagram: the children of a box share one x, just past that
+    box and its gap — not past the widest box of the whole depth."""
     boxes = laid_out(page)["boxes"]
-    xs, widest = {}, {}
+    by_key = {b["key"]: b for b in boxes}
+    checked = 0
     for box in boxes:
-        xs.setdefault(box["depth"], set()).add(box["x"])
-        widest[box["depth"]] = max(widest.get(box["depth"], 0), box["w"])
-    assert all(len(v) == 1 for v in xs.values())
-    for depth in range(1, len(xs)):
-        assert min(xs[depth]) >= min(xs[depth - 1]) + widest[depth - 1] + 1
+        if not box["children"]:
+            continue
+        xs = {by_key[k]["x"] for k in box["children"]}
+        assert len(xs) == 1, box["name"]
+        assert xs.pop() == box["x"] + box["w"] + 20, box["name"]
+        checked += 1
+    assert checked > 3
+
+
+def test_a_long_name_widens_only_its_own_branch(page):
+    """alpha and wing stand at the same depth under parents of different
+    width; each column follows its own parent."""
+    boxes = laid_out(page)["boxes"]
+    alpha = next(b for b in boxes if b["name"] == "alpha")
+    wing = next(b for b in boxes if b["name"] == "wing")
+    assert alpha["depth"] == wing["depth"]
+    assert alpha["x"] != wing["x"]
 
 
 def test_the_drawing_holds_every_box(page):
