@@ -628,3 +628,58 @@ def test_panning_does_not_clear_the_selection(mounted):
       fire('pointerup', x - 40, y - 30); fire('click', x - 40, y - 30);
       return [dgItem('wings/wing').classList.contains('cd-dg-selected'), dgCalls];
     """) == [True, []]
+
+
+# ---- export ----
+
+SVG_EXPORT = """
+  var markup = dg.exportSvg();
+  var doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
+  var root = doc.documentElement;
+  var view = doc.querySelector('.cd-dg-view');
+  var frame = doc.querySelector('.cd-dg-frame');
+  return { tag: root.nodeName, ns: root.namespaceURI,
+           width: +root.getAttribute('width'), height: +root.getAttribute('height'),
+           customProperties: markup.indexOf('var(--') !== -1,
+           names: markup.indexOf('>wings<') !== -1,
+           probe: !!doc.querySelector('.cd-dg-probe'),
+           rings: doc.querySelectorAll('.cd-dg-ring, .cd-dg-hit').length,
+           transform: view ? view.getAttribute('transform') : null,
+           styled: /fill:/.test(frame.getAttribute('style') || '') };
+"""
+
+
+def test_the_drawing_exports_as_a_self_contained_svg(mounted):
+    """The file carries its own styles — the page's custom properties do not
+    travel with it — and none of the page's machinery: probe, focus rings,
+    hit areas."""
+    first = mounted.evaluate("dg.show(['wings', 'wing'], false);" + SVG_EXPORT)
+    assert first["tag"] == "svg" and first["ns"] == "http://www.w3.org/2000/svg"
+    assert first["width"] > 100 and first["height"] > 100
+    assert first["customProperties"] is False
+    assert first["names"] is True
+    assert first["probe"] is False and first["rings"] == 0
+    assert first["transform"] == "translate(24 24)"
+    assert first["styled"] is True
+
+
+def test_the_export_does_not_depend_on_zoom_or_pan(mounted):
+    before = mounted.evaluate(SVG_EXPORT)
+    mounted.evaluate("document.getElementById('cd-dg-zoom-in').click(); return true;")
+    after = mounted.evaluate(SVG_EXPORT)
+    assert (after["width"], after["height"], after["transform"]) == \
+        (before["width"], before["height"], before["transform"])
+
+
+def test_the_drawing_exports_as_a_png(mounted):
+    assert mounted.evaluate(
+        "return dg.exportPng().then(function (blob) { return [blob.type, blob.size > 1000]; });"
+    ) == ["image/png", True]
+
+
+def test_the_export_is_named_after_the_selection(mounted):
+    assert mounted.evaluate("""
+      var bare = dg.exportName();
+      dg.show(['wings', 'wing'], false);
+      return [bare, dg.exportName()];
+    """) == ["cpacs", "cpacs-wings-wing"]

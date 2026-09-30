@@ -1405,13 +1405,16 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   cursor: pointer;
 }
 .cd-dg-toolbar button:hover { border-color: var(--ink); }
-/* The zoom is one control of three joined buttons; the readout in the middle
-   keeps a steady width as the number changes. */
-.cd-dg-zoom { display: flex; }
-.cd-dg-zoom button { border-radius: 0; margin-left: -1px; }
-.cd-dg-zoom button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
-.cd-dg-zoom button:last-child { border-radius: 0 4px 4px 0; }
-.cd-dg-zoom button:hover { position: relative; }
+/* Buttons that belong together are joined: the zoom (out, the scale, in),
+   and the two image formats. The readout keeps a steady width as the number
+   changes. */
+.cd-dg-joined { display: flex; }
+.cd-dg-joined button { border-radius: 0; margin-left: -1px; }
+.cd-dg-joined button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+.cd-dg-joined button:last-child { border-radius: 0 4px 4px 0; }
+.cd-dg-joined button:hover { position: relative; }
+.cd-dg-toolbar .cd-dg-export { margin-left: 0.6rem; }
+.cd-dg-toolbar button.cd-dg-failed { border-color: var(--alarm); color: var(--alarm); }
 #cd-dg-zoom-reset { min-width: 4.2rem; font-variant-numeric: tabular-nums; }
 .cd-dg-toolbar #cd-dg-fit { margin-left: 0.4rem; }
 .cd-dg-toolbar .cd-dg-switch { margin-left: 0.6rem; }

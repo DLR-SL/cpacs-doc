@@ -886,7 +886,7 @@
     // Out, the scale as it stands, in: one control, read left to right. The
     // middle button says where the zoom is and takes it back to 100 %.
     var zoomGroup = document.createElement("div");
-    zoomGroup.className = "cd-dg-zoom";
+    zoomGroup.className = "cd-dg-joined cd-dg-zoom";
     zoomGroup.setAttribute("role", "group");
     zoomGroup.setAttribute("aria-label", "Zoom");
     toolbar.appendChild(zoomGroup);
@@ -918,6 +918,129 @@
       render(selectedKey && byKey[selectedKey] ? selectedKey : cursorKey);
       if (api.rememberExpert) api.rememberExpert(expert);
     }
+
+    /* ---- export ----
+     *
+     * The drawing as it stands — what is expanded, the expert view, the path
+     * to the selection — but not the zoom or the pan, which are only the
+     * reader's window onto it; nothing is cut off at the window's edge. The
+     * styles are written into the elements, because the page's stylesheet and
+     * its custom properties do not travel with the file.
+     */
+    var EXPORTED_STYLES = [
+      "fill", "fill-opacity", "stroke", "stroke-width", "stroke-dasharray",
+      "stroke-opacity", "stroke-linecap", "font-family", "font-size",
+      "font-weight", "text-decoration", "text-anchor"
+    ];
+
+    function exportSize() {
+      return {
+        w: Math.ceil(current.width + 2 * MARGIN),
+        h: Math.ceil(current.height + 2 * MARGIN)
+      };
+    }
+
+    function exportSvg() {
+      var size = exportSize();
+      var drawing = viewport.cloneNode(true);
+      var sources = viewport.querySelectorAll("*");
+      var copies = drawing.querySelectorAll("*");
+      for (var i = 0; i < sources.length; i++) {
+        var computed = window.getComputedStyle(sources[i]);
+        var declarations = [];
+        for (var p = 0; p < EXPORTED_STYLES.length; p++) {
+          var value = computed.getPropertyValue(EXPORTED_STYLES[p]);
+          if (value) declarations.push(EXPORTED_STYLES[p] + ":" + value);
+        }
+        copies[i].setAttribute("style", declarations.join(";"));
+      }
+      // The page's machinery: focus rings, click areas, the hover preview.
+      var machinery = drawing.querySelectorAll(".cd-dg-ring, .cd-dg-hit, .cd-dg-hover-link");
+      for (var m = 0; m < machinery.length; m++) machinery[m].parentNode.removeChild(machinery[m]);
+      drawing.setAttribute("transform", "translate(" + MARGIN + " " + MARGIN + ")");
+
+      var file = document.createElementNS(SVG_NS, "svg");
+      file.setAttribute("width", String(size.w));
+      file.setAttribute("height", String(size.h));
+      file.setAttribute("viewBox", "0 0 " + size.w + " " + size.h);
+      svg("rect", {
+        width: size.w, height: size.h,
+        fill: window.getComputedStyle(document.body).backgroundColor
+      }, file);
+      file.appendChild(drawing);
+      return new XMLSerializer().serializeToString(file);
+    }
+
+    // Twice the resolution for a sharp picture, less where a very large
+    // drawing would pass what a browser's canvas holds; SVG has no such limit.
+    function exportPng() {
+      var size = exportSize();
+      var scale = Math.min(2, 16000 / size.w, 16000 / size.h,
+        Math.sqrt(2.5e8 / (size.w * size.h)));
+      var url = URL.createObjectURL(new Blob([exportSvg()], { type: "image/svg+xml" }));
+      return new Promise(function (resolve, reject) {
+        var image = new Image();
+        image.onload = function () {
+          var canvas = document.createElement("canvas");
+          canvas.width = Math.floor(size.w * scale);
+          canvas.height = Math.floor(size.h * scale);
+          var context = canvas.getContext("2d");
+          context.scale(scale, scale);
+          context.drawImage(image, 0, 0);
+          URL.revokeObjectURL(url);
+          canvas.toBlob(function (blob) {
+            if (blob) resolve(blob);
+            else reject(new Error("the drawing is too large for a PNG; save it as SVG"));
+          }, "image/png");
+        };
+        image.onerror = function () {
+          URL.revokeObjectURL(url);
+          reject(new Error("the drawing could not be rendered"));
+        };
+        image.src = url;
+      });
+    }
+
+    // The root and the selected path, as the address names them.
+    function exportName() {
+      var parts = [shape.root.name];
+      if (selectedPath) parts = parts.concat(selectedPath.split("/"));
+      return parts.join("-");
+    }
+
+    function save(blob, name) {
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement("a");
+      link.href = url;
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    // What went wrong stays on the button, where the reader just looked.
+    function failed(button, error) {
+      button.title = "Could not save: " + error.message;
+      button.classList.add("cd-dg-failed");
+    }
+
+    var exportGroup = document.createElement("div");
+    exportGroup.className = "cd-dg-joined cd-dg-export";
+    exportGroup.setAttribute("role", "group");
+    exportGroup.setAttribute("aria-label", "Save the drawing as an image");
+    toolbar.appendChild(exportGroup);
+    var pngButton = toolButton(exportGroup, "cd-dg-export-png", "PNG",
+      "Save the drawing as a PNG image", function () {
+        exportPng().then(function (blob) {
+          pngButton.classList.remove("cd-dg-failed");
+          save(blob, exportName() + ".png");
+        }, function (error) { failed(pngButton, error); });
+      });
+    toolButton(exportGroup, "cd-dg-export-svg", "SVG",
+      "Save the drawing as an SVG image", function () {
+        save(new Blob([exportSvg()], { type: "image/svg+xml" }), exportName() + ".svg");
+      });
 
     container.appendChild(toolbar);
 
@@ -1012,7 +1135,10 @@
     return {
       show: show,
       focus: focus,
-      view: function () { return { scale: view.scale, x: view.x, y: view.y }; }
+      view: function () { return { scale: view.scale, x: view.x, y: view.y }; },
+      exportSvg: exportSvg,
+      exportPng: exportPng,
+      exportName: exportName
     };
   }
 

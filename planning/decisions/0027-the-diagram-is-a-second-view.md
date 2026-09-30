@@ -35,8 +35,10 @@ The overlay rather than the splitter: a diagram grows wide, and the column the
 tree gives up is the width the drawing needs.
 
 Not done here: links between the views from the panel and the type pages,
-search inside the diagram, SVG export (F15, F16). The renderer draws into one
-coordinate system, so export can follow without a second drawing path.
+search inside the diagram, and the headless export from the command line
+(F16). The in-browser export (F15) came with the view: the renderer draws
+into one coordinate system, so the image is the drawing itself, its styles
+written into the file.
 
 ## Consequences
 

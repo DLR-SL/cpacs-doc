@@ -35,7 +35,7 @@ button).
 - Cross-links between the views: no "Show in diagram" / "Show in tree" in the
   detail panel or on type pages, and search does not jump into the diagram.
 - Search and Handbook in diagram mode.
-- SVG export (F15, F16) — the renderer is built so that it can follow.
+- Headless export from the command line (F16). The in-browser export (F15) is §4.9.
 - Attributes in the diagram; they stay in the overlay's attribute table (F7).
 - Viewport virtualisation.
 
@@ -358,3 +358,16 @@ place on screen. The tree view is not affected.
 Room under a box is kept only for what stands there — its bound (12 px) and
 the stacked frame of a repeated item (3 px) — and sibling subtrees are 9 px
 apart. A row without a bound thus takes 31 px instead of 45.
+
+### 4.9 Export as an image (amended 2026-09-30)
+
+Two joined buttons at the end of the toolbar, **PNG** and **SVG**, save the
+drawing as it stands: what is expanded, the expert view, the path to the
+selection and the theme's colours — independent of zoom and pan, so nothing
+is cut off at the window's edge. The SVG carries its styles inline (the
+page's custom properties do not travel with it) and none of the page's
+machinery (focus rings, click areas, hover preview). The PNG is rendered at
+twice the resolution, less where a very large drawing would pass what a
+browser canvas holds; the SVG has no such limit. The file is named after the
+root and the selected path, e.g. `cpacs-vehicles-aircraft.png`. Works in the
+one-file form as well.

@@ -234,7 +234,8 @@ Ctrl+wheel zooms, dragging the canvas pans, and the keys are listed under `?`.
 The drawing shows names and only the bounds its frames do not already say;
 *Expert* in the toolbar adds every type and every bound, and the browser
 remembers the choice. A click on the free canvas clears the selection and its
-coloured path.
+coloured path. *PNG* and *SVG* save the drawing as it stands — everything that
+is expanded, whatever part of it is in view.
 
 ---
 

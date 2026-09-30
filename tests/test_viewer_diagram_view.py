@@ -811,3 +811,22 @@ def test_a_click_on_empty_canvas_clears_the_selection_and_the_address(viewer, ba
     assert page.evaluate("return document.querySelectorAll('.cd-dg-selected').length;") == 0
     page.click(*center(page, item("")))
     assert selected(page) == ""
+
+
+# ---- export ----
+
+@pytest.mark.parametrize("kind", ["png", "svg"])
+def test_the_export_buttons_save_a_file(viewer, base, kind):
+    """The file is handed to the browser as a download; the test catches the
+    hand-over instead of the file system."""
+    page = at(viewer, base, "/diagram/cpacs/wings/wing/")
+    page.evaluate("""
+      window.saved = [];
+      HTMLAnchorElement.prototype.click = function () {
+        saved.push([this.download, this.href.slice(0, 5)]);
+      };
+      return true;
+    """)
+    page.click(*center(page, "#cd-dg-export-" + kind))
+    page.wait_for("return window.saved.length > 0;", "the download")
+    assert page.evaluate("return window.saved[0];") == ["cpacs-wings-wing." + kind, "blob:"]
