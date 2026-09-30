@@ -1021,8 +1021,24 @@
       gloss: compositorGloss,
       covered: function () {
         return overlayIsOpen() ? document.getElementById("cd-detail").offsetWidth : 0;
+      },
+      expert: storedExpert(),
+      rememberExpert: function (on) {
+        try { window.localStorage.setItem(EXPERT_KEY, on ? "on" : "off"); } catch (e) { /* private mode */ }
       }
     };
+  }
+
+  // Off unless the reader switched it on: the default drawing is for finding
+  // one's way, the expert one for reading the schema.
+  var EXPERT_KEY = "cpacs-doc.diagramExpert";
+
+  function storedExpert() {
+    try {
+      return window.localStorage.getItem(EXPERT_KEY) === "on";
+    } catch (e) {
+      return false;  // private mode: the default, do not fail
+    }
   }
 
   // What the type line of a box says and whether it leads anywhere: the label

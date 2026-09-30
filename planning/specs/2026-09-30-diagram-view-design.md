@@ -305,3 +305,18 @@ Follows 0010 and 0016–0021, adapted to two dimensions.
   diagram route; §7.4 gains **F19 Diagram view** referring to this document,
   with F15 and F16 left as they are.
 - README: one paragraph on `/diagram/` under `serve`.
+
+### 4.6 Expert view (amended 2026-09-30)
+
+A switch **Expert** in the diagram's toolbar, off by default, remembered per
+browser (`localStorage`, key `cpacs-doc.diagramExpert`).
+
+- **Off:** boxes carry the element name only, no type line. A bound is written
+  only where the frame does not already say it: nothing for `1..1` (plain
+  frame) and `0..1` (dashed frame); `1..∞`, `0..∞`, `2..4` and the like stay.
+  The type documentation is reached through the overlay.
+- **On:** every box carries its type line (§4.1) and every bound, `1..1`
+  included.
+
+Switching lays the drawing out again around the selected box, which keeps its
+place on screen. The tree view is not affected.

@@ -1358,3 +1358,9 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   cursor: pointer;
 }
 .cd-dg-toolbar button:hover { border-color: var(--ink); }
+.cd-dg-toolbar .cd-dg-switch { margin-left: 0.6rem; }
+.cd-dg-toolbar .cd-dg-switch[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--page);
+}

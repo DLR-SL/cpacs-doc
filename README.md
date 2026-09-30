@@ -231,6 +231,9 @@ substitute.
 drawn left to right the way XSDDiagram draws it. Click a box for its
 documentation, its type name for the type's; `+`/`−` on a box expands it.
 Ctrl+wheel zooms, dragging the canvas pans, and the keys are listed under `?`.
+The drawing shows names and only the bounds its frames do not already say;
+*Expert* in the toolbar adds every type and every bound, and the browser
+remembers the choice.
 
 ---
 

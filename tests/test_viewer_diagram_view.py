@@ -42,10 +42,20 @@ def viewer(browser, base):
     return browser
 
 
-def at(viewer, base, path: str):
+def at(viewer, base, path: str, expert: bool = False):
     viewer.open(base + path)
     viewer.wait_for(DRAWN, "the diagram")
+    if expert:
+        expert_on(viewer)
     return viewer
+
+
+def expert_on(page):
+    """The default leaves the type lines out; tests about them switch the
+    expert view on, the way a reader would."""
+    if page.evaluate("return document.getElementById('cd-dg-expert').getAttribute('aria-pressed');") != "true":
+        page.evaluate("document.getElementById('cd-dg-expert').click(); return true;")
+    page.wait_for("return !!document.querySelector('.cd-dg-type-text');", "the type lines")
 
 
 def centre(page, selector: str):
@@ -122,7 +132,7 @@ def test_a_click_selects_and_writes_the_address(viewer, base):
 
 
 def test_the_type_line_opens_the_type_documentation(viewer, base):
-    page = at(viewer, base, "/diagram/cpacs/")
+    page = at(viewer, base, "/diagram/cpacs/", expert=True)
     page.click(*centre(page, item("header", ".cd-dg-type-text")))
     page.wait_for(
         "return (document.querySelector('#cd-detail h1') || {}).textContent === 'settingsType';",
@@ -203,6 +213,7 @@ def test_the_one_file_form_opens_the_diagram_from_its_fragment(viewer, single):
     panel and carries no address."""
     viewer.open(single + "#/diagram/cpacs/header/")
     viewer.wait_for(DRAWN, "the diagram")
+    expert_on(viewer)
     assert selected(viewer) == "header"
     assert viewer.evaluate(HEADING) == "header"
     assert viewer.evaluate(
@@ -540,7 +551,7 @@ def contrast(a: str, b: str) -> float:
 
 @pytest.mark.parametrize("theme", ["light", "dark"])
 def test_the_drawing_reads_in_both_themes(viewer, base, theme):
-    page = at(viewer, base, "/diagram/cpacs/")
+    page = at(viewer, base, "/diagram/cpacs/", expert=True)
     colours = page.evaluate(f"""
       document.documentElement.setAttribute('data-theme', '{theme}');
       var header = document.querySelector('.cd-dg-item[data-path="header"]');
@@ -638,7 +649,7 @@ def test_the_states_are_told_apart(viewer, base):
 
 def test_the_type_line_speaks_up_on_hover(viewer, base):
     """Quiet in the drawing, a link under the pointer."""
-    page = at(viewer, base, "/diagram/cpacs/")
+    page = at(viewer, base, "/diagram/cpacs/", expert=True)
     link = page.evaluate(
         "var s = document.createElement('span'); s.style.color = 'var(--link)';"
         " document.body.appendChild(s); var c = getComputedStyle(s).color; s.remove(); return c;"
@@ -648,3 +659,25 @@ def test_the_type_line_speaks_up_on_hover(viewer, base):
     x, y = centre(page, item("header"))
     page.command("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": x, "y": y})
     assert page.evaluate(fill) == link
+
+
+# ---- expert view ----
+
+def test_the_expert_view_is_off_by_default_and_remembered(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/")
+    page.evaluate("window.localStorage.removeItem('cpacs-doc.diagramExpert'); return true;")
+    page = at(viewer, base, "/diagram/cpacs/")
+    assert page.evaluate(
+        "return [document.getElementById('cd-dg-expert').getAttribute('aria-pressed'),"
+        " document.querySelectorAll('.cd-dg-type-text').length];"
+    ) == ["false", 0]
+    expert_on(page)
+    page = at(viewer, base, "/diagram/cpacs/")
+    assert page.evaluate(
+        "return document.getElementById('cd-dg-expert').getAttribute('aria-pressed');"
+    ) == "true"
+    page.evaluate("document.getElementById('cd-dg-expert').click(); return true;")
+    page = at(viewer, base, "/diagram/cpacs/")
+    assert page.evaluate(
+        "return document.querySelectorAll('.cd-dg-type-text').length;"
+    ) == 0

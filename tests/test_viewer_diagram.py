@@ -271,7 +271,9 @@ MOUNT = """
       return { label: name, link: true, href: '/type/' + name + '/index.html' };
     },
     gloss: function (name) { return 'gloss ' + name; },
-    covered: function () { return 0; }
+    covered: function () { return 0; },
+    expert: EXPERT,
+    rememberExpert: function (on) { dgCalls.push(['expert', on]); }
   });
   return true;
 """
@@ -289,7 +291,9 @@ HELPERS = """
 
 @pytest.fixture
 def mounted(page):
-    run(page, MOUNT)
+    """Expert view: every type line and every bound, which most of the tests
+    below are about."""
+    run(page, MOUNT.replace("EXPERT", "true"))
     page.evaluate(HELPERS)
     return page
 
@@ -321,14 +325,14 @@ def test_optional_is_dashed_and_repeated_is_stacked(mounted):
         repeated: wing.classList.contains('cd-dg-repeated'),
         shadow: !!wing.querySelector('.cd-dg-shadow'),
         card: (wing.querySelector('.cd-dg-card') || {}).textContent,
-        headerCard: !!header.querySelector('.cd-dg-card')
+        headerCard: (header.querySelector('.cd-dg-card') || {}).textContent
       };
     """)
     assert result["wingsOptional"] and result["dash"] != "none"
     assert result["headerDash"] == "none"
     assert result["repeated"] and result["shadow"]
     assert result["card"] == "1..\u221e"
-    assert result["headerCard"] is False
+    assert result["headerCard"] == "1..1"  # the expert view writes every bound
 
 
 def test_compositors_are_drawn_as_symbols(mounted):
@@ -470,3 +474,67 @@ def test_hovering_a_box_previews_its_route(mounted):
               document.querySelector('#dg-host .cd-dg-hover-link').getAttribute('d'),
               document.querySelectorAll('#dg-host .cd-dg-hover-trail').length];
     """) == ["", True, True, "", 0]
+
+
+# ---- expert view ----
+
+@pytest.fixture
+def plain(page):
+    """The default: names only, and only the bounds the frame does not say."""
+    run(page, MOUNT.replace("EXPERT", "false"))
+    page.evaluate(HELPERS)
+    return page
+
+
+CARDS = """
+  dg.show(['wings', 'wing', 'uID'], false);
+  function card(path) {
+    var c = dgItem(path).querySelector('.cd-dg-card');
+    return c ? c.textContent : null;
+  }
+  return {
+    header: card('header'), wings: card('wings'), wing: card('wings/wing'),
+    uid: card('wings/wing/uID'),
+    types: document.querySelectorAll('#dg-host .cd-dg-type-text').length,
+    headerHeight: dgItem('header').querySelector('.cd-dg-frame').getBBox().height
+  };
+"""
+
+
+def test_the_default_shows_names_and_only_the_bounds_the_frame_does_not(plain):
+    """0..1 is what the dashes say and 1..1 what a plain frame says; 1..∞ is
+    news, the stacked frame only hints at it."""
+    assert plain.evaluate(CARDS) == {
+        "header": None, "wings": None, "wing": "1..∞", "uid": None,
+        "types": 0, "headerHeight": 22,
+    }
+
+
+def test_the_expert_view_shows_every_type_and_every_bound(mounted):
+    assert mounted.evaluate(CARDS) == {
+        "header": "1..1", "wings": "0..1", "wing": "1..∞", "uid": "1..1",
+        "types": 6, "headerHeight": 34,
+    }
+
+
+def test_the_expert_toggle_switches_in_place_and_is_remembered(plain):
+    result = plain.evaluate("""
+      dg.show(['wings'], false);
+      var button = document.getElementById('cd-dg-expert');
+      var pressed = button.getAttribute('aria-pressed');
+      var before = dgItem('wings').querySelector('.cd-dg-frame').getBoundingClientRect();
+      button.click();
+      var after = dgItem('wings').querySelector('.cd-dg-frame').getBoundingClientRect();
+      return {
+        before: pressed, after: button.getAttribute('aria-pressed'),
+        types: document.querySelectorAll('#dg-host .cd-dg-type-text').length > 0,
+        moved: Math.abs(after.left - before.left) + Math.abs(after.top - before.top),
+        calls: dgCalls.filter(function (c) { return c[0] === 'expert'; }),
+        selected: dgItem('wings').classList.contains('cd-dg-selected')
+      };
+    """)
+    assert result["before"] == "false" and result["after"] == "true"
+    assert result["types"] is True
+    assert result["moved"] < 0.5
+    assert result["calls"] == [["expert", True]]
+    assert result["selected"] is True

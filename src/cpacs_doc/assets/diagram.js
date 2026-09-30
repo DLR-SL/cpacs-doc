@@ -280,11 +280,14 @@
     return node;
   }
 
-  // The bounds as XSDDiagram writes them under a box. Nothing for 1..1, which
-  // an unmarked box already says.
-  function cardinality(item) {
-    if (item.min === 1 && item.max === 1) return "";
-    return item.min + ".." + (item.max === null ? "\u221E" : item.max);
+  // The bounds as XSDDiagram writes them under a box. The expert view writes
+  // every one of them. The default leaves out what the frame already says \u2014
+  // 1..1 is a plain frame, 0..1 a dashed one \u2014 and keeps the rest, which the
+  // stacked frame of a repeated element only hints at.
+  function cardinality(item, expert) {
+    var text = item.min + ".." + (item.max === null ? "\u221E" : item.max);
+    if (expert) return text;
+    return item.max === 1 && item.min <= 1 ? "" : text;
   }
 
   function isRepeated(item) {
@@ -351,6 +354,9 @@
     var current = null;       // the last layout
     var byKey = {};           // key -> box of the last layout
     var widthCache = {};
+    // Types and every bound for the reader who needs them; names and the
+    // bounds that carry news for everyone else. The viewer remembers it.
+    var expert = !!api.expert;
 
     container.textContent = "";
     if (!shape.root) {
@@ -391,7 +397,7 @@
     }
 
     function typeLine(item) {
-      return item.kind === "element" && item.type ? api.typeRef(item.type) : null;
+      return expert && item.kind === "element" && item.type ? api.typeRef(item.type) : null;
     }
 
     function measure(item) {
@@ -530,7 +536,7 @@
         }
       }
 
-      var card = cardinality(item);
+      var card = cardinality(item, expert);
       if (card) {
         svg("text", {
           "class": "cd-dg-card", x: x + w, y: y + h + STACK + 10, "text-anchor": "end"
@@ -801,6 +807,27 @@
       button.addEventListener("click", spec[3]);
       toolbar.appendChild(button);
     });
+    // A switch, not an action, so it says whether it is on. Kept apart from
+    // the zoom buttons: it changes what is drawn, not where.
+    var expertButton = document.createElement("button");
+    expertButton.type = "button";
+    expertButton.id = "cd-dg-expert";
+    expertButton.className = "cd-dg-switch";
+    expertButton.textContent = "Expert";
+    expertButton.title = "Show every type and every occurrence";
+    expertButton.setAttribute("aria-pressed", String(expert));
+    expertButton.addEventListener("click", function () { setExpert(!expert); });
+    toolbar.appendChild(expertButton);
+
+    // Boxes change their size, so the drawing is laid out again around the
+    // chosen box, which stays where the reader was looking.
+    function setExpert(on) {
+      expert = !!on;
+      expertButton.setAttribute("aria-pressed", String(expert));
+      render(selectedKey && byKey[selectedKey] ? selectedKey : cursorKey);
+      if (api.rememberExpert) api.rememberExpert(expert);
+    }
+
     container.appendChild(toolbar);
 
     /* ---- keyboard (0010, 0016-0021, in two dimensions) ---- */
