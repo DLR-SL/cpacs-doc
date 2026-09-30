@@ -1040,10 +1040,6 @@
           ? document.getElementById("cd-detail").offsetHeight : 0;
       },
       expert: storedExpert(),
-      path: storedSwitch(PATH_KEY, true),
-      rememberPath: function (on) {
-        try { window.localStorage.setItem(PATH_KEY, on ? "on" : "off"); } catch (e) { /* private mode */ }
-      },
       rememberExpert: function (on) {
         try { window.localStorage.setItem(EXPERT_KEY, on ? "on" : "off"); } catch (e) { /* private mode */ }
       }
@@ -1058,17 +1054,6 @@
   // Off unless the reader switched it on: the default drawing is for finding
   // one's way, the expert one for reading the schema.
   var EXPERT_KEY = "cpacs-doc.diagramExpert";
-  // On unless the reader switched it off.
-  var PATH_KEY = "cpacs-doc.diagramPath";
-
-  function storedSwitch(key, fallback) {
-    try {
-      var value = window.localStorage.getItem(key);
-      return value === null ? fallback : value === "on";
-    } catch (e) {
-      return fallback;  // private mode: the default, do not fail
-    }
-  }
 
   function storedExpert() {
     try {

@@ -801,21 +801,6 @@ def test_the_zoom_readout_follows_the_wheel(viewer, base):
 
 
 
-def test_the_path_switch_is_remembered(viewer, base):
-    page = at(viewer, base, "/diagram/cpacs/wings/wing/")
-    page.evaluate("window.localStorage.removeItem('cpacs-doc.diagramPath'); return true;")
-    page = at(viewer, base, "/diagram/cpacs/wings/wing/")
-    assert page.evaluate("return document.querySelectorAll('.cd-dg-on-trail').length;") > 0
-    page.evaluate("document.getElementById('cd-dg-path').click(); return true;")
-    page = at(viewer, base, "/diagram/cpacs/wings/wing/")
-    assert page.evaluate(
-        "return [document.getElementById('cd-dg-path').getAttribute('aria-pressed'),"
-        " document.querySelectorAll('.cd-dg-on-trail').length];"
-    ) == ["false", 0]
-    page.evaluate("document.getElementById('cd-dg-path').click(); return true;")
-
-
-
 def test_a_click_on_empty_canvas_clears_the_selection_and_the_address(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/header/")
     page.click(*on_canvas(page))

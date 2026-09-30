@@ -287,7 +287,6 @@ MOUNT = """
     covered: function () { return 0; },
     expert: EXPERT,
     rememberExpert: function (on) { dgCalls.push(['expert', on]); },
-    rememberPath: function (on) { dgCalls.push(['path', on]); },
     deselect: function () { dgCalls.push(['deselect']); }
   });
   return true;
@@ -593,37 +592,6 @@ def test_rows_without_a_bound_sit_close(plain):
 def test_a_bound_never_runs_into_the_next_box(mounted):
     gaps = mounted.evaluate(GAPS)
     assert gaps["cardClear"] is not None and gaps["cardClear"] >= 2
-
-
-# ---- the path switch ----
-
-def test_the_path_can_be_switched_off_and_back_on(mounted):
-    """Off takes the path's line, its coloured frames and the preview away;
-    the chosen box keeps its mark, since the selection has to stay visible."""
-    result = mounted.evaluate("""
-      dg.show(['wings', 'wing', 'uID'], false);
-      var button = document.getElementById('cd-dg-path');
-      var before = button.getAttribute('aria-pressed');
-      button.click();
-      var off = {
-        pressed: button.getAttribute('aria-pressed'),
-        line: document.querySelector('#dg-host .cd-dg-trail-link').getAttribute('d'),
-        frames: document.querySelectorAll('#dg-host .cd-dg-on-trail').length,
-        selected: dgItem('wings/wing/uID').classList.contains('cd-dg-selected')
-      };
-      dgItem('extras').querySelector('.cd-dg-frame')
-        .dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-      off.preview = document.querySelector('#dg-host .cd-dg-hover-link').getAttribute('d');
-      button.click();
-      return { before: before, off: off,
-               on: document.querySelectorAll('#dg-host .cd-dg-on-trail').length,
-               calls: dgCalls.filter(function (c) { return c[0] === 'path'; }) };
-    """)
-    assert result["before"] == "true"
-    assert result["off"] == {"pressed": "false", "line": "", "frames": 0,
-                             "selected": True, "preview": ""}
-    assert result["on"] > 0
-    assert result["calls"] == [["path", False], ["path", True]]
 
 
 # ---- clearing the selection ----
