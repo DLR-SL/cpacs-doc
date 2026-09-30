@@ -830,3 +830,36 @@ def test_the_export_buttons_save_a_file(viewer, base, kind):
     page.click(*center(page, "#cd-dg-export-" + kind))
     page.wait_for("return window.saved.length > 0;", "the download")
     assert page.evaluate("return window.saved[0];") == ["cpacs-wings-wing." + kind, "blob:"]
+
+
+# ---- the overlay and the header ----
+
+OVERLAP = """
+  function box(id) { return document.getElementById(id).getBoundingClientRect(); }
+  function apart(a, b) {
+    return a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top;
+  }
+  var sheet = box('cd-detail');
+  var hint = document.getElementById('cd-hint');
+  return { theme: apart(box('cd-theme'), sheet), help: apart(box('cd-help'), sheet),
+           strip: sheet.top >= box('cd-tabs').bottom,
+           hint: hint ? apart(hint.getBoundingClientRect(), sheet) : null };
+"""
+
+
+def test_the_overlay_leaves_the_header_reachable(viewer, base):
+    """The strip spans the window in the diagram's view, so its theme and help
+    buttons stand at the right edge — where the overlay stands too."""
+    page = at(viewer, base, "/diagram/cpacs/header/")
+    assert overlay_open(page)
+    assert page.evaluate(OVERLAP) == {"theme": True, "help": True, "strip": True, "hint": None}
+
+
+def test_the_overlay_leaves_the_key_legend_whole(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/header/")
+    page.click(*center(page, "#cd-help"))
+    page.wait_for("return !!document.getElementById('cd-hint');", "the legend")
+    assert page.evaluate(OVERLAP)["hint"] is True
+    page.click(*center(page, "#cd-help"))
+    page.wait_for("return !document.getElementById('cd-hint');", "the legend gone")
+    assert page.evaluate(OVERLAP)["strip"] is True

@@ -1301,7 +1301,7 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-app-diagram.cd-detail-open .cd-pane-detail {
   display: block;
   position: fixed;
-  top: 1.1rem;
+  top: var(--cd-overlay-top, 4rem);
   right: 1.4rem;
   bottom: 1.1rem;
   width: clamp(22rem, 40vw, 48rem);
@@ -1318,7 +1318,7 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-app-diagram.cd-detail-open .cd-overlay-close {
   display: block;
   position: fixed;
-  top: 1.6rem;
+  top: calc(var(--cd-overlay-top, 4rem) + 0.5rem);
   right: 2rem;
   z-index: 21;
   width: 1.8rem;

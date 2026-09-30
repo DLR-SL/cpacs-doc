@@ -717,6 +717,9 @@
     }
     hint.hidden = !shown;
     markHelp(!!shown);
+    // The legend pushes the drawing down; the overlay follows at once rather
+    // than a frame later, when the pane's resize is reported.
+    syncOverlayTop();
   }
 
   function hideHint() {
@@ -725,6 +728,7 @@
     hint.parentNode.removeChild(hint);
     markHelp(false);
     markSeen();
+    syncOverlayTop();
   }
 
   function markSeen() {
@@ -972,6 +976,7 @@
       // Shown before it is mounted: a pane that is not laid out measures no
       // text, and the boxes are sized by what it measures.
       showPane("diagram");
+      syncOverlayTop();
       if (!state.diagram) {
         state.diagram = window.CpacsDiagram.mount(document.getElementById("cd-diagram"), diagramApi());
       }
@@ -989,6 +994,18 @@
 
   function openOverlay() {
     document.getElementById("cd-app").classList.add("cd-detail-open");
+    syncOverlayTop();
+  }
+
+  // The overlay starts where the drawing does: below the strip, whose theme
+  // and help buttons stand at the right edge in this view, and below the key
+  // legend when it is out. Both move, so the edge is measured, not guessed.
+  function syncOverlayTop() {
+    var pane = document.getElementById("cd-diagram");
+    if (!pane || pane.hidden) return;
+    document.documentElement.style.setProperty(
+      "--cd-overlay-top", Math.round(pane.getBoundingClientRect().top) + "px"
+    );
   }
 
   function closeOverlay() {
@@ -1003,6 +1020,11 @@
   function setupOverlay() {
     var close = document.getElementById("cd-overlay-close");
     if (!close) return;
+    // The legend coming and going, or the window changing, resizes the
+    // drawing's pane; that is the moment its top may have moved.
+    var pane = document.getElementById("cd-diagram");
+    if (pane && window.ResizeObserver) new ResizeObserver(syncOverlayTop).observe(pane);
+    window.addEventListener("resize", syncOverlayTop);
     close.addEventListener("click", function () {
       closeOverlay();
       if (state.diagram) state.diagram.focus();

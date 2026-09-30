@@ -88,6 +88,10 @@ one-file form, and a tidy left-to-right tree does not need one).
   is hidden until something is selected, and hidden again by the close button
   or Escape. `renderDetail()` runs unchanged, so type links, cross-references,
   "Used by", provenance and the handbook links all come along.
+- The overlay starts where the drawing starts (amended 2026-09-30): below the
+  strip, whose theme and help buttons stand at the right edge in this view,
+  and below the key legend while it is out. The edge is measured from the
+  drawing's pane and follows the legend and the window.
 
 ### 3.4 Way in
 
