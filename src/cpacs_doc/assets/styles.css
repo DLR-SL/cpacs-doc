@@ -1306,3 +1306,11 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   cursor: pointer;
 }
 .cd-app-diagram.cd-detail-open .cd-overlay-close:hover { color: var(--ink); border-color: var(--ink); }
+
+/* The narrow layout above lets each pane take its content's height, and a
+   drawing has none: give it a height of its own, and keep the overlay inside
+   a window narrower than its usual width. */
+@media (max-width: 48rem) {
+  .cd-app-diagram .cd-pane.cd-diagram { height: calc(100vh - 5rem); min-height: 18rem; }
+  .cd-app-diagram.cd-detail-open .cd-pane-detail { max-width: calc(100vw - 2rem); width: auto; left: 1rem; right: 1rem; }
+}

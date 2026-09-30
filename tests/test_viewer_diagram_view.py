@@ -247,3 +247,21 @@ def test_twin_paths_select_the_box_that_was_clicked(browser, tmp_path):
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
+
+
+def test_the_diagram_keeps_its_height_in_a_narrow_window(viewer, base):
+    """The narrow layout lets the panes size themselves; the diagram has no
+    content height, so it needs one of its own, and the overlay must fit."""
+    viewer.command("Emulation.setDeviceMetricsOverride", {
+        "width": 600, "height": 800, "deviceScaleFactor": 1, "mobile": False})
+    try:
+        page = at(viewer, base, "/diagram/cpacs/header/")
+        height = page.evaluate(
+            "return document.getElementById('cd-diagram').getBoundingClientRect().height;")
+        width = page.evaluate(
+            "return document.getElementById('cd-detail').getBoundingClientRect().width"
+            " <= window.innerWidth;")
+        assert height > 300
+        assert width
+    finally:
+        viewer.command("Emulation.clearDeviceMetricsOverride")
