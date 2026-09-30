@@ -521,3 +521,37 @@ def test_the_help_shows_the_diagram_keys(viewer, base):
       var line = document.querySelector('#cd-hint .cd-hint-line[data-tab="diagram"]');
       return !!line && !line.hidden && line.textContent.indexOf('zoom') !== -1;
     """)
+
+
+# ---- theme ----
+
+def contrast(a: str, b: str) -> float:
+    """WCAG 2.1 contrast between two opaque `rgb()` strings."""
+    def luminance(colour):
+        parts = colour[colour.index("(") + 1:colour.index(")")].replace(",", " ").split()
+        out = []
+        for value in [float(v) / 255.0 for v in parts[:3]]:
+            out.append(value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4)
+        return 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2]
+
+    high, low = sorted((luminance(a), luminance(b)), reverse=True)
+    return (high + 0.05) / (low + 0.05)
+
+
+@pytest.mark.parametrize("theme", ["light", "dark"])
+def test_the_drawing_reads_in_both_themes(viewer, base, theme):
+    page = at(viewer, base, "/diagram/cpacs/")
+    colours = page.evaluate(f"""
+      document.documentElement.setAttribute('data-theme', '{theme}');
+      var header = document.querySelector('.cd-dg-item[data-path="header"]');
+      return {{
+        page: getComputedStyle(document.body).backgroundColor,
+        name: getComputedStyle(header.querySelector('.cd-dg-name')).fill,
+        frame: getComputedStyle(header.querySelector('.cd-dg-frame')).stroke,
+        link: getComputedStyle(header.querySelector('.cd-dg-type-text')).fill
+      }};
+    """)
+    page.evaluate("document.documentElement.removeAttribute('data-theme'); return true;")
+    assert contrast(colours["name"], colours["page"]) >= 4.5
+    assert contrast(colours["link"], colours["page"]) >= 4.5
+    assert contrast(colours["frame"], colours["page"]) >= 3

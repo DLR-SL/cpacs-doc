@@ -226,6 +226,12 @@ address and carry status 404, and there are no directory listings. A generic
 static server does not do this, which is why `python -m http.server` is not a
 substitute.
 
+**The diagram.** Every tree address has a twin under `/diagram/`
+(<http://127.0.0.1:8000/diagram/cpacs/>, or the *Diagram* tab): the same tree
+drawn left to right the way XSDDiagram draws it. Click a box for its
+documentation, its type name for the type's; `+`/`−` on a box expands it.
+Ctrl+wheel zooms, dragging the canvas pans, and the keys are listed under `?`.
+
 ---
 
 ## 3. The media catalogue converter

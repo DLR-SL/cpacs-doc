@@ -197,6 +197,9 @@ A two-part layout:
 - **left**, the navigable tree canvas — what XSDDiagram does well;
 - **right**, the detail panel with rendered type documentation, attributes, child elements, and enumerations.
 
+A second layout draws the same tree as a diagram in the manner of XSDDiagram,
+with the detail panel as an overlay (F19, decision 0027).
+
 ### 3.4 Rendering strategy
 
 **Requirement R1 (E1):** Only the **1,101 type pages** are pre-rendered. Tree paths get no physical file.
@@ -328,6 +331,7 @@ Shipped with pre-compressed `.gz`/`.br` sidecars, since GitHub Pages does not co
 
 ```
 /v3.5.1/tree/vehicles/aircraft/model/fuselages/fuselage/    → resolved via 404.html
+/v3.5.1/diagram/vehicles/aircraft/model/                    → resolved via 404.html
 /v3.5.1/type/fuselageType/                                  → pre-rendered file
 /v3.5.1/type/fuselageType/#attributes
 /v3.5.1/search?q=...
@@ -468,6 +472,7 @@ The type page, which has no path context, shows only the declared cardinality to
 
 - **F15** Export of the currently visible tree section as SVG. Preserves the value XSDDiagram has for papers and presentations.
 - **F16** Headless generation of the same export via CLI, for use in publications and reports.
+- **F19** Diagram view: the instance tree drawn left to right as XSDDiagram draws it — element boxes marked optional and repeated, compositors as symbols, children expanded on demand, every box naming and linking its type — under `/diagram/<path>/`, with zoom, pan and keyboard control. See `planning/specs/2026-09-30-diagram-view-design.md` and decision 0027.
 
 ### 7.5 Versioning and diff
 
