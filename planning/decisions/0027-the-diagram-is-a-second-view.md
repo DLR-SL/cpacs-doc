@@ -20,6 +20,8 @@ everything the picture needs; the viewer had no way to draw it.
 - In the diagram's view the grid has one column and the detail panel — the same
   element, rendered by the same code — is an overlay over the drawing's right
   edge. The strip keeps Tree and Diagram; Search and Handbook are the tree's.
+- Laid out with XSDDiagram's Top alignment only; Center and Bottom are not
+  offered, so every reader sees the same picture.
 - Every element box names its type, and the name opens the type's
   documentation beside the drawing (a modified click opens the type page).
 

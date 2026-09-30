@@ -157,7 +157,10 @@ Recursive, over the **visible** subtree only, in two passes:
 
 1. Bottom-up: a subtree's height is the sum of its children's subtree heights
    plus the gaps between them, and at least its own box height.
-2. Top-down: a box is centred vertically on the span of its children.
+2. Top-down: a box stands at the top of its subtree — XSDDiagram's *Top*
+   alignment, the only one offered (not *Center* or *Bottom*); a compositor
+   that is its parent's only child is centred on the parent's box so the line
+   runs straight. Children are stacked from the top.
 
 x is per depth: every column is as wide as its widest box, so boxes of one
 depth align. Box width is the larger of name and type line, plus padding and
@@ -166,8 +169,8 @@ the expander. Text is measured once per string by a hidden `<text>` probe
 
 Compositors occupy a column of their own, as in XSDDiagram.
 
-Every expand and collapse lays the visible subtree out again; a few hundred
-boxes cost nothing noticeable. After the new layout the pan offset is corrected
+Every expand and collapse lays the visible subtree out again; what that costs
+is measured in ADR 0027's Consequences. After the new layout the pan offset is corrected
 so that the box that was expanded or collapsed stays where it was on screen.
 
 ### 4.3 Initial state
@@ -259,8 +262,8 @@ Follows 0010 and 0016–0021, adapted to two dimensions.
 
 - Rendering: root expanded; optional and repeated boxes carry their classes;
   compositors drawn as their symbols; a recursive node has no expander.
-- Layout: no two boxes overlap (`getBBox()`); every parent is centred on its
-  children; boxes of one depth share their x.
+- Layout: no two boxes overlap (`getBBox()`); every box stands at the top of its
+  subtree, and a lone compositor lines up with its parent; boxes of one depth share their x.
 - Routing: `/diagram/a/b/` expands the ancestors, selects `b`, centres it;
   a click pushes the URL; the one-file form works on `#/diagram/…`.
 - Overlay: selecting opens it with the element documentation; the type name

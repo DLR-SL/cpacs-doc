@@ -155,7 +155,7 @@ LAYOUT = """
     width: result.width,
     height: result.height,
     boxes: result.boxes.map(function (b) {
-      return { key: b.item.key, name: b.item.name || b.item.compositor, depth: b.depth,
+      return { key: b.item.key, kind: b.item.kind, name: b.item.name || b.item.compositor, depth: b.depth,
                x: b.x, y: b.y, w: b.w, h: b.h,
                children: b.children.map(function (c) { return c.item.key; }) };
     })
@@ -184,15 +184,46 @@ def test_no_two_boxes_overlap(page):
             assert apart, f"{a['name']} overlaps {b['name']}"
 
 
-def test_a_parent_is_centred_on_its_children(page):
-    boxes = laid_out(page)["boxes"]
+def _lone_groups(boxes):
     by_key = {b["key"]: b for b in boxes}
+    parent = {c: b["key"] for b in boxes for c in b["children"]}
+    lone = {
+        b["key"] for b in boxes
+        if b["key"] in parent and b["kind"] == "group"
+        and len(by_key[parent[b["key"]]]["children"]) == 1
+    }
+    return by_key, parent, lone
+
+
+def test_a_box_stands_at_the_top_of_its_subtree(page):
+    """XSDDiagram's Top alignment: a box is not centred on its children."""
+    boxes = laid_out(page)["boxes"]
+    by_key, _, lone = _lone_groups(boxes)
+
+    def subtree(box):
+        yield box
+        for key in box["children"]:
+            yield from subtree(by_key[key])
+
+    checked = 0
     for box in boxes:
-        if not box["children"]:
+        if not box["children"] or box["key"] in lone:
             continue
-        first, last = by_key[box["children"][0]], by_key[box["children"][-1]]
-        middle = (first["y"] + first["h"] / 2 + last["y"] + last["h"] / 2) / 2
-        assert abs(box["y"] + box["h"] / 2 - middle) < 0.5, box["name"]
+        checked += 1
+        least = min(b["y"] for b in subtree(box))
+        assert abs(box["y"] - least) < 0.5, box["name"]
+    assert checked > 3
+
+
+def test_a_lone_compositor_lines_up_with_its_parent(page):
+    """As in XSDDiagram: the connector to a compositor that is the only child
+    runs straight."""
+    boxes = laid_out(page)["boxes"]
+    by_key, parent, lone = _lone_groups(boxes)
+    assert lone
+    for key in lone:
+        group, owner = by_key[key], by_key[parent[key]]
+        assert abs((group["y"] + group["h"] / 2) - (owner["y"] + owner["h"] / 2)) < 0.5
 
 
 def test_a_depth_is_a_column(page):

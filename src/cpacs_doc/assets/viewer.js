@@ -975,7 +975,9 @@
       if (!state.diagram) {
         state.diagram = window.CpacsDiagram.mount(document.getElementById("cd-diagram"), diagramApi());
       }
-      state.diagram.show(state.path, true);
+      // Only a path that names a box is centred; the bare diagram starts at
+      // the top left (spec 4.3).
+      state.diagram.show(state.path, state.path.length > 0);
     } else {
       closeOverlay();
       showPane("tree");
@@ -2762,7 +2764,7 @@
     if (location.view !== state.view) {
       setView(location.view, false);
     } else if (state.view === "diagram") {
-      state.diagram.show(segments, true);
+      state.diagram.show(segments, segments.length > 0);
     } else {
       renderTree();
     }

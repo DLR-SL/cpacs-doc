@@ -555,3 +555,45 @@ def test_the_drawing_reads_in_both_themes(viewer, base, theme):
     assert contrast(colours["name"], colours["page"]) >= 4.5
     assert contrast(colours["link"], colours["page"]) >= 4.5
     assert contrast(colours["frame"], colours["page"]) >= 3
+
+
+def test_tab_leaves_the_drawing(viewer, base):
+    """Chrome puts an SVG link into the Tab order; the type links must not be
+    stops, or the cursor box is not the only one (spec 5.3)."""
+    page = keyed(viewer, base)
+    page.press("Tab")
+    assert page.evaluate(
+        "return document.activeElement.closest('[role=\"tree\"]');"
+    ) is None
+
+
+def test_the_drawing_takes_touch_drags_itself(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/")
+    assert page.evaluate(
+        "return getComputedStyle(document.querySelector('.cd-dg-svg')).touchAction;"
+    ) == "none"
+
+
+def test_the_bare_diagram_starts_top_left_at_full_size(viewer, base):
+    """Spec 4.3: only a path that names a box centres it."""
+    page = at(viewer, base, "/diagram/cpacs/")
+    left, top = page.evaluate(
+        "var d = document.getElementById('cd-diagram').getBoundingClientRect();"
+        " var r = document.querySelector('.cd-dg-item[data-path=\"\"] .cd-dg-frame')"
+        ".getBoundingClientRect();"
+        " return [r.left - d.left, r.top - d.top];"
+    )
+    assert 0 <= left <= 30 and 0 <= top <= 30, (left, top)
+    assert transform(page)[2] == 1
+
+
+def test_an_unknown_path_drops_the_selection_mark(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/header/")
+    assert selected(page) == "header"
+    page.evaluate(
+        "history.pushState(null, '', '/diagram/cpacs/nothere/');"
+        " window.dispatchEvent(new PopStateEvent('popstate')); return true;"
+    )
+    page.wait_for(f"return ({HEADING.replace('return ', '', 1).rstrip(';')}) === 'Not found';",
+                  "not found")
+    assert selected(page) is None

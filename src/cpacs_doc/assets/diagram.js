@@ -182,7 +182,10 @@
    *
    * XSDDiagram's tidy tree, over the visible items only. Bottom up, a subtree
    * is as tall as its children together, and at least as tall as its own box;
-   * top down, a box is centred on its children. A depth is a column as wide as
+   * top down, a box stands at the top of its subtree and its children are
+   * stacked from there: XSDDiagram's Top alignment, the only one offered, so
+   * every reader sees the same picture. A compositor that is its parent's only
+   * child is centred on the parent, as in XSDDiagram. A depth is a column as wide as
    * its widest box, so boxes of one depth line up — calmer than XSDDiagram's
    * per-box indent, and the column is what the keyboard moves along.
    */
@@ -220,19 +223,19 @@
 
     function place(box, top, columns) {
       box.x = columns[box.depth];
-      if (!box.children.length) {
-        box.y = top + (box.span - box.slot) / 2;
-        return;
+      var parent = box.parent;
+      if (box.item.kind === "group" && parent && parent.children.length === 1) {
+        // The one exception to Top: a compositor alone under its parent is
+        // centred on the parent's box, so the connector runs straight.
+        box.y = parent.y + (parent.h - box.h) / 2;
+      } else {
+        box.y = top;
       }
-      var cursor = top + (box.span - box.inner) / 2;
+      var cursor = top;
       for (var i = 0; i < box.children.length; i++) {
         place(box.children[i], cursor, columns);
         cursor += box.children[i].span + ROW_GAP;
       }
-      var first = box.children[0];
-      var last = box.children[box.children.length - 1];
-      var middle = (first.y + first.h / 2 + last.y + last.h / 2) / 2;
-      box.y = middle - box.h / 2;
     }
 
     if (!root) return { boxes: [], width: 0, height: 0, columns: [] };
@@ -244,7 +247,7 @@
     measureSpan(top);
     place(top, 0, columns);
 
-    // Centring a tall parent on short children can lift it above the top.
+    // Nothing should sit above the top; kept as a guard for the geometry.
     var least = 0;
     var height = 0;
     for (var i = 0; i < boxes.length; i++) least = Math.min(least, boxes[i].y);
@@ -469,7 +472,9 @@
         if (ref) {
           var holder = g;
           if (ref.link) {
-            holder = svg("a", { "class": "cd-dg-type", "data-type": item.type }, g);
+            // tabindex -1: Chrome puts an SVG link into the Tab order, and the
+            // cursor box is to be the only stop (spec 5.3).
+            holder = svg("a", { "class": "cd-dg-type", "data-type": item.type, tabindex: "-1" }, g);
             if (ref.href) holder.setAttribute("href", ref.href);
           }
           svg("text", { "class": "cd-dg-type-text", x: x + PAD_X, y: y + 28 }, holder)
@@ -586,6 +591,9 @@
     function show(path, centre) {
       var chain = shape.find(path);
       if (!chain) {
+        // No box is selected any more; the old mark would contradict "Not found".
+        selectedKey = null;
+        selectedPath = null;
         render(null);
         return false;
       }
