@@ -345,3 +345,9 @@ place on screen. The tree view is not affected.
   `prefers-reduced-motion: reduce` nothing moves at all.
 - **Compositors** are drawn 40 × 20 with a symbol a quarter larger than
   XSDDiagram's, which at 100 % ran together into a dash.
+
+### 4.8 Vertical rhythm (amended 2026-09-30)
+
+Room under a box is kept only for what stands there — its bound (12 px) and
+the stacked frame of a repeated item (3 px) — and sibling subtrees are 9 px
+apart. A row without a bound thus takes 31 px instead of 45.

@@ -570,3 +570,24 @@ def test_compositor_symbols_are_legible(mounted):
         " return [b.width, b.height];"
     )
     assert size[0] >= 40 and size[1] >= 20
+
+
+# ---- vertical rhythm ----
+
+GAPS = """
+  function rect(path) { return dgItem(path).querySelector('.cd-dg-frame').getBoundingClientRect(); }
+  var card = dgItem('header').querySelector('.cd-dg-card');
+  return { gap: rect('wings').top - rect('header').bottom,
+           cardClear: card ? rect('wings').top - card.getBoundingClientRect().bottom : null };
+"""
+
+
+def test_rows_without_a_bound_sit_close(plain):
+    """Room under a box is kept only for what stands there: a bound, or the
+    stacked frame of a repeated element."""
+    assert plain.evaluate(GAPS)["gap"] <= 10
+
+
+def test_a_bound_never_runs_into_the_next_box(mounted):
+    gaps = mounted.evaluate(GAPS)
+    assert gaps["cardClear"] is not None and gaps["cardClear"] >= 2

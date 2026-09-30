@@ -22,7 +22,7 @@
   var STACK = 3;           // offset of the second frame behind a repeated item
   var CARD_ROOM = 12;      // room under a box for its cardinality
   var COLUMN_GAP = 20;     // from a box to the column of its children
-  var ROW_GAP = 8;         // between sibling subtrees
+  var ROW_GAP = 9;         // between sibling subtrees
   var MARGIN = 24;         // between the drawing and the edge of the pane
   var ZOOM_MIN = 0.25;
   var ZOOM_MAX = 2;
@@ -197,7 +197,10 @@
       var box = {
         item: item, depth: depth, parent: parent, children: [],
         x: 0, y: 0, w: size.w, h: size.h,
-        slot: size.h + CARD_ROOM + STACK, span: 0, inner: 0
+        // The room under the box: what `measure` says stands there, or, from
+        // a measure that does not say, room for a bound and a stacked frame.
+        slot: size.h + (size.below === undefined ? CARD_ROOM + STACK : size.below),
+        span: 0, inner: 0
       };
       boxes.push(box);
       if (isOpen(item)) {
@@ -402,13 +405,24 @@
       return expert && item.kind === "element" && item.type ? api.typeRef(item.type) : null;
     }
 
+    // Room under a box only for what stands there: its bound, and the
+    // stacked frame of a repeated item. Most boxes in the default drawing have
+    // neither, and reserving it for all of them spread every column apart.
+    function roomBelow(item) {
+      return (cardinality(item, expert) ? CARD_ROOM : 0) + (isRepeated(item) ? STACK : 0);
+    }
+
     function measure(item) {
-      if (item.kind === "group") return { w: GROUP_W, h: GROUP_H };
+      if (item.kind === "group") return { w: GROUP_W, h: GROUP_H, below: roomBelow(item) };
       var ref = typeLine(item);
       var w = textWidth(item.name, "cd-dg-name");
       if (ref) w = Math.max(w, textWidth(ref.label, "cd-dg-type-text"));
       // The expander sits on the right edge, half inside the box.
-      return { w: Math.ceil(w) + 2 * PAD_X + EXPANDER / 2, h: ref ? LINE_TWO : LINE_ONE };
+      return {
+        w: Math.ceil(w) + 2 * PAD_X + EXPANDER / 2,
+        h: ref ? LINE_TWO : LINE_ONE,
+        below: roomBelow(item)
+      };
     }
 
     function isOpen(item) {
