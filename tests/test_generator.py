@@ -566,9 +566,9 @@ def test_documentation_cannot_close_the_element_it_is_carried_in(model, tmp_path
     generator.generate_single(model, tmp_path)
     html = (tmp_path / generator.SINGLE_NAME).read_text(encoding="utf-8")
     assert model_payload(html) == model
-    # Three script elements: the theme, the model, the viewer. No fourth end
-    # tag from the model's own content.
-    assert html.count("</script>") == 3
+    # Four script elements: the theme, the model, the diagram, the viewer. No
+    # fifth end tag from the model's own content.
+    assert html.count("</script>") == 4
 
 
 def test_a_figure_is_embedded_rather_than_referenced(model, tmp_path):
@@ -612,3 +612,23 @@ def test_without_a_media_root_the_figures_are_reported_rather_than_dropped(model
     model["media"] = {"a": {"file": "figures/a.png", "alt": "A"}}
     result = generator.generate_single(model, tmp_path)
     assert [f.code for f in result.findings] == ["GENERATOR_MEDIA_ROOT_MISSING"]
+
+
+def test_the_router_carries_the_diagram():
+    """The diagram is a fourth pane of the column, reached by a tab of its own,
+    and its script stands before the viewer's, which mounts it."""
+    html = generator.router_html()
+    assert 'id="cd-tab-diagram"' in html
+    assert 'id="cd-diagram"' in html
+    assert 'id="cd-overlay-close"' in html
+    assert html.index("window.CpacsDiagram") < html.index('var TREE_SEGMENT')
+
+
+def test_the_diagram_script_is_an_asset(model, tmp_path):
+    generator.generate(model, tmp_path)
+    assert "diagram.js" in generator.ASSET_FILES
+    assert (tmp_path / "assets" / "diagram.js").exists()
+
+
+def test_the_one_file_form_carries_the_diagram(model):
+    assert "window.CpacsDiagram" in generator.single_html(model)

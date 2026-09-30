@@ -965,7 +965,7 @@ def _write_index(output: Path, types: dict, statistics: dict, meta: dict,
     )
 
 
-ASSET_FILES = ("styles.css", "viewer.js")
+ASSET_FILES = ("styles.css", "viewer.js", "diagram.js")
 
 
 def asset(name: str) -> str:
@@ -1013,6 +1013,11 @@ def router_html(model_script: str = "") -> str:
         '<button id="cd-tab-search" class="cd-tab" type="button" role="tab"'
         ' aria-controls="cd-search-panel" aria-selected="false" tabindex="-1">Search'
         '<span id="cd-tab-count" class="cd-tab-count"></span></button>'
+        # The diagram is a second view of the same tree, not a fourth place in
+        # the column: in its view the column's own places step aside and the
+        # strip keeps only the way back (spec 2026-09-30, §3.3).
+        '<button id="cd-tab-diagram" class="cd-tab" type="button" role="tab"'
+        ' aria-controls="cd-diagram" aria-selected="false" tabindex="-1">Diagram</button>'
         '<span class="cd-tabs-rest"></span>'
         f"{THEME_BUTTON}"
         '<button id="cd-help" class="cd-help" type="button" aria-expanded="false"'
@@ -1037,12 +1042,20 @@ def router_html(model_script: str = "") -> str:
         '<div id="cd-results" class="cd-results"></div>'
         "</div>\n"
         '<div id="cd-docs" class="cd-pane" hidden></div>\n'
+        # No tabindex of 0: the boxes are the tab stops, as the rows are in
+        # the tree, and the SVG inside is the tree they belong to.
+        '<div id="cd-diagram" class="cd-pane cd-diagram" tabindex="-1" hidden></div>\n'
         "</div>\n"
         '<div id="cd-splitter" class="cd-splitter" role="separator" aria-orientation="vertical"'
         ' tabindex="0" aria-label="Resize the tree pane"></div>\n'
         '<div id="cd-detail" class="cd-pane cd-pane-detail" tabindex="-1"></div>\n'
+        # Outside the panel, because the panel is emptied on every render.
+        # Shown only while the panel is an overlay over the diagram.
+        '<button id="cd-overlay-close" class="cd-overlay-close" type="button"'
+        ' aria-label="Close the documentation">×</button>\n'
         "</div>\n"
         f"{model_script}"
+        f"<script>\n{asset('diagram.js')}</script>\n"
         f"<script>\n{asset('viewer.js')}</script>\n"
         "</body>\n</html>\n"
     )

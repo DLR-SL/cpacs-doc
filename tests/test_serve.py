@@ -254,3 +254,12 @@ def test_the_access_log_can_be_turned_off(site, capsys):
 
     assert "GET /index.html" in fetch(quiet=False)
     assert fetch(quiet=True) == ""
+
+
+def test_a_diagram_path_answers_with_the_router_under_status_404(base):
+    """The same bargain as a tree path: the address is kept, and the status
+    says there is no file behind it."""
+    status, body, headers = get(base, "/diagram/cpacs/wings/wing/")
+    assert status == 404
+    assert headers["Content-Type"].startswith("text/html")
+    assert b'id="cd-diagram"' in body
