@@ -190,6 +190,23 @@ using the existing variables (`--ink`, `--rule-strong`, `--plate`, `--link`,
 `--focus`, …). No colour is written into the SVG, so dark mode and the theme
 button work without code.
 
+### 4.5 The route and the states (amended 2026-09-30)
+
+- **The route.** The boxes and connector steps from the root to the selected
+  element are drawn in `--trail` (magenta, the colour a navigation display
+  gives the active route; used nowhere else in the viewer), 2 px for the
+  lines. The other connectors stay in `--rule-strong`. Hovering a box previews
+  its route in the same colour at half strength.
+- **One meaning per mark.** Dashes mean optional and nothing else. The
+  selected element is a filled box (`--trail-fill`) with a `--trail` frame.
+  The keyboard's place is a solid `--focus` ring around the box, shown only
+  while the focus is in the drawing — unlike the tree, where the cursor mark
+  stays visible (0016): in the drawing a second standing mark competed with
+  the route.
+- **The type line** is `--ink-soft` and turns into a visible link (`--link`,
+  underlined) under the pointer or the keyboard; the element name carries
+  weight 500.
+
 ---
 
 ## 5. Interaction

@@ -436,7 +436,33 @@
       return d + "M" + bus + " " + top + "V" + bottom;
     }
 
-    function drawItem(box) {
+    // The keys from the root to `key`: the route an instance takes to reach
+    // it. Keys are positions, so every prefix of a key is an ancestor.
+    function routeOf(key) {
+      var route = {};
+      if (!key || !byKey[key]) return route;
+      var parts = key.split(".");
+      for (var i = 1; i <= parts.length; i++) route[parts.slice(0, i).join(".")] = true;
+      return route;
+    }
+
+    // One line per step of the route, parent to child, drawn over the plain
+    // connectors so the way reads without the siblings' branches.
+    function routeLinks(route) {
+      var d = "";
+      for (var i = 0; i < current.boxes.length; i++) {
+        var child = current.boxes[i];
+        var parent = child.parent;
+        if (!parent || !route[child.item.key]) continue;
+        var from = parent.x + parent.w + (parent.item.kind === "element" ? EXPANDER / 2 : 0);
+        var bus = current.columns[parent.depth + 1] - COLUMN_GAP / 2;
+        d += "M" + from + " " + (parent.y + parent.h / 2) + "H" + bus
+          + "V" + (child.y + child.h / 2) + "H" + child.x;
+      }
+      return d;
+    }
+
+    function drawItem(box, route) {
       var item = box.item;
       var x = box.x;
       var y = box.y;
@@ -446,6 +472,7 @@
       if (item.min === 0) classes += " cd-dg-optional";
       if (isRepeated(item)) classes += " cd-dg-repeated";
       if (item.key === selectedKey) classes += " cd-dg-selected";
+      else if (route[item.key]) classes += " cd-dg-on-trail";
       if (item.key === cursorKey) classes += " cd-dg-cursor";
       var g = svg("g", { "class": classes, "data-key": item.key }, itemLayer);
 
@@ -462,7 +489,12 @@
           svg("rect", { "class": "cd-dg-shadow", x: x + STACK, y: y + STACK, width: w, height: h }, g);
         }
         svg("rect", { "class": "cd-dg-frame", x: x, y: y, width: w, height: h }, g);
-        svg("rect", { "class": "cd-dg-ring", x: x - 3, y: y - 3, width: w + 6, height: h + 6, rx: 2 }, g);
+        // Around the stacked frame too, so the ring never cuts through it.
+        var stacked = isRepeated(item) ? STACK : 0;
+        svg("rect", {
+          "class": "cd-dg-ring", x: x - 4, y: y - 4,
+          width: w + 8 + stacked, height: h + 8 + stacked, rx: 3
+        }, g);
         svg("text", { "class": "cd-dg-name", x: x + PAD_X, y: y + 15 }, g).textContent = item.name;
       }
 
@@ -512,14 +544,37 @@
       var hadFocus = canvas.contains(document.activeElement);
       linkLayer.textContent = "";
       itemLayer.textContent = "";
+      var route = routeOf(selectedKey);
       var d = "";
       for (var i = 0; i < current.boxes.length; i++) {
         var box = current.boxes[i];
         if (box.children.length) d += connector(box);
-        drawItem(box);
+        drawItem(box, route);
       }
       svg("path", { "class": "cd-dg-link", d: d }, linkLayer);
+      svg("path", { "class": "cd-dg-link cd-dg-trail-link", d: routeLinks(route) }, linkLayer);
+      hoverLink = svg("path", { "class": "cd-dg-link cd-dg-hover-link", d: "" }, linkLayer);
+      hoverKey = null;
       if (hadFocus) focus();
+    }
+
+    // The route of the box under the pointer, as a lighter preview of what a
+    // click would mark. Classes are toggled on the few boxes of one route
+    // rather than the drawing redrawn.
+    var hoverLink = null;
+    var hoverKey = null;
+
+    function preview(key) {
+      hoverKey = key;
+      var marked = itemLayer.querySelectorAll(".cd-dg-hover-trail");
+      for (var i = 0; i < marked.length; i++) marked[i].classList.remove("cd-dg-hover-trail");
+      var route = routeOf(key);
+      hoverLink.setAttribute("d", routeLinks(route));
+      for (var k in route) {
+        if (!Object.prototype.hasOwnProperty.call(route, k)) continue;
+        var node = itemLayer.querySelector('[data-key="' + k + '"]');
+        if (node) node.classList.add("cd-dg-hover-trail");
+      }
     }
 
     // The nearest drawn ancestor of a key that is no longer drawn: keys are
@@ -637,6 +692,15 @@
         return;
       }
       choose(box.item, false);
+    });
+
+    canvas.addEventListener("mouseover", function (event) {
+      var node = event.target.closest(".cd-dg-item");
+      var key = node ? node.getAttribute("data-key") : null;
+      if (key !== hoverKey) preview(key);
+    });
+    canvas.addEventListener("mouseleave", function () {
+      if (hoverKey !== null) preview(null);
     });
 
     canvas.addEventListener("dblclick", function (event) {

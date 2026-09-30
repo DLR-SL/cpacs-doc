@@ -435,3 +435,38 @@ def test_a_show_for_the_clicked_path_keeps_the_mark(mounted):
       return [dgItem('wings').classList.contains('cd-dg-selected'),
               before.x === after.x && before.y === after.y];
     """) == [True, True]
+
+
+# ---- the route ----
+
+def test_the_route_to_the_selection_is_marked(mounted):
+    """The way an instance takes from the root to the chosen element: the
+    boxes on it and the lines between them, and nothing else."""
+    assert mounted.evaluate("""
+      var before = document.querySelector('#dg-host .cd-dg-trail-link').getAttribute('d');
+      dg.show(['wings', 'wing', 'uID'], false);
+      var on = Array.prototype.map.call(
+        document.querySelectorAll('#dg-host .cd-dg-element.cd-dg-on-trail'),
+        function (g) { return g.getAttribute('data-path'); });
+      return [before, on,
+              document.querySelectorAll('#dg-host .cd-dg-group.cd-dg-on-trail').length,
+              document.querySelector('#dg-host .cd-dg-trail-link').getAttribute('d').length > 0,
+              dgItem('header').classList.contains('cd-dg-on-trail'),
+              dgItem('wings/wing/uID').classList.contains('cd-dg-on-trail')];
+    """) == ["", ["", "wings", "wings/wing"], 3, True, False, False]
+
+
+def test_hovering_a_box_previews_its_route(mounted):
+    assert mounted.evaluate("""
+      var before = document.querySelector('#dg-host .cd-dg-hover-link').getAttribute('d');
+      dgItem('extras').querySelector('.cd-dg-frame')
+        .dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+      var during = document.querySelector('#dg-host .cd-dg-hover-link').getAttribute('d');
+      var marked = dgItem('extras').classList.contains('cd-dg-hover-trail')
+        && dgItem('').classList.contains('cd-dg-hover-trail')
+        && !dgItem('header').classList.contains('cd-dg-hover-trail');
+      document.querySelector('#dg-host .cd-dg-svg').dispatchEvent(new MouseEvent('mouseleave'));
+      return [before, during.length > 0, marked,
+              document.querySelector('#dg-host .cd-dg-hover-link').getAttribute('d'),
+              document.querySelectorAll('#dg-host .cd-dg-hover-trail').length];
+    """) == ["", True, True, "", 0]

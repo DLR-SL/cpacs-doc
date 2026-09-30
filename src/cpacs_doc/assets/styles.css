@@ -35,6 +35,13 @@
   --rule-strong: #a5a29d;
   --field: rgba(140, 132, 120, 0.09);
   --link: #1d5fa8;
+  /* The diagram's route from the root to the chosen element: magenta, the
+     colour a navigation display gives the active route, and one no other
+     part of the viewer uses. The fill is that colour laid thinly over the
+     page, written out opaque so a stacked frame behind it does not show
+     through. 5.9 to 1 against the page. */
+  --trail: #b0247e;
+  --trail-fill: #f6eaee;
   /* The focus ring, which was --link and had no business being it: a link is
      read, a ring is only glanced at, and at the link's strength — 6.2 to 1
      against the page, 5.7 against a selected row — it shouted every time the
@@ -112,6 +119,8 @@
     --rule-strong: #5c646d;
     --field: rgba(150, 160, 172, 0.11);
     --link: #74b3f0;
+    --trail: #e26bbd;
+    --trail-fill: #382835;
     --focus: #4f80b0;
     --note-rule: #6a9bd2;
     --alarm: #e8837b;
@@ -137,6 +146,8 @@
   --rule-strong: #5c646d;
   --field: rgba(150, 160, 172, 0.11);
   --link: #74b3f0;
+  --trail: #e26bbd;
+  --trail-fill: #382835;
   --focus: #4f80b0;
   --note-rule: #6a9bd2;
   --alarm: #e8837b;
@@ -1246,10 +1257,14 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-dg-optional > .cd-dg-frame, .cd-dg-optional > .cd-dg-shadow { stroke-dasharray: 4 1; }
 .cd-dg-item[role="treeitem"] { cursor: pointer; }
 .cd-dg-item:focus { outline: none; }
-.cd-dg-name { fill: var(--ink); font-size: 13px; }
+/* The name is what a reader looks for, so it outweighs the type line. The
+   type line is a link, but thirty blue lines in one drawing make a pattern of
+   stripes rather than a set of links: it speaks up under the pointer and the
+   keyboard, where it can be followed. */
+.cd-dg-name { fill: var(--ink); font-size: 13px; font-weight: 500; }
 .cd-dg-type-text { fill: var(--ink-soft); font-size: 11px; font-family: var(--face-code); }
-.cd-dg-type .cd-dg-type-text { fill: var(--link); }
-.cd-dg-type:hover .cd-dg-type-text { text-decoration: underline; }
+.cd-dg-item:hover .cd-dg-type .cd-dg-type-text,
+.cd-dg-item:focus-visible .cd-dg-type .cd-dg-type-text { fill: var(--link); text-decoration: underline; }
 .cd-dg-card { fill: var(--ink-soft); font-size: 10px; font-family: var(--face-code); }
 .cd-dg-symbol-line { fill: none; stroke: var(--ink); stroke-width: 1; }
 .cd-dg-symbol-dot { fill: var(--ink); }
@@ -1257,12 +1272,21 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-dg-expander rect { fill: var(--page); stroke: var(--ink-soft); stroke-width: 1; }
 .cd-dg-expander path { fill: none; stroke: var(--ink); stroke-width: 1.2; }
 .cd-dg-recursive { fill: var(--ink-soft); font-size: 12px; }
-.cd-dg-selected > .cd-dg-frame { stroke: var(--ink); stroke-width: 2; }
-/* The cursor mark and the focus ring are two things (0016): the mark says
-   where the keys act, the ring that the keyboard is here at all. */
+/* Dashes say optional and nothing else. The route from the root is a colour,
+   the chosen element at its end a filled box, the preview under the pointer
+   the same colour held back. */
+.cd-dg-trail-link, .cd-dg-hover-link { stroke: var(--trail); }
+.cd-dg-trail-link { stroke-width: 2; }
+.cd-dg-hover-link { stroke-width: 1.5; stroke-opacity: 0.5; }
+.cd-dg-on-trail > .cd-dg-frame { stroke: var(--trail); stroke-width: 1.5; }
+.cd-dg-hover-trail > .cd-dg-frame { stroke: var(--trail); }
+.cd-dg-selected > .cd-dg-frame { fill: var(--trail-fill); stroke: var(--trail); stroke-width: 2; }
+/* The keyboard's place is a solid ring, and only while the keyboard is in the
+   drawing: a pointer reader has no use for it, and a dashed one read as a
+   second "optional". Brighter where the focus is visibly the keyboard's. */
 .cd-dg-ring { fill: none; stroke: none; }
-.cd-dg-cursor > .cd-dg-ring { stroke: var(--ink-soft); stroke-dasharray: 2 2; }
-.cd-dg-item:focus-visible > .cd-dg-ring { stroke: var(--focus); stroke-width: 2; stroke-dasharray: none; }
+.cd-dg-svg:focus-within .cd-dg-cursor > .cd-dg-ring { stroke: var(--focus); stroke-width: 1.5; }
+.cd-dg-item:focus-visible > .cd-dg-ring { stroke: var(--focus); stroke-width: 2; }
 
 /* One column in the diagram's view: the column's strip is the header, the
    diagram its pane, and the splitter has nothing left to divide. */

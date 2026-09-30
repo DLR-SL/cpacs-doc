@@ -597,3 +597,54 @@ def test_an_unknown_path_drops_the_selection_mark(viewer, base):
     page.wait_for(f"return ({HEADING.replace('return ', '', 1).rstrip(';')}) === 'Not found';",
                   "not found")
     assert selected(page) is None
+
+
+# ---- states ----
+
+def test_the_states_are_told_apart(viewer, base):
+    """Dashes say optional and nothing else: the selection is a filled box, the
+    route a colour, the keyboard a solid ring that shows only while the
+    keyboard is in the drawing."""
+    page = at(viewer, base, "/diagram/cpacs/wings/wing/")
+    style = """
+      function st(path, part) {
+        return getComputedStyle(document.querySelector(
+          '.cd-dg-item[data-path="' + path + '"] > ' + part));
+      }
+      return {
+        selectedDash: st('wings/wing', '.cd-dg-frame').strokeDasharray,
+        selectedFill: st('wings/wing', '.cd-dg-frame').fill,
+        plainFill: st('header', '.cd-dg-frame').fill,
+        routeStroke: st('wings', '.cd-dg-frame').stroke,
+        plainStroke: st('header', '.cd-dg-frame').stroke,
+        ring: st('wings/wing', '.cd-dg-ring').stroke,
+        ringDash: st('wings/wing', '.cd-dg-ring').strokeDasharray
+      };
+    """
+    idle = page.evaluate(style)
+    assert idle["selectedDash"] == "none"
+    assert idle["selectedFill"] != idle["plainFill"]
+    assert idle["routeStroke"] != idle["plainStroke"]
+    assert idle["ring"] == "none", "the ring shows without the keyboard in the drawing"
+    page.evaluate("document.querySelector('.cd-dg-cursor').focus(); return true;")
+    page.press("ArrowUp")
+    page.press("ArrowDown")
+    ring = page.evaluate(
+        "var c = document.querySelector('.cd-dg-cursor > .cd-dg-ring');"
+        " var s = getComputedStyle(c); return [s.stroke, s.strokeDasharray];"
+    )
+    assert ring[0] != "none" and ring[1] == "none"
+
+
+def test_the_type_line_speaks_up_on_hover(viewer, base):
+    """Quiet in the drawing, a link under the pointer."""
+    page = at(viewer, base, "/diagram/cpacs/")
+    link = page.evaluate(
+        "var s = document.createElement('span'); s.style.color = 'var(--link)';"
+        " document.body.appendChild(s); var c = getComputedStyle(s).color; s.remove(); return c;"
+    )
+    fill = "return getComputedStyle(document.querySelector('.cd-dg-item[data-path=\"header\"] .cd-dg-type-text')).fill;"
+    assert page.evaluate(fill) != link
+    x, y = centre(page, item("header"))
+    page.command("Input.dispatchMouseEvent", {"type": "mouseMoved", "x": x, "y": y})
+    assert page.evaluate(fill) == link
