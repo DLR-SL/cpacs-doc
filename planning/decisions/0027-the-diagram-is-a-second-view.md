@@ -27,7 +27,7 @@ everything the picture needs; the viewer had no way to draw it.
 
 A second route rather than a toggle keeps an address for every picture, which
 is what the tree's addresses were made for (D4). Hand-written SVG rather than a
-layout library: the layout is a tidy tree of a few hundred visible boxes, and
+layout library: the layout is a tidy tree, and
 the line against libraries (N14) is the same one the viewer and the tests hold.
 The overlay rather than the splitter: a diagram grows wide, and the column the
 tree gives up is the width the drawing needs.
@@ -35,3 +35,14 @@ tree gives up is the width the drawing needs.
 Not done here: links between the views from the panel and the type pages,
 search inside the diagram, SVG export (F15, F16). The renderer draws into one
 coordinate system, so export can follow without a second drawing path.
+
+## Consequences
+
+Every expand or collapse lays out and redraws the whole visible drawing, so its
+cost grows with the number of visible boxes. Measured on the real CPACS 3.x
+schema (2026-09-30, headless Chrome): about 30 ms typical, up to about 110 ms at
+some 1,500 visible boxes, reached by expanding `wing` and three levels below it.
+Accepted for now; viewport culling or incremental drawing is the known way out.
+
+With an address that names a place, the documentation overlay opens over the
+drawing's right edge and may cover that place's children until it is closed.
