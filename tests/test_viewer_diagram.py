@@ -683,3 +683,22 @@ def test_the_export_is_named_after_the_selection(mounted):
       dg.show(['wings', 'wing'], false);
       return [bare, dg.exportName()];
     """) == ["cpacs", "cpacs-wings-wing"]
+
+
+def test_the_png_has_a_transparent_ground(mounted):
+    """Only the ground is left out: the boxes keep their fill, so names stay
+    readable on whatever the picture is placed on."""
+    assert mounted.evaluate("""
+      return dg.exportPng().then(function (blob) {
+        return createImageBitmap(blob).then(function (bitmap) {
+          var canvas = document.createElement('canvas');
+          canvas.width = bitmap.width; canvas.height = bitmap.height;
+          var context = canvas.getContext('2d');
+          context.drawImage(bitmap, 0, 0);
+          var corner = context.getImageData(1, 1, 1, 1).data[3];
+          // The root box starts at the margin (24 px, twice that in the PNG).
+          var box = context.getImageData(24 * 2 + 12, 24 * 2 + 6, 1, 1).data[3];
+          return [corner, box];
+        });
+      });
+    """) == [0, 255]

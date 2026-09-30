@@ -940,7 +940,8 @@
       };
     }
 
-    function exportSvg() {
+    // `transparent` leaves the ground out; the boxes keep their fill.
+    function exportSvg(transparent) {
       var size = exportSize();
       var drawing = viewport.cloneNode(true);
       var sources = viewport.querySelectorAll("*");
@@ -963,21 +964,25 @@
       file.setAttribute("width", String(size.w));
       file.setAttribute("height", String(size.h));
       file.setAttribute("viewBox", "0 0 " + size.w + " " + size.h);
-      svg("rect", {
-        width: size.w, height: size.h,
-        fill: window.getComputedStyle(document.body).backgroundColor
-      }, file);
+      if (!transparent) {
+        svg("rect", {
+          width: size.w, height: size.h,
+          fill: window.getComputedStyle(document.body).backgroundColor
+        }, file);
+      }
       file.appendChild(drawing);
       return new XMLSerializer().serializeToString(file);
     }
 
     // Twice the resolution for a sharp picture, less where a very large
     // drawing would pass what a browser's canvas holds; SVG has no such limit.
+    // The ground is transparent, so the picture sits on a slide or a page
+    // without a rectangle of the viewer's colour around it.
     function exportPng() {
       var size = exportSize();
       var scale = Math.min(2, 16000 / size.w, 16000 / size.h,
         Math.sqrt(2.5e8 / (size.w * size.h)));
-      var url = URL.createObjectURL(new Blob([exportSvg()], { type: "image/svg+xml" }));
+      var url = URL.createObjectURL(new Blob([exportSvg(true)], { type: "image/svg+xml" }));
       return new Promise(function (resolve, reject) {
         var image = new Image();
         image.onload = function () {

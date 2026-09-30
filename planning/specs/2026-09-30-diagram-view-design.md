@@ -366,8 +366,9 @@ drawing as it stands: what is expanded, the expert view, the path to the
 selection and the theme's colours — independent of zoom and pan, so nothing
 is cut off at the window's edge. The SVG carries its styles inline (the
 page's custom properties do not travel with it) and none of the page's
-machinery (focus rings, click areas, hover preview). The PNG is rendered at
-twice the resolution, less where a very large drawing would pass what a
+machinery (focus rings, click areas, hover preview). The PNG has a
+transparent ground — the boxes keep their fill — and is rendered at twice
+the resolution, less where a very large drawing would pass what a
 browser canvas holds; the SVG has no such limit. The file is named after the
 root and the selected path, e.g. `cpacs-vehicles-aircraft.png`. Works in the
 one-file form as well.
