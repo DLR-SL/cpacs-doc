@@ -606,3 +606,34 @@ row's word a character right.
 - Portable app via electron (or similar framework)?
 - Canvas tree
 - AI chatbot
+## Diagram view: integration with the rest of the viewer
+
+Open points from a design review of the diagram view against the tree and
+the other entries of the strip (2026-09-30). The overlay no longer covers the
+strip's theme and help buttons or the key legend (fixed in `eb7bd64`); the
+rest is open. Spec: `planning/specs/2026-09-30-diagram-view-design.md`.
+
+- **Search and Handbook disappear in the diagram's view.** The strip reads
+  "Tree · Handbook · Search · Diagram" in the tree and only "Tree · Diagram"
+  in the diagram, and "Diagram" swaps the whole view while the others swap
+  the left column. Separate the view from the places: a `Tree | Diagram`
+  switch first, then Handbook and Search in both views; in the diagram they
+  open as a drawer over the drawing's left edge, and a search result jumps
+  into the diagram. The largest change of these; cross-links between the
+  views were out of scope for v1.
+- **Two looks for the same documentation.** The tree shows it as a quiet
+  right column behind the splitter, the diagram as a floating card with a
+  shadow and rounded corners. Dock it in the diagram too: full height, a rule
+  on its left instead of a shadow, still over the drawing.
+- **The toolbar speaks its own language.** Five groups of bordered buttons at
+  the bottom left against an otherwise quiet interface of text tabs and round
+  icon buttons. Move them into the strip, before the theme and help buttons,
+  as quiet text buttons; PNG and SVG as one "Save image" entry.
+- **Element names in two faces.** The tree and the panel's heading set names
+  as identifiers (code face); the diagram sets them in the text face. Use the
+  code face in the diagram too, at about 12 px — the boxes grow a little
+  wider.
+- **Selection looks different per view.** Tree: grey tint and a dashed frame;
+  diagram: magenta fill. Give the selected tree row the diagram's selection
+  tint (`--trail-fill`), so one colour means "selected" in both; the path
+  line stays the diagram's own.
