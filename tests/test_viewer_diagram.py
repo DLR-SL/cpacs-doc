@@ -569,7 +569,7 @@ def test_compositor_symbols_are_legible(mounted):
         "var b = document.querySelector('#dg-host .cd-dg-group .cd-dg-frame').getBBox();"
         " return [b.width, b.height];"
     )
-    assert size[0] >= 40 and size[1] >= 20
+    assert size[0] >= 36 and size[1] >= 18
 
 
 # ---- vertical rhythm ----

@@ -1266,8 +1266,8 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-dg-item:hover .cd-dg-type .cd-dg-type-text,
 .cd-dg-item:focus-visible .cd-dg-type .cd-dg-type-text { fill: var(--link); text-decoration: underline; }
 .cd-dg-card { fill: var(--ink-soft); font-size: 10px; font-family: var(--face-code); }
-.cd-dg-symbol-line { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linecap: round; }
-.cd-dg-symbol-dot { fill: var(--ink); }
+.cd-dg-symbol-line { fill: none; stroke: var(--ink-soft); stroke-width: 1.1; stroke-linecap: round; }
+.cd-dg-symbol-dot { fill: var(--ink-soft); }
 .cd-dg-expander { cursor: pointer; }
 .cd-dg-expander .cd-dg-hit { fill: transparent; stroke: none; }
 .cd-dg-expander rect { fill: var(--page); stroke: var(--ink-soft); stroke-width: 1; }

@@ -16,8 +16,8 @@
   var PAD_X = 8;           // text inset inside a box
   var LINE_ONE = 22;       // a box holding the name alone
   var LINE_TWO = 34;       // a box holding the name and the type under it
-  var GROUP_W = 40;
-  var GROUP_H = 20;
+  var GROUP_W = 36;
+  var GROUP_H = 18;
   var EXPANDER = 10;       // side of the +/- square, centred on the right edge
   var STACK = 3;           // offset of the second frame behind a repeated item
   var CARD_ROOM = 12;      // room under a box for its cardinality
@@ -300,15 +300,16 @@
   }
 
   // The three symbols, after XSDDiagram's own: a line with three beads for a
-  // sequence, a switch for a choice, brackets for all. Drawn a quarter larger
-  // than XSDDiagram's, which at 100 % in a browser ran together into a dash.
+  // sequence, a switch for a choice, brackets for all. A little larger than
+  // XSDDiagram's, which at 100 % in a browser ran together into a dash, and
+  // drawn in the soft ink: they structure the drawing, the names are read.
   function drawSymbol(parent, compositor, cx, cy) {
-    var u = 5;   // the symbol's grid step
+    var u = 4.5;   // the symbol's grid step
     var d;
     var dots;
     if (compositor === "sequence") {
       d = "M" + (cx - 3 * u) + " " + cy + "H" + (cx + 3 * u);
-      dots = [[cx - 6, cy], [cx, cy], [cx + 6, cy]];
+      dots = [[cx - 5, cy], [cx, cy], [cx + 5, cy]];
     } else if (compositor === "choice") {
       d = "M" + (cx - 3 * u) + " " + cy + "H" + (cx - 2 * u) + "L" + (cx - u) + " " + (cy - u)
         + "M" + (cx + u) + " " + (cy - u) + "H" + (cx + 2 * u)
@@ -325,7 +326,7 @@
     }
     svg("path", { "class": "cd-dg-symbol-line", d: d }, parent);
     for (var i = 0; i < dots.length; i++) {
-      svg("circle", { "class": "cd-dg-symbol-dot", cx: dots[i][0], cy: dots[i][1], r: 1.9 }, parent);
+      svg("circle", { "class": "cd-dg-symbol-dot", cx: dots[i][0], cy: dots[i][1], r: 1.5 }, parent);
     }
   }
 

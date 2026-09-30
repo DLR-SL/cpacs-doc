@@ -343,8 +343,9 @@ place on screen. The tree view is not affected.
 - **Motion:** the boxes an expand brings in fade in from their parent's side
   in 140 ms; nothing else moves on its own, and with
   `prefers-reduced-motion: reduce` nothing moves at all.
-- **Compositors** are drawn 40 × 20 with a symbol a quarter larger than
-  XSDDiagram's, which at 100 % ran together into a dash.
+- **Compositors** are drawn 36 × 18 with a symbol a little larger than
+  XSDDiagram's, which at 100 % ran together into a dash, in `--ink-soft`
+  with thin lines: they structure the drawing, the names are read.
 
 ### 4.8 Vertical rhythm (amended 2026-09-30)
 
