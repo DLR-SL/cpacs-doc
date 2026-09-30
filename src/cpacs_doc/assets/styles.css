@@ -1277,9 +1277,9 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
    the chosen element at its end a filled box, the preview under the pointer
    the same colour held back. */
 .cd-dg-trail-link, .cd-dg-hover-link { stroke: var(--trail); }
-.cd-dg-trail-link { stroke-width: 2; }
-.cd-dg-hover-link { stroke-width: 1.5; stroke-opacity: 0.5; }
-.cd-dg-on-trail > .cd-dg-frame { stroke: var(--trail); stroke-width: 1.5; }
+.cd-dg-trail-link { stroke-width: 1.25; stroke-opacity: 0.7; }
+.cd-dg-hover-link { stroke-width: 1; stroke-opacity: 0.4; }
+.cd-dg-on-trail > .cd-dg-frame { stroke: var(--trail); }
 .cd-dg-hover-trail > .cd-dg-frame { stroke: var(--trail); }
 .cd-dg-selected > .cd-dg-frame { fill: var(--trail-fill); stroke: var(--trail); stroke-width: 2; }
 /* The keyboard's place is a solid ring, and only while the keyboard is in the

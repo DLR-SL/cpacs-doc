@@ -194,7 +194,7 @@ button work without code.
 
 - **The route.** The boxes and connector steps from the root to the selected
   element are drawn in `--trail` (magenta, the colour a navigation display
-  gives the active route; used nowhere else in the viewer), 2 px for the
+  gives the active route; used nowhere else in the viewer), 1.25 px at 70 % for the
   lines. The other connectors stay in `--rule-strong`. Hovering a box previews
   its route in the same colour at half strength.
 - **One meaning per mark.** Dashes mean optional and nothing else. The
