@@ -787,3 +787,14 @@ def test_new_children_arrive_with_a_short_fade(viewer, base):
         assert page.evaluate(expand)[1] == "none"
     finally:
         page.command("Emulation.setEmulatedMedia", {"features": []})
+
+
+def test_the_zoom_readout_follows_the_wheel(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/")
+    x, y = centre(page, item("header"))
+    page.wheel(x, y, -200, ctrl=True)
+    scale = transform(page)[2]
+    assert scale > 1
+    assert page.evaluate(
+        "return document.getElementById('cd-dg-zoom-reset').textContent;"
+    ) == str(round(scale * 100)) + " %"
