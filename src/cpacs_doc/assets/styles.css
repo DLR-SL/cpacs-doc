@@ -1415,6 +1415,7 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 #cd-dg-zoom-reset { min-width: 4.2rem; font-variant-numeric: tabular-nums; }
 .cd-dg-toolbar #cd-dg-fit { margin-left: 0.4rem; }
 .cd-dg-toolbar .cd-dg-switch { margin-left: 0.6rem; }
+.cd-dg-toolbar .cd-dg-switch + .cd-dg-switch { margin-left: 0; }
 .cd-dg-toolbar .cd-dg-switch[aria-pressed="true"] {
   background: var(--ink);
   border-color: var(--ink);

@@ -363,6 +363,9 @@
     // Types and every bound for the reader who needs them; names and the
     // bounds that carry news for everyone else. The viewer remembers it.
     var expert = !!api.expert;
+    // The coloured path from the root to the selection, on unless the reader
+    // switched it off. The chosen box keeps its mark either way.
+    var showPath = api.path !== false;
 
     container.textContent = "";
     if (!shape.root) {
@@ -570,7 +573,7 @@
       var hadFocus = canvas.contains(document.activeElement);
       linkLayer.textContent = "";
       itemLayer.textContent = "";
-      var route = routeOf(selectedKey);
+      var route = showPath ? routeOf(selectedKey) : {};
       var d = "";
       for (var i = 0; i < current.boxes.length; i++) {
         var box = current.boxes[i];
@@ -594,7 +597,7 @@
       hoverKey = key;
       var marked = itemLayer.querySelectorAll(".cd-dg-hover-trail");
       for (var i = 0; i < marked.length; i++) marked[i].classList.remove("cd-dg-hover-trail");
-      var route = routeOf(key);
+      var route = showPath ? routeOf(key) : {};
       hoverLink.setAttribute("d", routeLinks(route));
       for (var k in route) {
         if (!Object.prototype.hasOwnProperty.call(route, k)) continue;
@@ -889,6 +892,24 @@
     expertButton.setAttribute("aria-pressed", String(expert));
     expertButton.addEventListener("click", function () { setExpert(!expert); });
     toolbar.appendChild(expertButton);
+
+    var pathButton = document.createElement("button");
+    pathButton.type = "button";
+    pathButton.id = "cd-dg-path";
+    pathButton.className = "cd-dg-switch";
+    pathButton.textContent = "Path";
+    pathButton.title = "Show the path from the root to the selection";
+    pathButton.setAttribute("aria-pressed", String(showPath));
+    pathButton.addEventListener("click", function () { setPath(!showPath); });
+    toolbar.appendChild(pathButton);
+
+    // Nothing changes size, so a redraw is enough.
+    function setPath(on) {
+      showPath = !!on;
+      pathButton.setAttribute("aria-pressed", String(showPath));
+      draw();
+      if (api.rememberPath) api.rememberPath(showPath);
+    }
 
     // Boxes change their size, so the drawing is laid out again around the
     // chosen box, which stays where the reader was looking.

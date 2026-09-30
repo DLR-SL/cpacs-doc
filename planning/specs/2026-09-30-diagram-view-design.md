@@ -198,7 +198,10 @@ button work without code.
   element are drawn in `--trail` (magenta, the colour a navigation display
   gives the active route; used nowhere else in the viewer), 1.25 px at 70 % for the
   lines. The other connectors stay in `--rule-strong`. Hovering a box previews
-  its route in the same colour at half strength.
+  its route in the same colour at half strength. A switch **Path** in the
+  toolbar, on by default and remembered per browser
+  (`cpacs-doc.diagramPath`), takes the line, the coloured frames and the
+  preview away; the selected box keeps its mark.
 - **One meaning per mark.** Dashes mean optional and nothing else. The
   selected element is a filled box (`--trail-fill`) with a `--trail` frame.
   The keyboard's place is a solid `--focus` ring around the box, shown only
