@@ -1262,4 +1262,3 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-dg-ring { fill: none; stroke: none; }
 .cd-dg-cursor > .cd-dg-ring { stroke: var(--ink-soft); stroke-dasharray: 2 2; }
 .cd-dg-item:focus-visible > .cd-dg-ring { stroke: var(--focus); stroke-width: 2; stroke-dasharray: none; }
-```
