@@ -320,3 +320,26 @@ browser (`localStorage`, key `cpacs-doc.diagramExpert`).
 
 Switching lays the drawing out again around the selected box, which keeps its
 place on screen. The tree view is not affected.
+
+### 4.7 Reading position, sheet, toolbar, motion (amended 2026-09-30)
+
+- **An address that names a place** puts the chosen box where reading starts,
+  not in the middle: its parent element whole at the left edge of what is
+  visible (where that keeps the box in the left half; otherwise the box at
+  30 % of the width), the box a sixth of the height from the top. Its subtree
+  hangs below and to the right of it. The *Centre* button still centres.
+- **Narrow windows (≤ 48rem):** the documentation is a sheet along the bottom,
+  58 % of the height, instead of a column over the right edge; the diagram
+  keeps its boxes clear of whichever the overlay covers.
+- **Tables in the overlay** read as lists: each row a run of labelled values,
+  the first cell its heading, empty cells left out. The tree's panel keeps
+  its tables. Tips inside the overlay take no room until shown.
+- **Toolbar:** zoom out, the current scale (which resets to 100 %), zoom in
+  as one joined control; then *Fit*, *Centre*, and apart from them *Expert*.
+- **Targets:** the expander's clickable area is 24 px square around its 10 px
+  drawing.
+- **Motion:** the boxes an expand brings in fade in from their parent's side
+  in 140 ms; nothing else moves on its own, and with
+  `prefers-reduced-motion: reduce` nothing moves at all.
+- **Compositors** are drawn 40 × 20 with a symbol a quarter larger than
+  XSDDiagram's, which at 100 % ran together into a dash.

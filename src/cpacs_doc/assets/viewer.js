@@ -1019,14 +1019,26 @@
       },
       typeRef: diagramTypeRef,
       gloss: compositorGloss,
+      // The overlay stands at the right edge, or, in a narrow window, as a
+      // sheet along the bottom; the diagram keeps its boxes clear of either.
       covered: function () {
-        return overlayIsOpen() ? document.getElementById("cd-detail").offsetWidth : 0;
+        return overlayIsOpen() && !overlayIsSheet()
+          ? document.getElementById("cd-detail").offsetWidth : 0;
+      },
+      coveredBelow: function () {
+        return overlayIsOpen() && overlayIsSheet()
+          ? document.getElementById("cd-detail").offsetHeight : 0;
       },
       expert: storedExpert(),
       rememberExpert: function (on) {
         try { window.localStorage.setItem(EXPERT_KEY, on ? "on" : "off"); } catch (e) { /* private mode */ }
       }
     };
+  }
+
+  // The same width at which the stylesheet turns the overlay into a sheet.
+  function overlayIsSheet() {
+    return !!window.matchMedia && window.matchMedia("(max-width: 48rem)").matches;
   }
 
   // Off unless the reader switched it on: the default drawing is for finding
@@ -1516,6 +1528,7 @@
     }
     table.appendChild(head);
     appendChildRows(table, members, 0);
+    labelCells(table);
     panel.appendChild(table);
   }
 
@@ -1633,7 +1646,38 @@
       }
       table.appendChild(row);
     }
+    labelCells(table);
     panel.appendChild(table);
+  }
+
+  // Each cell carries the name of its column. The diagram's overlay is a
+  // column too narrow for six of them, and there a row reads as a short list
+  // of labelled values instead; the tree's panel ignores the labels. Rows
+  // that do not have a cell per column — a compositor's row spans them — keep
+  // their shape, and an empty cell is marked so the list can leave it out.
+  function labelCells(table) {
+    var rows = table.querySelectorAll("tr");
+    if (!rows.length) return;
+    var heads = rows[0].querySelectorAll("th");
+    for (var r = 1; r < rows.length; r++) {
+      var cells = rows[r].querySelectorAll("td");
+      if (cells.length !== heads.length) continue;
+      for (var c = 0; c < cells.length; c++) {
+        cells[c].setAttribute("data-label", headingText(heads[c]));
+        if (!cells[c].textContent.replace(/\s+/g, "")) cells[c].classList.add("cd-cell-empty");
+      }
+    }
+  }
+
+  // The words of a column heading without the explanation some of them carry
+  // as a tip: the first text the heading shows.
+  function headingText(cell) {
+    var walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+    for (var node = walker.nextNode(); node; node = walker.nextNode()) {
+      var words = node.textContent.replace(/\s+/g, " ").trim();
+      if (words) return words;
+    }
+    return "";
   }
 
   function renderTypeDetail(panel, typeName) {

@@ -1266,9 +1266,10 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-dg-item:hover .cd-dg-type .cd-dg-type-text,
 .cd-dg-item:focus-visible .cd-dg-type .cd-dg-type-text { fill: var(--link); text-decoration: underline; }
 .cd-dg-card { fill: var(--ink-soft); font-size: 10px; font-family: var(--face-code); }
-.cd-dg-symbol-line { fill: none; stroke: var(--ink); stroke-width: 1; }
+.cd-dg-symbol-line { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linecap: round; }
 .cd-dg-symbol-dot { fill: var(--ink); }
 .cd-dg-expander { cursor: pointer; }
+.cd-dg-expander .cd-dg-hit { fill: transparent; stroke: none; }
 .cd-dg-expander rect { fill: var(--page); stroke: var(--ink-soft); stroke-width: 1; }
 .cd-dg-expander path { fill: none; stroke: var(--ink); stroke-width: 1.2; }
 .cd-dg-recursive { fill: var(--ink-soft); font-size: 12px; }
@@ -1335,10 +1336,56 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 /* The narrow layout above lets each pane take its content's height, and a
    drawing has none: give it a height of its own, and keep the overlay inside
    a window narrower than its usual width. */
+/* In a narrow window the documentation is a sheet along the bottom rather
+   than a column over the right edge: a column that wide covered the drawing
+   whole, and the chosen box with it. */
 @media (max-width: 48rem) {
   .cd-app-diagram .cd-pane.cd-diagram { height: calc(100vh - 5rem); min-height: 18rem; }
-  .cd-app-diagram.cd-detail-open .cd-pane-detail { max-width: calc(100vw - 2rem); width: auto; left: 1rem; right: 1rem; }
+  .cd-app-diagram.cd-detail-open .cd-pane-detail {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-width: none;
+    height: 58vh;
+    border-radius: 10px 10px 0 0;
+    border-bottom: 0;
+  }
+  .cd-app-diagram.cd-detail-open .cd-overlay-close { top: calc(42vh + 0.6rem); right: 1rem; }
 }
+
+/* A table in the overlay reads as a list: each row a short run of labelled
+   values, the first cell its heading, empty cells left out. The overlay is a
+   column, and a six-column table in it only scrolled sideways. */
+.cd-app-diagram .cd-pane-detail table,
+.cd-app-diagram .cd-pane-detail tbody,
+.cd-app-diagram .cd-pane-detail tr,
+.cd-app-diagram .cd-pane-detail td { display: block; width: auto; }
+.cd-app-diagram .cd-pane-detail th { display: none; }
+/* Nothing in the overlay is wider than it any more, except a hidden tip past
+   its right edge, which made the whole panel scroll sideways. */
+.cd-app-diagram.cd-detail-open .cd-pane-detail { overflow-x: hidden; }
+.cd-app-diagram .cd-pane-detail .cd-tip { display: none; max-width: min(22rem, calc(100vw - 6rem)); }
+.cd-app-diagram .cd-pane-detail .cd-group-term:hover .cd-tip,
+.cd-app-diagram .cd-pane-detail .cd-group-term:focus-visible .cd-tip,
+.cd-app-diagram .cd-pane-detail .cd-facet:hover .cd-tip,
+.cd-app-diagram .cd-pane-detail .cd-facet:focus-visible .cd-tip,
+.cd-app-diagram .cd-pane-detail .cd-note-term:hover .cd-tip,
+.cd-app-diagram .cd-pane-detail .cd-note-term:focus-visible .cd-tip { display: block; }
+.cd-app-diagram .cd-pane-detail tr { padding: 0.45rem 0; border-bottom: 1px solid var(--rule); }
+.cd-app-diagram .cd-pane-detail td { padding: 0.08rem 0; border: 0; }
+.cd-app-diagram .cd-pane-detail td.cd-cell-empty { display: none; }
+.cd-app-diagram .cd-pane-detail td[data-label] + td[data-label] {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0 0.6rem;
+}
+.cd-app-diagram .cd-pane-detail td[data-label] + td[data-label]::before {
+  content: attr(data-label);
+  color: var(--ink-soft);
+}
+.cd-app-diagram .cd-pane-detail td[data-label] + td.cd-cell-empty { display: none; }
 
 .cd-dg-toolbar {
   position: absolute;
@@ -1358,9 +1405,28 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   cursor: pointer;
 }
 .cd-dg-toolbar button:hover { border-color: var(--ink); }
+/* The zoom is one control of three joined buttons; the readout in the middle
+   keeps a steady width as the number changes. */
+.cd-dg-zoom { display: flex; }
+.cd-dg-zoom button { border-radius: 0; margin-left: -1px; }
+.cd-dg-zoom button:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+.cd-dg-zoom button:last-child { border-radius: 0 4px 4px 0; }
+.cd-dg-zoom button:hover { position: relative; }
+#cd-dg-zoom-reset { min-width: 4.2rem; font-variant-numeric: tabular-nums; }
+.cd-dg-toolbar #cd-dg-fit { margin-left: 0.4rem; }
 .cd-dg-toolbar .cd-dg-switch { margin-left: 0.6rem; }
 .cd-dg-toolbar .cd-dg-switch[aria-pressed="true"] {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--page);
+}
+
+/* What an expand brought in arrives from its parent's side, once, briefly;
+   nothing else in the drawing moves on its own. */
+.cd-dg-enter { animation: cd-dg-enter 140ms ease-out; }
+@keyframes cd-dg-enter {
+  from { opacity: 0; transform: translateX(-8px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cd-dg-enter { animation: none; }
 }

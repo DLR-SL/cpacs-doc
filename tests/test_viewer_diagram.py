@@ -538,3 +538,22 @@ def test_the_expert_toggle_switches_in_place_and_is_remembered(plain):
     assert result["moved"] < 0.5
     assert result["calls"] == [["expert", True]]
     assert result["selected"] is True
+
+
+# ---- touch targets and symbols ----
+
+def test_the_expander_is_easy_to_hit(mounted):
+    """Ten pixels drawn, twenty-four to hit."""
+    size = mounted.evaluate(
+        "var b = dgItem('wings').querySelector('.cd-dg-expander').getBBox();"
+        " return [b.width, b.height];"
+    )
+    assert size[0] >= 24 and size[1] >= 24
+
+
+def test_compositor_symbols_are_legible(mounted):
+    size = mounted.evaluate(
+        "var b = document.querySelector('#dg-host .cd-dg-group .cd-dg-frame').getBBox();"
+        " return [b.width, b.height];"
+    )
+    assert size[0] >= 40 and size[1] >= 20

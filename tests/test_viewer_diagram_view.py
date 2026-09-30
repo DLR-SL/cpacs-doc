@@ -681,3 +681,109 @@ def test_the_expert_view_is_off_by_default_and_remembered(viewer, base):
     assert page.evaluate(
         "return document.querySelectorAll('.cd-dg-type-text').length;"
     ) == 0
+
+
+# ---- reading position, sheet, lists, readout, motion ----
+
+def test_a_deep_link_places_the_selection_where_reading_starts(viewer, base):
+    """The subtree hangs down and to the right of the chosen box, so the box
+    goes to the upper left of what is visible rather than its middle — with
+    its parent whole at the left edge, so the reader sees where it hangs."""
+    page = at(viewer, base, "/diagram/cpacs/wings/wing/")
+    place = page.evaluate("""
+      var pane = document.getElementById('cd-diagram').getBoundingClientRect();
+      var sheet = document.getElementById('cd-detail').getBoundingClientRect();
+      var box = document.querySelector('.cd-dg-selected .cd-dg-frame').getBoundingClientRect();
+      var parent = document.querySelector('.cd-dg-item[data-path="wings"] .cd-dg-frame')
+        .getBoundingClientRect();
+      return { left: box.left - pane.left, top: box.top - pane.top,
+               parent: parent.left - pane.left,
+               width: sheet.left - pane.left, height: pane.height };
+    """)
+    assert 0 <= place["parent"] < place["left"] < place["width"] / 2
+    assert 0 <= place["top"] < place["height"] / 3
+
+
+def test_the_overlay_is_a_sheet_in_a_narrow_window(viewer, base):
+    viewer.command("Emulation.setDeviceMetricsOverride",
+                   {"width": 420, "height": 800, "deviceScaleFactor": 1, "mobile": False})
+    try:
+        page = at(viewer, base, "/diagram/cpacs/header/")
+        geometry = page.evaluate("""
+          var sheet = document.getElementById('cd-detail').getBoundingClientRect();
+          var box = document.querySelector('.cd-dg-selected .cd-dg-frame').getBoundingClientRect();
+          var panel = document.getElementById('cd-detail');
+          return { top: sheet.top, bottom: sheet.bottom, width: sheet.width,
+                   boxBottom: box.bottom, h: window.innerHeight, w: window.innerWidth,
+                   sideways: panel.scrollWidth - panel.clientWidth };
+        """)
+        assert geometry["top"] > geometry["h"] * 0.3, "the sheet covers the whole window"
+        assert geometry["bottom"] >= geometry["h"] - 2
+        assert geometry["width"] >= geometry["w"] - 40
+        assert geometry["boxBottom"] < geometry["top"], "the chosen box sits under the sheet"
+        # A hidden tip past the right edge made the whole sheet scroll sideways.
+        assert geometry["sideways"] <= 1
+    finally:
+        viewer.command("Emulation.clearDeviceMetricsOverride")
+
+
+def test_tables_in_the_overlay_read_as_lists(viewer, base):
+    """The overlay is a column, and a six-column table in it scrolled sideways.
+    There each row becomes a short list of labelled values; the tree view's
+    panel keeps its tables."""
+    page = at(viewer, base, "/diagram/cpacs/header/")
+    shape = page.evaluate("""
+      var panel = document.getElementById('cd-detail');
+      var table = panel.querySelector('table');
+      var labelled = panel.querySelector('td[data-label="Occurrence"]');
+      return { display: getComputedStyle(table).display,
+               head: getComputedStyle(panel.querySelector('th')).display,
+               labelled: !!labelled,
+               sideways: panel.scrollWidth - panel.clientWidth };
+    """)
+    assert shape["display"] == "block"
+    assert shape["head"] == "none"
+    assert shape["labelled"] is True
+    assert shape["sideways"] <= 1
+    viewer.open(base + "/tree/cpacs/header/")
+    viewer.wait_for("return !!document.querySelector('#cd-detail table');", "the tree's panel")
+    assert viewer.evaluate(
+        "return getComputedStyle(document.querySelector('#cd-detail table')).display;"
+    ) == "table"
+
+
+def test_the_zoom_readout_follows_the_scale(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/")
+    readout = "return document.getElementById('cd-dg-zoom-reset').textContent;"
+    assert page.evaluate(readout) == "100 %"
+    page.click(*centre(page, "#cd-dg-zoom-in"))
+    assert page.evaluate(readout) == "125 %"
+    page.click(*centre(page, "#cd-dg-zoom-reset"))
+    assert page.evaluate(readout) == "100 %"
+
+
+def test_new_children_arrive_with_a_short_fade(viewer, base):
+    """Motion only where it answers the reader: what an expand added, and
+    nothing at all where the reader asked for less motion."""
+    # The machine's own setting decides otherwise, and a workstation with
+    # animations switched off is common enough.
+    viewer.command("Emulation.setEmulatedMedia",
+                   {"features": [{"name": "prefers-reduced-motion", "value": "no-preference"}]})
+    page = at(viewer, base, "/diagram/cpacs/")
+    expand = """
+      document.querySelector('.cd-dg-item[data-path="wings"] .cd-dg-expander')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      var wing = document.querySelector('.cd-dg-item[data-path="wings/wing"]');
+      return [wing.classList.contains('cd-dg-enter'), getComputedStyle(wing).animationName,
+              document.querySelector('.cd-dg-item[data-path="header"]').classList.contains('cd-dg-enter')];
+    """
+    assert page.evaluate("return document.querySelectorAll('.cd-dg-enter').length;") == 0
+    entered, animation, old = page.evaluate(expand)
+    assert entered is True and animation != "none" and old is False
+    page.command("Emulation.setEmulatedMedia",
+                 {"features": [{"name": "prefers-reduced-motion", "value": "reduce"}]})
+    try:
+        page = at(viewer, base, "/diagram/cpacs/")
+        assert page.evaluate(expand)[1] == "none"
+    finally:
+        page.command("Emulation.setEmulatedMedia", {"features": []})

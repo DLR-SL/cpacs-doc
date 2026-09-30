@@ -16,8 +16,8 @@
   var PAD_X = 8;           // text inset inside a box
   var LINE_ONE = 22;       // a box holding the name alone
   var LINE_TWO = 34;       // a box holding the name and the type under it
-  var GROUP_W = 34;
-  var GROUP_H = 18;
+  var GROUP_W = 40;
+  var GROUP_H = 20;
   var EXPANDER = 10;       // side of the +/- square, centred on the right edge
   var STACK = 3;           // offset of the second frame behind a repeated item
   var CARD_ROOM = 12;      // room under a box for its cardinality
@@ -305,35 +305,45 @@
   }
 
   // The three symbols, after XSDDiagram's own: a line with three beads for a
-  // sequence, a switch for a choice, brackets for all.
+  // sequence, a switch for a choice, brackets for all. Drawn a quarter larger
+  // than XSDDiagram's, which at 100 % in a browser ran together into a dash.
   function drawSymbol(parent, compositor, cx, cy) {
+    var u = 5;   // the symbol's grid step
     var d;
     var dots;
     if (compositor === "sequence") {
-      d = "M" + (cx - 12) + " " + cy + "H" + (cx + 12);
-      dots = [[cx - 5, cy], [cx, cy], [cx + 5, cy]];
+      d = "M" + (cx - 3 * u) + " " + cy + "H" + (cx + 3 * u);
+      dots = [[cx - 6, cy], [cx, cy], [cx + 6, cy]];
     } else if (compositor === "choice") {
-      d = "M" + (cx - 12) + " " + cy + "H" + (cx - 8) + "L" + (cx - 4) + " " + (cy - 4)
-        + "M" + (cx + 4) + " " + (cy - 4) + "H" + (cx + 8)
-        + "M" + (cx + 4) + " " + cy + "H" + (cx + 12)
-        + "M" + (cx + 4) + " " + (cy + 4) + "H" + (cx + 8)
-        + "M" + (cx + 8) + " " + (cy - 4) + "V" + (cy + 4);
-      dots = [[cx, cy - 4], [cx, cy], [cx, cy + 4]];
+      d = "M" + (cx - 3 * u) + " " + cy + "H" + (cx - 2 * u) + "L" + (cx - u) + " " + (cy - u)
+        + "M" + (cx + u) + " " + (cy - u) + "H" + (cx + 2 * u)
+        + "M" + (cx + u) + " " + cy + "H" + (cx + 3 * u)
+        + "M" + (cx + u) + " " + (cy + u) + "H" + (cx + 2 * u)
+        + "M" + (cx + 2 * u) + " " + (cy - u) + "V" + (cy + u);
+      dots = [[cx, cy - u], [cx, cy], [cx, cy + u]];
     } else {
-      d = "M" + (cx - 4) + " " + (cy - 4) + "H" + (cx - 8) + "V" + (cy + 4) + "H" + (cx - 4)
-        + "M" + (cx - 12) + " " + cy + "H" + (cx - 8)
-        + "M" + (cx + 4) + " " + (cy - 4) + "H" + (cx + 8) + "V" + (cy + 4) + "H" + (cx + 4)
-        + "M" + (cx + 8) + " " + cy + "H" + (cx + 12);
-      dots = [[cx, cy - 4], [cx, cy], [cx, cy + 4]];
+      d = "M" + (cx - u) + " " + (cy - u) + "H" + (cx - 2 * u) + "V" + (cy + u) + "H" + (cx - u)
+        + "M" + (cx - 3 * u) + " " + cy + "H" + (cx - 2 * u)
+        + "M" + (cx + u) + " " + (cy - u) + "H" + (cx + 2 * u) + "V" + (cy + u) + "H" + (cx + u)
+        + "M" + (cx + 2 * u) + " " + cy + "H" + (cx + 3 * u);
+      dots = [[cx, cy - u], [cx, cy], [cx, cy + u]];
     }
     svg("path", { "class": "cd-dg-symbol-line", d: d }, parent);
     for (var i = 0; i < dots.length; i++) {
-      svg("circle", { "class": "cd-dg-symbol-dot", cx: dots[i][0], cy: dots[i][1], r: 1.6 }, parent);
+      svg("circle", { "class": "cd-dg-symbol-dot", cx: dots[i][0], cy: dots[i][1], r: 1.9 }, parent);
     }
   }
 
+  var EXPANDER_HIT = 24;   // the area a click on the expander may land in
+
   function drawExpander(parent, cx, cy, open) {
     var group = svg("g", { "class": "cd-dg-expander" }, parent);
+    // Invisible, and larger than the square it serves: ten pixels are a small
+    // target for a mouse and none at all for a finger.
+    svg("rect", {
+      "class": "cd-dg-hit", x: cx - EXPANDER_HIT / 2, y: cy - EXPANDER_HIT / 2,
+      width: EXPANDER_HIT, height: EXPANDER_HIT
+    }, group);
     svg("rect", {
       x: cx - EXPANDER / 2, y: cy - EXPANDER / 2, width: EXPANDER, height: EXPANDER
     }, group);
@@ -413,7 +423,10 @@
       return item.kind === "group" || (item.expandable && !!open[item.key]);
     }
 
+    var readout = null;   // the zoom button that shows the scale
+
     function applyView() {
+      if (readout) readout.textContent = Math.round(view.scale * 100) + " %";
       viewport.setAttribute(
         "transform", "translate(" + view.x + " " + view.y + ") scale(" + view.scale + ")"
       );
@@ -614,9 +627,22 @@
 
     function toggle(item) {
       if (!item.expandable) return;
-      if (open[item.key]) delete open[item.key];
-      else open[item.key] = true;
+      var opening = !open[item.key];
+      if (opening) open[item.key] = true;
+      else delete open[item.key];
+      var before = byKey;
       render(item.key);
+      if (opening) markEntered(before);
+    }
+
+    // The boxes an expand brought in, so they can arrive rather than appear:
+    // twenty boxes at once are otherwise hard to tell from what was there.
+    function markEntered(before) {
+      for (var key in byKey) {
+        if (!Object.prototype.hasOwnProperty.call(byKey, key) || before[key]) continue;
+        var node = itemLayer.querySelector('[data-key="' + key + '"]');
+        if (node) node.classList.add("cd-dg-enter");
+      }
     }
 
     function choose(item, focusDetail) {
@@ -632,12 +658,17 @@
       return Math.max(0, canvas.clientWidth - (api.covered ? api.covered() : 0));
     }
 
+    // Below, where a narrow window shows the documentation as a sheet.
+    function visibleHeight() {
+      return Math.max(0, canvas.clientHeight - (api.coveredBelow ? api.coveredBelow() : 0));
+    }
+
     // Pans the box into the part of the pane the reader can see: always to
     // its middle with `always`, otherwise only when it is not wholly in view.
     function reveal(box, always) {
       if (!box) return;
       var width = visibleWidth();
-      var height = canvas.clientHeight;
+      var height = visibleHeight();
       var s = view.scale;
       var left = view.x + box.x * s;
       var top = view.y + box.y * s;
@@ -649,7 +680,28 @@
       applyView();
     }
 
-    function show(path, centre) {
+    // Where reading starts: the chosen box in the upper left of what is
+    // visible. With the Top alignment its subtree hangs down and to the right
+    // of it, and a centred box left half of the window empty above it.
+    // The parent stands whole at the left edge where that keeps the box in
+    // the left half, so the reader sees what it hangs from.
+    function settle(box) {
+      if (!box) return;
+      var s = view.scale;
+      var width = visibleWidth();
+      var left = Math.max(MARGIN, Math.round(width * 0.3));
+      var parent = parentElement(box);
+      if (parent && MARGIN + (box.x - parent.x) * s < width / 2) {
+        left = MARGIN + (box.x - parent.x) * s;
+      }
+      view.x = left - box.x * s;
+      view.y = Math.max(MARGIN, Math.round(visibleHeight() / 6)) - box.y * s;
+      applyView();
+    }
+
+    // `place` puts the box where reading starts; without it the view only
+    // moves when the box is out of sight.
+    function show(path, place) {
       var chain = shape.find(path);
       if (!chain) {
         // No box is selected any more; the old mark would contradict "Not found".
@@ -668,7 +720,8 @@
       }
       cursorKey = selectedKey;
       render(null);
-      reveal(byKey[selectedKey], !!centre);
+      if (place) settle(byKey[selectedKey]);
+      else reveal(byKey[selectedKey], false);
       return true;
     }
 
@@ -733,18 +786,18 @@
     // Around the middle of what the reader can see, which is left of the
     // overlay while it is open.
     function zoomBy(factor) {
-      zoomAt(factor, visibleWidth() / 2, canvas.clientHeight / 2);
+      zoomAt(factor, visibleWidth() / 2, visibleHeight() / 2);
     }
 
     // Exactly the scale asked for, not a product of factors that lands a
     // rounding error beside it.
     function setScale(scale) {
-      scaleAt(scale, visibleWidth() / 2, canvas.clientHeight / 2);
+      scaleAt(scale, visibleWidth() / 2, visibleHeight() / 2);
     }
 
     function fit() {
       var width = visibleWidth();
-      var height = canvas.clientHeight;
+      var height = visibleHeight();
       var scale = Math.min(
         (width - 2 * MARGIN) / current.width, (height - 2 * MARGIN) / current.height, 1
       );
@@ -790,23 +843,34 @@
 
     var toolbar = document.createElement("div");
     toolbar.className = "cd-dg-toolbar";
-    [
-      ["cd-dg-zoom-out", "\u2212", "Zoom out", function () { zoomBy(0.8); }],
-      ["cd-dg-zoom-in", "+", "Zoom in", function () { zoomBy(1.25); }],
-      ["cd-dg-zoom-reset", "100 %", "Actual size", function () { setScale(1); }],
-      ["cd-dg-fit", "Fit", "Fit the diagram into the window", fit],
-      ["cd-dg-centre", "Centre", "Centre the selection",
-        function () { reveal(byKey[selectedKey] || byKey[cursorKey], true); }]
-    ].forEach(function (spec) {
+
+    function toolButton(parent, id, label, title, action) {
       var button = document.createElement("button");
       button.type = "button";
-      button.id = spec[0];
-      button.textContent = spec[1];
-      button.title = spec[2];
-      button.setAttribute("aria-label", spec[2]);
-      button.addEventListener("click", spec[3]);
-      toolbar.appendChild(button);
-    });
+      button.id = id;
+      button.textContent = label;
+      button.title = title;
+      button.setAttribute("aria-label", title);
+      button.addEventListener("click", action);
+      parent.appendChild(button);
+      return button;
+    }
+
+    // Out, the scale as it stands, in: one control, read left to right. The
+    // middle button says where the zoom is and takes it back to 100 %.
+    var zoomGroup = document.createElement("div");
+    zoomGroup.className = "cd-dg-zoom";
+    zoomGroup.setAttribute("role", "group");
+    zoomGroup.setAttribute("aria-label", "Zoom");
+    toolbar.appendChild(zoomGroup);
+    toolButton(zoomGroup, "cd-dg-zoom-out", "\u2212", "Zoom out", function () { zoomBy(0.8); });
+    readout = toolButton(zoomGroup, "cd-dg-zoom-reset", "100 %", "Back to 100 %",
+      function () { setScale(1); });
+    toolButton(zoomGroup, "cd-dg-zoom-in", "+", "Zoom in", function () { zoomBy(1.25); });
+    toolButton(toolbar, "cd-dg-fit", "Fit", "Fit the diagram into the window", fit);
+    toolButton(toolbar, "cd-dg-centre", "Centre", "Centre the selection",
+      function () { reveal(byKey[selectedKey] || byKey[cursorKey], true); });
+    applyView();
     // A switch, not an action, so it says whether it is on. Kept apart from
     // the zoom buttons: it changes what is drawn, not where.
     var expertButton = document.createElement("button");
