@@ -731,6 +731,92 @@
     });
     container.appendChild(toolbar);
 
+    /* ---- keyboard (0010, 0016-0021, in two dimensions) ---- */
+
+    function isTarget(box) {
+      return box.item.kind === "element" && box.item.selectable;
+    }
+
+    function parentElement(box) {
+      var p = box.parent;
+      while (p && p.item.kind !== "element") p = p.parent;
+      return p;
+    }
+
+    // The boxes are in depth-first order, so the children of one element
+    // stand in them top to bottom.
+    function siblings(box) {
+      var parent = parentElement(box);
+      if (!parent) return [box];
+      return current.boxes.filter(function (b) { return isTarget(b) && parentElement(b) === parent; });
+    }
+
+    function firstChild(box) {
+      for (var i = 0; i < current.boxes.length; i++) {
+        var b = current.boxes[i];
+        if (isTarget(b) && parentElement(b) === box) return b;
+      }
+      return null;
+    }
+
+    // Siblings first; past the last of them, the nearest box of the same
+    // column in that direction — the column is what the eye runs down.
+    function vertical(box, step) {
+      var list = siblings(box);
+      var index = list.indexOf(box);
+      if (list[index + step]) return list[index + step];
+      var best = null;
+      for (var i = 0; i < current.boxes.length; i++) {
+        var b = current.boxes[i];
+        if (b === box || !isTarget(b) || b.depth !== box.depth) continue;
+        var ahead = step > 0 ? b.y > box.y : b.y < box.y;
+        if (ahead && (!best || Math.abs(b.y - box.y) < Math.abs(best.y - box.y))) best = b;
+      }
+      return best;
+    }
+
+    function columnEnd(box, step) {
+      var column = current.boxes.filter(function (b) { return isTarget(b) && b.depth === box.depth; });
+      column.sort(function (a, b) { return a.y - b.y; });
+      return step < 0 ? column[0] : column[column.length - 1];
+    }
+
+    function moveTo(target) {
+      if (!target) return;
+      cursorKey = target.item.key;
+      draw();
+      focus();
+      reveal(target, false);
+    }
+
+    canvas.addEventListener("keydown", function (event) {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      var box = byKey[cursorKey];
+      if (!box) return;
+      var item = box.item;
+      switch (event.key) {
+        case "ArrowDown": moveTo(vertical(box, 1)); break;
+        case "ArrowUp": moveTo(vertical(box, -1)); break;
+        case "ArrowRight":
+          if (item.expandable && !open[item.key]) toggle(item);
+          else moveTo(firstChild(box));
+          break;
+        case "ArrowLeft":
+          if (item.expandable && open[item.key]) toggle(item);
+          else moveTo(parentElement(box));
+          break;
+        case "Home": moveTo(columnEnd(box, -1)); break;
+        case "End": moveTo(columnEnd(box, 1)); break;
+        case " ": choose(item, false); break;
+        case "Enter": choose(item, true); break;
+        case "+": case "=": zoomBy(1.25); break;
+        case "-": zoomBy(0.8); break;
+        case "0": setScale(1); break;
+        default: return;
+      }
+      event.preventDefault();
+    });
+
     render(null);
 
     return {

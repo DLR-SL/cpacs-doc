@@ -609,6 +609,16 @@
       // pressed Enter is nearer to one of them than to the other.
       [["Esc", "Backspace"], "back to the tree"]
     ], "tree"],
+    // The diagram's keys, in the tree's words where the keys are the tree's.
+    // Its way back leads to the diagram, not to the tree it replaced.
+    ["", "key", [
+      [["\u2191", "\u2193"], "move"],
+      [["\u2192", "\u2190"], "open, close"],
+      [["Space"], "details"],
+      [["Enter"], "details, and go there"],
+      [["+", "\u2212", "0"], "zoom"],
+      [["Esc", "Backspace"], "back to the diagram"]
+    ], "diagram"],
     HINT_MARKS,
     // A heading names what the row below it is, never where the reader is —
     // the tab above already says that. The forms are the one group whose kind

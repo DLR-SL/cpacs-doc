@@ -368,3 +368,156 @@ def test_centre_puts_the_selection_beside_the_overlay(viewer, base):
         " return [(d.left + o.left) / 2, (d.top + d.bottom) / 2];"
     )
     assert abs(x - middle[0]) < 3 and abs(y - middle[1]) < 3
+
+
+# ---- keyboard ----
+
+def cursor(page):
+    return page.evaluate(
+        "var c = document.querySelector('.cd-dg-cursor'); return c ? c.getAttribute('data-path') : null;"
+    )
+
+
+def keyed(viewer, base, path="/diagram/cpacs/"):
+    page = at(viewer, base, path)
+    page.evaluate("document.querySelector('.cd-dg-cursor').focus(); return true;")
+    return page
+
+
+def test_the_diagram_is_one_tab_stop(viewer, base):
+    page = keyed(viewer, base)
+    assert page.evaluate(
+        "return document.querySelectorAll('.cd-dg-item[tabindex=\"0\"]').length;"
+    ) == 1
+    assert page.evaluate(
+        "return document.activeElement.closest('[role=\"tree\"]').getAttribute('aria-label');"
+    ) == "Instance diagram"
+
+
+def test_right_opens_then_enters(viewer, base):
+    page = keyed(viewer, base)
+    page.press("ArrowRight")                 # cpacs is open: into it
+    assert cursor(page) == "header"
+    page.press("ArrowRight")                 # header is closed: open it
+    assert cursor(page) == "header"
+    assert page.evaluate(
+        "return document.querySelector('.cd-dg-item[data-path=\"header\"]').getAttribute('aria-expanded');"
+    ) == "true"
+    page.press("ArrowRight")                 # past the all: first element
+    assert cursor(page) == "header/alpha"
+
+
+def test_down_walks_the_siblings(viewer, base):
+    page = keyed(viewer, base)
+    page.press("ArrowRight")                 # cpacs is open: into it
+    assert cursor(page) == "header"
+    page.press("ArrowDown")
+    assert cursor(page) == "wings"
+    page.press("ArrowDown")
+    assert cursor(page) == "extras"
+    page.press("ArrowUp")
+    assert cursor(page) == "wings"
+    page.press("Home")
+    assert cursor(page) == "header"
+    page.press("End")
+    assert cursor(page) == "extras"
+
+
+def test_down_past_the_last_sibling_stays_in_the_column(viewer, base):
+    """beta is the last child of header; below it in the same column stands
+    wing, a child of another parent."""
+    page = keyed(viewer, base, "/diagram/cpacs/wings/wing/")
+    page.evaluate("document.querySelector('#cd-overlay-close').click(); return true;")
+    page.evaluate("""
+      var header = document.querySelector('.cd-dg-item[data-path="header"]');
+      header.querySelector('.cd-dg-expander')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      document.querySelector('.cd-dg-item[data-path="header/beta"] .cd-dg-frame')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      document.querySelector('.cd-dg-cursor').focus();
+      return true;
+    """)
+    assert cursor(page) == "header/beta"
+    page.press("ArrowDown")
+    assert cursor(page) == "wings/wing"
+
+
+def test_left_closes_then_climbs(viewer, base):
+    page = keyed(viewer, base)
+    page.press("ArrowRight")
+    page.press("ArrowRight")
+    page.press("ArrowRight")
+    assert cursor(page) == "header/alpha"
+    page.press("ArrowLeft")                  # alpha does not open: to its parent
+    assert cursor(page) == "header"
+    page.press("ArrowLeft")                  # header is open: close it
+    assert cursor(page) == "header"
+    assert page.evaluate(
+        "return document.querySelector('.cd-dg-item[data-path=\"header\"]').getAttribute('aria-expanded');"
+    ) == "false"
+    page.press("ArrowLeft")
+    assert cursor(page) == ""
+
+
+def test_space_selects_and_stays(viewer, base):
+    page = keyed(viewer, base)
+    page.press("ArrowRight")
+    page.press(" ")
+    assert page.evaluate(HEADING) == "header"
+    assert overlay_open(page)
+    assert page.evaluate("return document.activeElement.getAttribute('data-path');") == "header"
+
+
+def test_enter_selects_and_goes_there_escape_comes_back_then_closes(viewer, base):
+    page = keyed(viewer, base)
+    page.press("ArrowRight")
+    page.press("Enter")
+    assert page.evaluate(
+        "return document.getElementById('cd-detail').contains(document.activeElement);"
+    )
+    page.press("Escape")
+    assert overlay_open(page)
+    assert page.evaluate("return document.activeElement.getAttribute('data-path');") == "header"
+    page.press("Backspace")
+    assert overlay_open(page) is False
+
+
+def test_the_zoom_keys(viewer, base):
+    page = keyed(viewer, base)
+    page.press("+")
+    assert abs(transform(page)[2] - 1.25) < 1e-6
+    page.press("-")
+    assert abs(transform(page)[2] - 1.0) < 1e-6
+    page.press("-")
+    page.press("0")
+    assert transform(page)[2] == 1
+
+
+def test_the_cursor_ring_is_visible(viewer, base):
+    page = keyed(viewer, base)
+    page.press("ArrowRight")
+    assert page.evaluate(
+        "return getComputedStyle(document.querySelector('.cd-dg-cursor > .cd-dg-ring')).stroke;"
+    ) != "none"
+
+
+def test_a_cursor_off_screen_pans_along(viewer, base):
+    page = keyed(viewer, base)
+    page.press("ArrowRight")
+    page.wheel(*on_canvas(page), -3000)     # the drawing far below the window
+    page.evaluate("document.querySelector('.cd-dg-cursor').focus(); return true;")
+    page.press("ArrowDown")
+    assert page.evaluate("""
+      var pane = document.getElementById('cd-diagram').getBoundingClientRect();
+      var r = document.querySelector('.cd-dg-cursor .cd-dg-frame').getBoundingClientRect();
+      return r.top >= pane.top && r.bottom <= pane.bottom;
+    """)
+
+
+def test_the_help_shows_the_diagram_keys(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/")
+    page.click(*centre(page, "#cd-help"))
+    assert page.evaluate("""
+      var line = document.querySelector('#cd-hint .cd-hint-line[data-tab="diagram"]');
+      return !!line && !line.hidden && line.textContent.indexOf('zoom') !== -1;
+    """)
