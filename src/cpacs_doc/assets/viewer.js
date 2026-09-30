@@ -20,6 +20,7 @@
   "use strict";
 
   var TREE_SEGMENT = "/tree/";
+  var DIAGRAM_SEGMENT = "/diagram/";
   var MODEL_FILE = "/cpacs-doc-model.json";
   var MODEL_ELEMENT = "cd-model";
   var ROOT_TOKEN = "%ROOT%";
@@ -38,7 +39,9 @@
     usage: null,          // reverse index, built on first type view
     shownType: null,   // type displayed in place of the selected node's detail
     shownSection: null, // documentation section displayed in its place
-    tab: "tree"        // place in the left column the reader last chose
+    tab: "tree",       // place in the left column the reader last chose
+    view: "tree",      // "tree" or "diagram": which picture of the tree is up
+    diagram: null      // the mounted diagram, made on the first visit
   };
 
   function singleFile() {
@@ -53,25 +56,43 @@
     return rest.split("/").filter(function (s) { return s.length > 0; });
   }
 
+  // The view is named by the address, /tree/ or /diagram/, and the path after
+  // it means the same in both. Whichever segment comes first wins, so an
+  // element that happens to be called "diagram" deep in a tree path stays a
+  // tree path.
+  function routeIn(text) {
+    var tree = text.indexOf(TREE_SEGMENT);
+    var diagram = text.indexOf(DIAGRAM_SEGMENT);
+    if (tree === -1 && diagram === -1) return null;
+    var isDiagram = diagram !== -1 && (tree === -1 || diagram < tree);
+    var at = isDiagram ? diagram : tree;
+    return {
+      at: at,
+      view: isDiagram ? "diagram" : "tree",
+      rest: text.slice(at + (isDiagram ? DIAGRAM_SEGMENT : TREE_SEGMENT).length)
+    };
+  }
+
   function parseLocation() {
     var pathname = decodeURIComponent(window.location.pathname);
-    var index = pathname.indexOf(TREE_SEGMENT);
-    if (index === -1) {
+    var route = routeIn(pathname);
+    if (route === null) {
       // One file is opened under its own name, so its path says nothing about
       // where the reader is; the fragment carries that instead. An absent
       // fragment is the root of the tree rather than a 404 — there is no other
       // document here that could have been meant.
       if (!singleFile()) return null;
-      var fragment = decodeURIComponent(window.location.hash.slice(1));
-      var at = fragment.indexOf(TREE_SEGMENT);
+      var inFragment = routeIn(decodeURIComponent(window.location.hash.slice(1)));
       return {
         root: ".",
-        segments: at === -1 ? [] : segmentsOf(fragment.slice(at + TREE_SEGMENT.length))
+        view: inFragment ? inFragment.view : "tree",
+        segments: inFragment ? segmentsOf(inFragment.rest) : []
       };
     }
     return {
-      root: pathname.slice(0, index),
-      segments: segmentsOf(pathname.slice(index + TREE_SEGMENT.length))
+      root: pathname.slice(0, route.at),
+      view: route.view,
+      segments: segmentsOf(route.rest)
     };
   }
 
@@ -466,6 +487,10 @@
   // focuses nothing — so the Handbook has to be put away before the cursor is
   // asked for.
   function backToTree() {
+    if (state.view === "diagram") {
+      if (state.diagram) state.diagram.focus();
+      return;
+    }
     if (docsAreOpen()) showPane("tree");
     focusCursor();
   }
@@ -807,6 +832,7 @@
       if (event.altKey || event.ctrlKey || event.metaKey) return;
       if (isTextField(event.target)) return;
       if (event.key === "/") {
+        if (state.view === "diagram") return;
         if (!document.getElementById("cd-search")) return;
         showPane("search");
         focusSearch();
@@ -831,6 +857,10 @@
           closeSearch(true);
         } else if (inDetail(event.target)) {
           backToTree();
+        } else if (overlayIsOpen()) {
+          // Out of the panel is the nearer thing; closing it the next.
+          closeOverlay();
+          backToTree();
         } else if (document.getElementById("cd-hint")) {
           hideHint();
         } else {
@@ -846,8 +876,12 @@
       // included, has handled its own keys by now.
       if (event.target === document.body || event.target === document.documentElement) {
         if (event.key.indexOf("Arrow") === 0) {
-          hintStart();
-          focusCursor();
+          if (state.view === "diagram") {
+            backToTree();
+          } else {
+            hintStart();
+            focusCursor();
+          }
           event.preventDefault();
         }
       }
@@ -883,22 +917,112 @@
      way out of it. One key back, learned once, beats two that hold only until
      the reader tabs on to a link. */
 
-  function select(path) {
+  function addressFor(path) {
+    // The root element is part of the URL: it is part of an instance path, and
+    // the "show in tree" links on type pages are written that way.
+    var segments = [declaration(state.model.tree).name].concat(path);
+    var address = (state.view === "diagram" ? DIAGRAM_SEGMENT : TREE_SEGMENT)
+      + segments.join("/") + "/";
+    // The fragment is the only part of a file:// URL a page may change:
+    // pushState to a path throws a SecurityError against a null origin.
+    return singleFile() ? "#" + address : state.root + address;
+  }
+
+  function select(path, focusAfter) {
     state.shownType = null;
     state.shownSection = null;
     state.path = path;
     state.cursor = path;
     expandAncestors(path);
-    // The root element is part of the URL: it is part of an instance path, and
-    // the "show in tree" links on type pages are written that way.
-    var segments = [declaration(state.model.tree).name].concat(path);
-    var address = TREE_SEGMENT + segments.join("/") + "/";
-    // The fragment is the only part of a file:// URL a page may change:
-    // pushState to a path throws a SecurityError against a null origin.
-    var url = singleFile() ? "#" + address : state.root + address;
-    window.history.pushState({ path: path }, "", url);
-    renderTree();
+    window.history.pushState({ path: path }, "", addressFor(path));
+    if (state.view === "diagram") {
+      openOverlay();
+      state.diagram.show(path, false);
+    } else {
+      renderTree();
+    }
     renderDetail();
+    if (focusAfter) focusDetail();
+  }
+
+  /* ---- the diagram view ----
+   *
+   * The same tree, drawn instead of listed (spec 2026-09-30). The selection is
+   * shared, so either view opens where the other left off; what is expanded is
+   * each view's own. In the diagram's view the grid has one column, and the
+   * detail panel — the same element, rendered by the same code — stands over
+   * the right edge of the drawing until it is closed.
+   */
+  function setView(view, push) {
+    state.view = view;
+    document.getElementById("cd-app").classList.toggle("cd-app-diagram", view === "diagram");
+    if (view === "diagram") {
+      // Shown before it is mounted: a pane that is not laid out measures no
+      // text, and the boxes are sized by what it measures.
+      showPane("diagram");
+      if (!state.diagram) {
+        state.diagram = window.CpacsDiagram.mount(document.getElementById("cd-diagram"), diagramApi());
+      }
+      state.diagram.show(state.path, true);
+    } else {
+      closeOverlay();
+      showPane("tree");
+      expandAncestors(state.path);
+      renderTree();
+    }
+    if (push) window.history.pushState({ path: state.path }, "", addressFor(state.path));
+  }
+
+  function openOverlay() {
+    document.getElementById("cd-app").classList.add("cd-detail-open");
+  }
+
+  function closeOverlay() {
+    document.getElementById("cd-app").classList.remove("cd-detail-open");
+  }
+
+  function overlayIsOpen() {
+    return state.view === "diagram"
+      && document.getElementById("cd-app").classList.contains("cd-detail-open");
+  }
+
+  function setupOverlay() {
+    var close = document.getElementById("cd-overlay-close");
+    if (!close) return;
+    close.addEventListener("click", function () {
+      closeOverlay();
+      if (state.diagram) state.diagram.focus();
+    });
+  }
+
+  function diagramApi() {
+    return {
+      model: state.model,
+      select: function (path, focusAfter) { select(path, focusAfter); },
+      showType: function (typeName) {
+        openOverlay();
+        showType(typeName);
+      },
+      typeRef: diagramTypeRef,
+      gloss: compositorGloss,
+      covered: function () {
+        return overlayIsOpen() ? document.getElementById("cd-detail").offsetWidth : 0;
+      }
+    };
+  }
+
+  // What the type line of a box says and whether it leads anywhere: the label
+  // the tables use, a link where the model has the type, plain text for a
+  // built-in one. The one-file form writes no type pages, so there the line
+  // switches the panel and carries no address.
+  function diagramTypeRef(typeName) {
+    if (!typeName) return null;
+    var type = state.model.types[typeName];
+    if (!type) return { label: typeName, link: false };
+    if (type.anonymous && !type.base) return null;
+    var ref = { label: typeLabel(typeName), link: true };
+    if (!singleFile()) ref.href = typeHref(typeName);
+    return ref;
   }
 
   function withRoot(html) {
@@ -2370,6 +2494,7 @@
     if (!tabs) return;
     label("cd-tree", "cd-tab-tree");
     label("cd-search-panel", "cd-tab-search");
+    label("cd-diagram", "cd-tab-diagram");
     // No sections, no third tab: one half is not a choice, and a tab naming
     // an empty pane says nothing. Tree and Search are always both there.
     if (sections().length) {
@@ -2383,8 +2508,16 @@
       var tab = event.target.closest ? event.target.closest(".cd-tab") : event.target;
       if (!tab) return;
       if (tab.id === "cd-tab-docs") { renderDocs(); showPane("docs"); }
-      else if (tab.id === "cd-tab-tree") { showPane("tree"); focusCursor(); }
+      else if (tab.id === "cd-tab-tree") {
+        if (state.view === "diagram") setView("tree", true);
+        showPane("tree");
+        focusCursor();
+      }
       else if (tab.id === "cd-tab-search") { showPane("search"); focusSearch(); }
+      else if (tab.id === "cd-tab-diagram") {
+        if (state.view !== "diagram") setView("diagram", true);
+        state.diagram.focus();
+      }
     });
 
     // A tab strip is one tab stop; the arrow keys move within it, over the
@@ -2395,7 +2528,11 @@
       if (!step) return;
       var shown = [];
       var all = tabs.querySelectorAll(".cd-tab");
-      for (var i = 0; i < all.length; i++) if (!all[i].hidden) shown.push(all[i]);
+      // Hidden by the attribute or by the view: the diagram's view keeps only
+      // Tree and Diagram in the strip.
+      for (var i = 0; i < all.length; i++) {
+        if (!all[i].hidden && all[i].offsetParent !== null) shown.push(all[i]);
+      }
       for (var j = 0; j < shown.length; j++) {
         if (shown[j] !== document.activeElement) continue;
         var next = shown[j + step];
@@ -2450,10 +2587,13 @@
     document.getElementById("cd-tree").hidden = name !== "tree";
     document.getElementById("cd-search-panel").hidden = name !== "search";
     document.getElementById("cd-docs").hidden = name !== "docs";
+    var diagramPane = document.getElementById("cd-diagram");
+    if (diagramPane) diagramPane.hidden = name !== "diagram";
     state.tab = name;
     markTab("cd-tab-tree", name === "tree");
     markTab("cd-tab-docs", name === "docs");
     markTab("cd-tab-search", name === "search");
+    markTab("cd-tab-diagram", name === "diagram");
     fitHintToTab();
   }
 
@@ -2540,6 +2680,7 @@
     setupListKeys("cd-docs");
     setupGlobalKeys();
     setupHelp();
+    setupOverlay();
 
     function show(model) {
       state.model = model;
@@ -2555,6 +2696,13 @@
       renderDetail();
       setupTabs();
       setupHint();
+      if (location.view === "diagram") {
+        // An address that names a place asks for its documentation; the bare
+        // diagram does not. Opened before the view is set up, so the place is
+        // centred in what the overlay leaves visible.
+        if (segments.length) openOverlay();
+        setView("diagram", false);
+      }
     }
 
     var inline = document.getElementById(MODEL_ELEMENT);
@@ -2594,7 +2742,18 @@
     state.path = segments;
     state.cursor = segments;
     expandAncestors(segments);
-    renderTree();
+    // The overlay first, for the same reason as in `start`.
+    if (location.view === "diagram") {
+      if (segments.length) openOverlay();
+      else closeOverlay();
+    }
+    if (location.view !== state.view) {
+      setView(location.view, false);
+    } else if (state.view === "diagram") {
+      state.diagram.show(segments, true);
+    } else {
+      renderTree();
+    }
     renderDetail();
   }
 

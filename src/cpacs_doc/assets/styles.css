@@ -1262,3 +1262,47 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 .cd-dg-ring { fill: none; stroke: none; }
 .cd-dg-cursor > .cd-dg-ring { stroke: var(--ink-soft); stroke-dasharray: 2 2; }
 .cd-dg-item:focus-visible > .cd-dg-ring { stroke: var(--focus); stroke-width: 2; stroke-dasharray: none; }
+
+/* One column in the diagram's view: the column's strip is the header, the
+   diagram its pane, and the splitter has nothing left to divide. */
+.cd-app.cd-app-diagram { grid-template-columns: minmax(0, 1fr); }
+.cd-app-diagram .cd-splitter { display: none; }
+.cd-app-diagram #cd-tab-search,
+.cd-app-diagram #cd-tab-docs { display: none; }
+/* The detail panel is the same element, standing over the drawing's right
+   edge while something is chosen. */
+.cd-app-diagram .cd-pane-detail { display: none; }
+.cd-app-diagram.cd-detail-open .cd-pane-detail {
+  display: block;
+  position: fixed;
+  top: 1.1rem;
+  right: 1.4rem;
+  bottom: 1.1rem;
+  width: clamp(22rem, 40vw, 48rem);
+  box-sizing: border-box;
+  padding: 2.4rem 1.2rem 1rem;
+  background: var(--page);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  overflow: auto;
+  z-index: 20;
+}
+.cd-overlay-close { display: none; }
+.cd-app-diagram.cd-detail-open .cd-overlay-close {
+  display: block;
+  position: fixed;
+  top: 1.6rem;
+  right: 2rem;
+  z-index: 21;
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  background: var(--page);
+  color: var(--ink-soft);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+.cd-app-diagram.cd-detail-open .cd-overlay-close:hover { color: var(--ink); border-color: var(--ink); }
