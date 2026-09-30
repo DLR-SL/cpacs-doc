@@ -214,3 +214,193 @@ def test_the_drawing_holds_every_box(page):
         assert box["x"] >= 0 and box["y"] >= 0
         assert box["x"] + box["w"] <= result["width"]
         assert box["y"] + box["h"] <= result["height"]
+
+# ---- mount ----
+
+# The diagram in a host of its own, over the page, with a stand-in for the
+# viewer that records what the diagram asks of it.
+MOUNT = """
+  var host = document.getElementById('dg-host');
+  if (host) host.remove();
+  host = document.createElement('div');
+  host.id = 'dg-host';
+  host.style.cssText = 'position:fixed;left:0;top:0;width:1200px;height:800px;'
+    + 'z-index:50;background:var(--page)';
+  document.body.appendChild(host);
+  window.dgCalls = [];
+  window.dg = CpacsDiagram.mount(host, {
+    model: model,
+    select: function (path, focus) { dgCalls.push(['select', path.join('/'), !!focus]); },
+    showType: function (name) { dgCalls.push(['type', name]); },
+    typeRef: function (name) {
+      if (!name) return null;
+      var type = model.types[name];
+      if (!type) return { label: name, link: false };
+      if (type.anonymous && !type.base) return null;
+      return { label: name, link: true, href: '/type/' + name + '/index.html' };
+    },
+    gloss: function (name) { return 'gloss ' + name; },
+    covered: function () { return 0; }
+  });
+  return true;
+"""
+
+HELPERS = """
+  window.dgItem = function (path) {
+    return document.querySelector('#dg-host .cd-dg-item[data-path="' + path + '"]');
+  };
+  window.dgHit = function (node) {
+    node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+  };
+  return true;
+"""
+
+
+@pytest.fixture
+def mounted(page):
+    run(page, MOUNT)
+    page.evaluate(HELPERS)
+    return page
+
+
+def names(page):
+    return page.evaluate("""
+      return Array.prototype.map.call(
+        document.querySelectorAll('#dg-host .cd-dg-element .cd-dg-name'),
+        function (t) { return t.textContent; });
+    """)
+
+
+def test_the_root_opens_one_level(mounted):
+    assert names(mounted) == ["cpacs", "header", "wings", "extras"]
+    assert mounted.evaluate("""
+      return [dgItem('').getAttribute('aria-expanded'),
+              dgItem('header').getAttribute('aria-expanded')];
+    """) == ["true", "false"]
+
+
+def test_optional_is_dashed_and_repeated_is_stacked(mounted):
+    result = mounted.evaluate("""
+      dg.show(['wings', 'wing'], false);
+      var wings = dgItem('wings'), wing = dgItem('wings/wing'), header = dgItem('header');
+      return {
+        wingsOptional: wings.classList.contains('cd-dg-optional'),
+        dash: getComputedStyle(wings.querySelector('.cd-dg-frame')).strokeDasharray,
+        headerDash: getComputedStyle(header.querySelector('.cd-dg-frame')).strokeDasharray,
+        repeated: wing.classList.contains('cd-dg-repeated'),
+        shadow: !!wing.querySelector('.cd-dg-shadow'),
+        card: (wing.querySelector('.cd-dg-card') || {}).textContent,
+        headerCard: !!header.querySelector('.cd-dg-card')
+      };
+    """)
+    assert result["wingsOptional"] and result["dash"] != "none"
+    assert result["headerDash"] == "none"
+    assert result["repeated"] and result["shadow"]
+    assert result["card"] == "1..\u221e"
+    assert result["headerCard"] is False
+
+
+def test_compositors_are_drawn_as_symbols(mounted):
+    result = mounted.evaluate("""
+      dgHit(dgItem('header').querySelector('.cd-dg-expander'));
+      var all = document.querySelector('#dg-host .cd-dg-group[data-compositor="all"]');
+      return all ? [all.querySelector('title').textContent,
+                    all.querySelectorAll('.cd-dg-symbol-dot').length,
+                    !!all.querySelector('.cd-dg-expander')] : null;
+    """)
+    assert result == ["gloss all", 3, False]
+
+
+def test_a_recursive_element_has_no_expander(mounted):
+    assert mounted.evaluate("""
+      dg.show(['wings', 'wing', 'sections', 'section', 'sections'], false);
+      var item = dgItem('wings/wing/sections/section/sections');
+      return [!!item.querySelector('.cd-dg-recursive'), !!item.querySelector('.cd-dg-expander'),
+              item.hasAttribute('aria-expanded')];
+    """) == [True, False, False]
+
+
+def test_the_type_line_links_to_the_type(mounted):
+    result = mounted.evaluate("""
+      dg.show(['wings', 'wing', 'uID'], false);
+      var header = dgItem('header').querySelector('a.cd-dg-type');
+      var uid = dgItem('wings/wing/uID').querySelector('.cd-dg-type-text');
+      return {
+        href: header && header.getAttribute('href'),
+        uidText: uid.textContent,
+        uidLinked: !!uid.closest('a'),
+        wingsLine: !!dgItem('wings').querySelector('.cd-dg-type-text')
+      };
+    """)
+    assert result == {
+        "href": "/type/settingsType/index.html",
+        "uidText": "xsd:string",
+        "uidLinked": False,
+        "wingsLine": False,
+    }
+
+
+def test_a_click_on_the_type_selects_and_shows_the_type(mounted):
+    assert mounted.evaluate("""
+      var before = location.href;
+      dgHit(dgItem('header').querySelector('.cd-dg-type-text'));
+      return [dgCalls, location.href === before];
+    """) == [[["select", "header", False], ["type", "settingsType"]], True]
+
+
+def test_a_click_on_a_box_selects_it(mounted):
+    assert mounted.evaluate("""
+      dgHit(dgItem('header').querySelector('.cd-dg-frame'));
+      var header = dgItem('header');
+      return [dgCalls, header.classList.contains('cd-dg-selected'),
+              header.getAttribute('aria-selected')];
+    """) == [[["select", "header", False]], True, "true"]
+
+
+def test_the_expander_opens_without_selecting(mounted):
+    assert mounted.evaluate("""
+      dgHit(dgItem('wings').querySelector('.cd-dg-expander'));
+      return [dgCalls.length, dgItem('wings').getAttribute('aria-expanded'), !!dgItem('wings/wing')];
+    """) == [0, "true", True]
+
+
+def test_an_expanded_box_stays_where_it_was(mounted):
+    moved = mounted.evaluate("""
+      var before = dgItem('wings').querySelector('.cd-dg-frame').getBoundingClientRect();
+      dgHit(dgItem('wings').querySelector('.cd-dg-expander'));
+      var after = dgItem('wings').querySelector('.cd-dg-frame').getBoundingClientRect();
+      return [after.left - before.left, after.top - before.top];
+    """)
+    assert abs(moved[0]) < 0.5 and abs(moved[1]) < 0.5
+
+
+def test_connectors_join_parent_and_children(mounted):
+    assert mounted.evaluate(
+        "return document.querySelector('#dg-host .cd-dg-link').getAttribute('d').length > 0;"
+    )
+
+
+def test_boxes_have_room_for_their_names(mounted):
+    """Measured text, not an estimate: every name ends inside its frame."""
+    assert mounted.evaluate("""
+      var bad = [];
+      document.querySelectorAll('#dg-host .cd-dg-element').forEach(function (g) {
+        var frame = g.querySelector('.cd-dg-frame').getBBox();
+        var name = g.querySelector('.cd-dg-name').getBBox();
+        if (name.x + name.width > frame.x + frame.width) bad.push(g.getAttribute('data-path'));
+      });
+      return bad;
+    """) == []
+
+
+def test_a_show_for_the_clicked_path_keeps_the_mark(mounted):
+    """The viewer answers every click with `show` for the same path; that must
+    not move the mark or the view."""
+    assert mounted.evaluate("""
+      dgHit(dgItem('wings').querySelector('.cd-dg-frame'));
+      var before = dg.view();
+      dg.show(['wings'], false);
+      var after = dg.view();
+      return [dgItem('wings').classList.contains('cd-dg-selected'),
+              before.x === after.x && before.y === after.y];
+    """) == [True, True]

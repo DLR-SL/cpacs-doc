@@ -1224,3 +1224,42 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   .cd-splitter { display: none; }
   .cd-pane { flex: none; }
 }
+
+/* ---- the diagram (planning/specs/2026-09-30-diagram-view-design.md) ----
+   Every colour comes from the custom properties above, so the theme button and
+   the dark palette reach the drawing without a line of script. */
+.cd-pane.cd-diagram { position: relative; overflow: hidden; }
+.cd-diagram[hidden] { display: none; }
+.cd-dg-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  user-select: none;
+  font-family: var(--face-text);
+}
+.cd-dg-svg:active { cursor: grabbing; }
+.cd-dg-probe { visibility: hidden; }
+.cd-dg-link { fill: none; stroke: var(--rule-strong); stroke-width: 1; }
+.cd-dg-frame, .cd-dg-shadow { fill: var(--page); stroke: var(--ink-soft); stroke-width: 1; }
+.cd-dg-optional > .cd-dg-frame, .cd-dg-optional > .cd-dg-shadow { stroke-dasharray: 4 1; }
+.cd-dg-item[role="treeitem"] { cursor: pointer; }
+.cd-dg-item:focus { outline: none; }
+.cd-dg-name { fill: var(--ink); font-size: 13px; }
+.cd-dg-type-text { fill: var(--ink-soft); font-size: 11px; font-family: var(--face-code); }
+.cd-dg-type .cd-dg-type-text { fill: var(--link); }
+.cd-dg-type:hover .cd-dg-type-text { text-decoration: underline; }
+.cd-dg-card { fill: var(--ink-soft); font-size: 10px; font-family: var(--face-code); }
+.cd-dg-symbol-line { fill: none; stroke: var(--ink); stroke-width: 1; }
+.cd-dg-symbol-dot { fill: var(--ink); }
+.cd-dg-expander { cursor: pointer; }
+.cd-dg-expander rect { fill: var(--page); stroke: var(--ink-soft); stroke-width: 1; }
+.cd-dg-expander path { fill: none; stroke: var(--ink); stroke-width: 1.2; }
+.cd-dg-recursive { fill: var(--ink-soft); font-size: 12px; }
+.cd-dg-selected > .cd-dg-frame { stroke: var(--ink); stroke-width: 2; }
+/* The cursor mark and the focus ring are two things (0016): the mark says
+   where the keys act, the ring that the keyboard is here at all. */
+.cd-dg-ring { fill: none; stroke: none; }
+.cd-dg-cursor > .cd-dg-ring { stroke: var(--ink-soft); stroke-dasharray: 2 2; }
+.cd-dg-item:focus-visible > .cd-dg-ring { stroke: var(--focus); stroke-width: 2; stroke-dasharray: none; }
+```

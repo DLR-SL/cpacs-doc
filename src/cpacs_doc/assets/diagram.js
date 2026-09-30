@@ -261,8 +261,395 @@
     };
   }
 
+
+  /* ---- drawing ---- */
+
+  var SVG_NS = "http://www.w3.org/2000/svg";
+
+  function svg(tag, attributes, parent) {
+    var node = document.createElementNS(SVG_NS, tag);
+    for (var name in attributes) {
+      if (Object.prototype.hasOwnProperty.call(attributes, name)) {
+        node.setAttribute(name, attributes[name]);
+      }
+    }
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+
+  // The bounds as XSDDiagram writes them under a box. Nothing for 1..1, which
+  // an unmarked box already says.
+  function cardinality(item) {
+    if (item.min === 1 && item.max === 1) return "";
+    return item.min + ".." + (item.max === null ? "\u221E" : item.max);
+  }
+
+  function isRepeated(item) {
+    return item.max === null || item.max > 1;
+  }
+
+  // XSDDiagram's compositor box: a rectangle with its corners bevelled by
+  // 30 % of its height.
+  function octagon(x, y, w, h) {
+    var b = Math.round(h * 0.3);
+    return "M" + (x + b) + " " + y + "H" + (x + w - b)
+      + "L" + (x + w) + " " + (y + b) + "V" + (y + h - b)
+      + "L" + (x + w - b) + " " + (y + h) + "H" + (x + b)
+      + "L" + x + " " + (y + h - b) + "V" + (y + b) + "Z";
+  }
+
+  // The three symbols, after XSDDiagram's own: a line with three beads for a
+  // sequence, a switch for a choice, brackets for all.
+  function drawSymbol(parent, compositor, cx, cy) {
+    var d;
+    var dots;
+    if (compositor === "sequence") {
+      d = "M" + (cx - 12) + " " + cy + "H" + (cx + 12);
+      dots = [[cx - 5, cy], [cx, cy], [cx + 5, cy]];
+    } else if (compositor === "choice") {
+      d = "M" + (cx - 12) + " " + cy + "H" + (cx - 8) + "L" + (cx - 4) + " " + (cy - 4)
+        + "M" + (cx + 4) + " " + (cy - 4) + "H" + (cx + 8)
+        + "M" + (cx + 4) + " " + cy + "H" + (cx + 12)
+        + "M" + (cx + 4) + " " + (cy + 4) + "H" + (cx + 8)
+        + "M" + (cx + 8) + " " + (cy - 4) + "V" + (cy + 4);
+      dots = [[cx, cy - 4], [cx, cy], [cx, cy + 4]];
+    } else {
+      d = "M" + (cx - 4) + " " + (cy - 4) + "H" + (cx - 8) + "V" + (cy + 4) + "H" + (cx - 4)
+        + "M" + (cx - 12) + " " + cy + "H" + (cx - 8)
+        + "M" + (cx + 4) + " " + (cy - 4) + "H" + (cx + 8) + "V" + (cy + 4) + "H" + (cx + 4)
+        + "M" + (cx + 8) + " " + cy + "H" + (cx + 12);
+      dots = [[cx, cy - 4], [cx, cy], [cx, cy + 4]];
+    }
+    svg("path", { "class": "cd-dg-symbol-line", d: d }, parent);
+    for (var i = 0; i < dots.length; i++) {
+      svg("circle", { "class": "cd-dg-symbol-dot", cx: dots[i][0], cy: dots[i][1], r: 1.6 }, parent);
+    }
+  }
+
+  function drawExpander(parent, cx, cy, open) {
+    var group = svg("g", { "class": "cd-dg-expander" }, parent);
+    svg("rect", {
+      x: cx - EXPANDER / 2, y: cy - EXPANDER / 2, width: EXPANDER, height: EXPANDER
+    }, group);
+    var d = "M" + (cx - 3) + " " + cy + "H" + (cx + 3);
+    if (!open) d += "M" + cx + " " + (cy - 3) + "V" + (cy + 3);
+    svg("path", { d: d }, group);
+  }
+
+  /* ---- the mounted diagram ---- */
+
+  function mount(container, api) {
+    var shape = structure(api.model);
+    var open = {};            // key -> true for every expanded element
+    var selectedKey = null;
+    var selectedPath = null;  // the path the viewer was last told of
+    var cursorKey = null;
+    var view = { scale: 1, x: MARGIN, y: MARGIN };
+    var current = null;       // the last layout
+    var byKey = {};           // key -> box of the last layout
+    var widthCache = {};
+
+    container.textContent = "";
+    if (!shape.root) {
+      var empty = document.createElement("p");
+      empty.className = "cd-empty";
+      empty.textContent = "The model contains no tree.";
+      container.appendChild(empty);
+      return {
+        show: function () { return false; },
+        focus: function () {},
+        view: function () { return { scale: 1, x: 0, y: 0 }; }
+      };
+    }
+
+    var canvas = svg("svg", {
+      "class": "cd-dg-svg", role: "tree", "aria-label": "Instance diagram"
+    }, container);
+    var probe = svg("text", { "class": "cd-dg-probe", x: -1000, y: -1000 }, canvas);
+    var viewport = svg("g", { "class": "cd-dg-view" }, canvas);
+    var linkLayer = svg("g", { "class": "cd-dg-links" }, viewport);
+    var itemLayer = svg("g", { "class": "cd-dg-items" }, viewport);
+
+    open[shape.root.key] = true;
+    cursorKey = shape.root.key;
+
+    // A pane that is not laid out measures nothing. The estimate keeps the
+    // boxes readable until the next render measures for real, and is not
+    // cached, so that render does.
+    function textWidth(text, className) {
+      var id = className + "\u0000" + text;
+      if (widthCache[id] !== undefined) return widthCache[id];
+      probe.setAttribute("class", "cd-dg-probe " + className);
+      probe.textContent = text;
+      var width = probe.getComputedTextLength ? probe.getComputedTextLength() : 0;
+      if (!width) return text.length * 7.5;
+      widthCache[id] = width;
+      return width;
+    }
+
+    function typeLine(item) {
+      return item.kind === "element" && item.type ? api.typeRef(item.type) : null;
+    }
+
+    function measure(item) {
+      if (item.kind === "group") return { w: GROUP_W, h: GROUP_H };
+      var ref = typeLine(item);
+      var w = textWidth(item.name, "cd-dg-name");
+      if (ref) w = Math.max(w, textWidth(ref.label, "cd-dg-type-text"));
+      // The expander sits on the right edge, half inside the box.
+      return { w: Math.ceil(w) + 2 * PAD_X + EXPANDER / 2, h: ref ? LINE_TWO : LINE_ONE };
+    }
+
+    function isOpen(item) {
+      return item.kind === "group" || (item.expandable && !!open[item.key]);
+    }
+
+    function applyView() {
+      viewport.setAttribute(
+        "transform", "translate(" + view.x + " " + view.y + ") scale(" + view.scale + ")"
+      );
+    }
+
+    function level(box) {
+      var count = 1;
+      for (var p = box.parent; p; p = p.parent) if (p.item.kind === "element") count++;
+      return count;
+    }
+
+    function connector(box) {
+      var cy = box.y + box.h / 2;
+      var from = box.x + box.w + (box.item.kind === "element" ? EXPANDER / 2 : 0);
+      var bus = current.columns[box.depth + 1] - COLUMN_GAP / 2;
+      var top = cy;
+      var bottom = cy;
+      var d = "M" + from + " " + cy + "H" + bus;
+      for (var i = 0; i < box.children.length; i++) {
+        var child = box.children[i];
+        var middle = child.y + child.h / 2;
+        top = Math.min(top, middle);
+        bottom = Math.max(bottom, middle);
+        d += "M" + bus + " " + middle + "H" + child.x;
+      }
+      return d + "M" + bus + " " + top + "V" + bottom;
+    }
+
+    function drawItem(box) {
+      var item = box.item;
+      var x = box.x;
+      var y = box.y;
+      var w = box.w;
+      var h = box.h;
+      var classes = "cd-dg-item cd-dg-" + item.kind;
+      if (item.min === 0) classes += " cd-dg-optional";
+      if (isRepeated(item)) classes += " cd-dg-repeated";
+      if (item.key === selectedKey) classes += " cd-dg-selected";
+      if (item.key === cursorKey) classes += " cd-dg-cursor";
+      var g = svg("g", { "class": classes, "data-key": item.key }, itemLayer);
+
+      if (item.kind === "group") {
+        g.setAttribute("data-compositor", item.compositor);
+        svg("title", {}, g).textContent = api.gloss(item.compositor);
+        if (isRepeated(item)) {
+          svg("path", { "class": "cd-dg-shadow", d: octagon(x + STACK, y + STACK, w, h) }, g);
+        }
+        svg("path", { "class": "cd-dg-frame", d: octagon(x, y, w, h) }, g);
+        drawSymbol(g, item.compositor, x + w / 2, y + h / 2);
+      } else {
+        if (isRepeated(item)) {
+          svg("rect", { "class": "cd-dg-shadow", x: x + STACK, y: y + STACK, width: w, height: h }, g);
+        }
+        svg("rect", { "class": "cd-dg-frame", x: x, y: y, width: w, height: h }, g);
+        svg("rect", { "class": "cd-dg-ring", x: x - 3, y: y - 3, width: w + 6, height: h + 6, rx: 2 }, g);
+        svg("text", { "class": "cd-dg-name", x: x + PAD_X, y: y + 15 }, g).textContent = item.name;
+      }
+
+      if (item.kind === "element") {
+        g.setAttribute("data-path", item.path.join("/"));
+        var ref = typeLine(item);
+        if (ref) {
+          var holder = g;
+          if (ref.link) {
+            holder = svg("a", { "class": "cd-dg-type", "data-type": item.type }, g);
+            if (ref.href) holder.setAttribute("href", ref.href);
+          }
+          svg("text", { "class": "cd-dg-type-text", x: x + PAD_X, y: y + 28 }, holder)
+            .textContent = ref.label;
+        }
+        if (item.selectable) {
+          g.setAttribute("role", "treeitem");
+          g.setAttribute("aria-level", String(level(box)));
+          g.setAttribute("aria-selected", String(item.key === selectedKey));
+          g.setAttribute("aria-label", item.name);
+          g.setAttribute("tabindex", item.key === cursorKey ? "0" : "-1");
+          if (item.expandable) g.setAttribute("aria-expanded", String(!!open[item.key]));
+        }
+        if (item.expandable) {
+          drawExpander(g, x + w, y + h / 2, !!open[item.key]);
+        } else if (item.recursive) {
+          var mark = svg("text", { "class": "cd-dg-recursive", x: x + w + 3, y: y + h / 2 + 4 }, g);
+          mark.textContent = "\u21BB";
+          svg("title", {}, mark).textContent =
+            "This type already appears further up this path; open it there.";
+        }
+      }
+
+      var card = cardinality(item);
+      if (card) {
+        svg("text", {
+          "class": "cd-dg-card", x: x + w, y: y + h + STACK + 10, "text-anchor": "end"
+        }, g).textContent = card;
+      }
+    }
+
+    // Every box is drawn anew, the focused one included, so the keyboard is
+    // handed back to the cursor if it was in the drawing before.
+    function draw() {
+      var hadFocus = canvas.contains(document.activeElement);
+      linkLayer.textContent = "";
+      itemLayer.textContent = "";
+      var d = "";
+      for (var i = 0; i < current.boxes.length; i++) {
+        var box = current.boxes[i];
+        if (box.children.length) d += connector(box);
+        drawItem(box);
+      }
+      svg("path", { "class": "cd-dg-link", d: d }, linkLayer);
+      if (hadFocus) focus();
+    }
+
+    // The nearest drawn ancestor of a key that is no longer drawn: keys are
+    // positions, so an ancestor's key is a prefix.
+    function drawnKey(key) {
+      while (key && !byKey[key]) {
+        var cut = key.lastIndexOf(".");
+        key = cut === -1 ? null : key.slice(0, cut);
+      }
+      return key || shape.root.key;
+    }
+
+    // Lays out again and draws. `anchorKey` names a box that must not move on
+    // screen — the one just opened or closed.
+    function render(anchorKey) {
+      var anchor = anchorKey && byKey[anchorKey] ? byKey[anchorKey] : null;
+      var before = anchor
+        ? { x: view.x + anchor.x * view.scale, y: view.y + anchor.y * view.scale }
+        : null;
+      current = layout(shape.root, shape.children, isOpen, measure);
+      byKey = {};
+      for (var i = 0; i < current.boxes.length; i++) byKey[current.boxes[i].item.key] = current.boxes[i];
+      if (before && byKey[anchorKey]) {
+        view.x = before.x - byKey[anchorKey].x * view.scale;
+        view.y = before.y - byKey[anchorKey].y * view.scale;
+      }
+      cursorKey = drawnKey(cursorKey);
+      draw();
+      applyView();
+    }
+
+    function toggle(item) {
+      if (!item.expandable) return;
+      if (open[item.key]) delete open[item.key];
+      else open[item.key] = true;
+      render(item.key);
+    }
+
+    function choose(item, focusDetail) {
+      if (!item.selectable) return;
+      selectedKey = item.key;
+      selectedPath = item.path.join("/");
+      cursorKey = item.key;
+      draw();
+      api.select(item.path, focusDetail);
+    }
+
+    function visibleWidth() {
+      return Math.max(0, canvas.clientWidth - (api.covered ? api.covered() : 0));
+    }
+
+    // Pans the box into the part of the pane the reader can see: always to
+    // its middle with `always`, otherwise only when it is not wholly in view.
+    function reveal(box, always) {
+      if (!box) return;
+      var width = visibleWidth();
+      var height = canvas.clientHeight;
+      var s = view.scale;
+      var left = view.x + box.x * s;
+      var top = view.y + box.y * s;
+      var inside = left >= MARGIN && top >= MARGIN
+        && left + box.w * s <= width - MARGIN && top + box.h * s <= height - MARGIN;
+      if (inside && !always) return;
+      view.x = width / 2 - (box.x + box.w / 2) * s;
+      view.y = height / 2 - (box.y + box.h / 2) * s;
+      applyView();
+    }
+
+    function show(path, centre) {
+      var chain = shape.find(path);
+      if (!chain) {
+        render(null);
+        return false;
+      }
+      for (var i = 0; i < chain.length - 1; i++) open[chain[i].key] = true;
+      var wanted = path.join("/");
+      // The box the reader clicked keeps the mark when the viewer answers
+      // with the same path, even where another box shares it.
+      if (selectedPath !== wanted || !selectedKey) {
+        selectedKey = chain[chain.length - 1].key;
+        selectedPath = wanted;
+      }
+      cursorKey = selectedKey;
+      render(null);
+      reveal(byKey[selectedKey], !!centre);
+      return true;
+    }
+
+    function focus() {
+      var node = itemLayer.querySelector('[data-key="' + cursorKey + '"]');
+      if (node && node.focus) node.focus({ preventScroll: true });
+    }
+
+    canvas.addEventListener("click", function (event) {
+      var itemNode = event.target.closest(".cd-dg-item");
+      if (!itemNode) return;
+      var box = byKey[itemNode.getAttribute("data-key")];
+      if (!box) return;
+      if (event.target.closest(".cd-dg-expander")) {
+        toggle(box.item);
+        return;
+      }
+      var link = event.target.closest(".cd-dg-type");
+      if (link) {
+        // A modified click is the reader asking for the page itself; the
+        // browser follows the href. A plain one keeps the diagram and shows
+        // the type beside it, the bargain `typeCell` makes in the tables.
+        if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        event.preventDefault();
+        choose(box.item, false);
+        api.showType(link.getAttribute("data-type"));
+        return;
+      }
+      choose(box.item, false);
+    });
+
+    canvas.addEventListener("dblclick", function (event) {
+      var itemNode = event.target.closest(".cd-dg-item");
+      if (!itemNode || event.target.closest(".cd-dg-expander")) return;
+      var box = byKey[itemNode.getAttribute("data-key")];
+      if (box) toggle(box.item);
+    });
+
+    render(null);
+
+    return {
+      show: show,
+      focus: focus,
+      view: function () { return { scale: view.scale, x: view.x, y: view.y }; }
+    };
+  }
+
   window.CpacsDiagram = {
     structure: structure,
-    layout: layout
+    layout: layout,
+    mount: mount
   };
 })();
