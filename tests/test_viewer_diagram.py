@@ -137,3 +137,80 @@ def test_keys_are_unique(page):
       })(s.root);
       return twice;
     """) == []
+
+
+# ---- layout ----
+
+# A fixed measure, so the geometry does not depend on the fonts installed.
+LAYOUT = """
+  var s = CpacsDiagram.structure(model);
+  var measure = function (item) {
+    return item.kind === 'group'
+      ? { w: 34, h: 18 }
+      : { w: 16 + item.name.length * 7, h: item.type ? 34 : 22 };
+  };
+  var isOpen = %s;
+  var result = CpacsDiagram.layout(s.root, s.children, isOpen, measure);
+  return {
+    width: result.width,
+    height: result.height,
+    boxes: result.boxes.map(function (b) {
+      return { key: b.item.key, name: b.item.name || b.item.compositor, depth: b.depth,
+               x: b.x, y: b.y, w: b.w, h: b.h,
+               children: b.children.map(function (c) { return c.item.key; }) };
+    })
+  };
+"""
+
+ALL_OPEN = "function (item) { return item.kind === 'group' || item.expandable; }"
+ROOT_OPEN = "function (item) { return item.kind === 'group' || item.key === '0'; }"
+
+
+def laid_out(page, is_open=ALL_OPEN) -> dict:
+    return run(page, LAYOUT % is_open)
+
+
+def test_a_closed_element_draws_no_children(page):
+    names = [b["name"] for b in laid_out(page, ROOT_OPEN)["boxes"]]
+    assert names == ["cpacs", "sequence", "header", "wings", "extras"]
+
+
+def test_no_two_boxes_overlap(page):
+    boxes = laid_out(page)["boxes"]
+    for i, a in enumerate(boxes):
+        for b in boxes[i + 1:]:
+            apart = (a["x"] + a["w"] <= b["x"] or b["x"] + b["w"] <= a["x"]
+                     or a["y"] + a["h"] <= b["y"] or b["y"] + b["h"] <= a["y"])
+            assert apart, f"{a['name']} overlaps {b['name']}"
+
+
+def test_a_parent_is_centred_on_its_children(page):
+    boxes = laid_out(page)["boxes"]
+    by_key = {b["key"]: b for b in boxes}
+    for box in boxes:
+        if not box["children"]:
+            continue
+        first, last = by_key[box["children"][0]], by_key[box["children"][-1]]
+        middle = (first["y"] + first["h"] / 2 + last["y"] + last["h"] / 2) / 2
+        assert abs(box["y"] + box["h"] / 2 - middle) < 0.5, box["name"]
+
+
+def test_a_depth_is_a_column(page):
+    """Boxes of one depth share their x, and a column starts past the widest
+    box of the one before it."""
+    boxes = laid_out(page)["boxes"]
+    xs, widest = {}, {}
+    for box in boxes:
+        xs.setdefault(box["depth"], set()).add(box["x"])
+        widest[box["depth"]] = max(widest.get(box["depth"], 0), box["w"])
+    assert all(len(v) == 1 for v in xs.values())
+    for depth in range(1, len(xs)):
+        assert min(xs[depth]) >= min(xs[depth - 1]) + widest[depth - 1] + 1
+
+
+def test_the_drawing_holds_every_box(page):
+    result = laid_out(page)
+    for box in result["boxes"]:
+        assert box["x"] >= 0 and box["y"] >= 0
+        assert box["x"] + box["w"] <= result["width"]
+        assert box["y"] + box["h"] <= result["height"]

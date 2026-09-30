@@ -12,6 +12,21 @@
 (function () {
   "use strict";
 
+  // Geometry, in diagram units: pixels at 100 %.
+  var PAD_X = 8;           // text inset inside a box
+  var LINE_ONE = 22;       // a box holding the name alone
+  var LINE_TWO = 34;       // a box holding the name and the type under it
+  var GROUP_W = 34;
+  var GROUP_H = 18;
+  var EXPANDER = 10;       // side of the +/- square, centred on the right edge
+  var STACK = 3;           // offset of the second frame behind a repeated item
+  var CARD_ROOM = 12;      // room under a box for its cardinality
+  var COLUMN_GAP = 30;     // from the widest box of a column to the next column
+  var ROW_GAP = 8;         // between sibling subtrees
+  var MARGIN = 24;         // between the drawing and the edge of the pane
+  var ZOOM_MIN = 0.25;
+  var ZOOM_MAX = 2;
+
   function bound(value) {
     return value === undefined ? 1 : value;
   }
@@ -163,7 +178,91 @@
     return { root: root, children: children, elementChildren: elementChildren, find: find };
   }
 
+  /* ---- layout ----
+   *
+   * XSDDiagram's tidy tree, over the visible items only. Bottom up, a subtree
+   * is as tall as its children together, and at least as tall as its own box;
+   * top down, a box is centred on its children. A depth is a column as wide as
+   * its widest box, so boxes of one depth line up — calmer than XSDDiagram's
+   * per-box indent, and the column is what the keyboard moves along.
+   */
+  function layout(root, children, isOpen, measure) {
+    var boxes = [];
+    var widths = [];
+
+    function collect(item, depth, parent) {
+      var size = measure(item);
+      var box = {
+        item: item, depth: depth, parent: parent, children: [],
+        x: 0, y: 0, w: size.w, h: size.h,
+        slot: size.h + CARD_ROOM + STACK, span: 0, inner: 0
+      };
+      boxes.push(box);
+      widths[depth] = Math.max(widths[depth] || 0, size.w);
+      if (isOpen(item)) {
+        var list = children(item);
+        for (var i = 0; i < list.length; i++) {
+          box.children.push(collect(list[i], depth + 1, box));
+        }
+      }
+      return box;
+    }
+
+    function measureSpan(box) {
+      var sum = 0;
+      for (var i = 0; i < box.children.length; i++) {
+        sum += measureSpan(box.children[i]) + (i ? ROW_GAP : 0);
+      }
+      box.inner = sum;
+      box.span = Math.max(box.slot, sum);
+      return box.span;
+    }
+
+    function place(box, top, columns) {
+      box.x = columns[box.depth];
+      if (!box.children.length) {
+        box.y = top + (box.span - box.slot) / 2;
+        return;
+      }
+      var cursor = top + (box.span - box.inner) / 2;
+      for (var i = 0; i < box.children.length; i++) {
+        place(box.children[i], cursor, columns);
+        cursor += box.children[i].span + ROW_GAP;
+      }
+      var first = box.children[0];
+      var last = box.children[box.children.length - 1];
+      var middle = (first.y + first.h / 2 + last.y + last.h / 2) / 2;
+      box.y = middle - box.h / 2;
+    }
+
+    if (!root) return { boxes: [], width: 0, height: 0, columns: [] };
+    var top = collect(root, 0, null);
+    var columns = [0];
+    for (var d = 0; d < widths.length; d++) {
+      columns[d + 1] = columns[d] + widths[d] + COLUMN_GAP;
+    }
+    measureSpan(top);
+    place(top, 0, columns);
+
+    // Centring a tall parent on short children can lift it above the top.
+    var least = 0;
+    var height = 0;
+    for (var i = 0; i < boxes.length; i++) least = Math.min(least, boxes[i].y);
+    for (var j = 0; j < boxes.length; j++) {
+      boxes[j].y -= least;
+      height = Math.max(height, boxes[j].y + boxes[j].slot);
+    }
+    var last = widths.length - 1;
+    return {
+      boxes: boxes,
+      width: columns[last] + widths[last] + STACK + EXPANDER,
+      height: height,
+      columns: columns
+    };
+  }
+
   window.CpacsDiagram = {
-    structure: structure
+    structure: structure,
+    layout: layout
   };
 })();
