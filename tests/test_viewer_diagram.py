@@ -287,7 +287,8 @@ MOUNT = """
     covered: function () { return 0; },
     expert: EXPERT,
     rememberExpert: function (on) { dgCalls.push(['expert', on]); },
-    rememberPath: function (on) { dgCalls.push(['path', on]); }
+    rememberPath: function (on) { dgCalls.push(['path', on]); },
+    deselect: function () { dgCalls.push(['deselect']); }
   });
   return true;
 """
@@ -623,3 +624,39 @@ def test_the_path_can_be_switched_off_and_back_on(mounted):
                              "selected": True, "preview": ""}
     assert result["on"] > 0
     assert result["calls"] == [["path", False], ["path", True]]
+
+
+# ---- clearing the selection ----
+
+BACKGROUND = """
+  var svg = document.querySelector('#dg-host .cd-dg-svg');
+  var r = svg.getBoundingClientRect();
+  function fire(type, x, y) {
+    var init = { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0, pointerId: 1 };
+    svg.dispatchEvent(type.indexOf('pointer') === 0 ? new PointerEvent(type, init) : new MouseEvent(type, init));
+  }
+"""
+
+
+def test_a_click_on_empty_canvas_clears_the_selection(mounted):
+    """As in XSDDiagram: the free canvas takes the mark and the path away."""
+    assert mounted.evaluate(BACKGROUND + """
+      dg.show(['wings', 'wing'], false);
+      var x = r.right - 20, y = r.bottom - 20;
+      fire('pointerdown', x, y); fire('pointerup', x, y); fire('click', x, y);
+      return [document.querySelectorAll('#dg-host .cd-dg-selected').length,
+              document.querySelectorAll('#dg-host .cd-dg-on-trail').length,
+              dgCalls];
+    """) == [0, 0, [["deselect"]]]
+
+
+def test_panning_does_not_clear_the_selection(mounted):
+    """A drag ends in a click on the canvas too; that one is the end of a
+    pan, not a wish to deselect."""
+    assert mounted.evaluate(BACKGROUND + """
+      dg.show(['wings', 'wing'], false);
+      var x = r.right - 20, y = r.bottom - 20;
+      fire('pointerdown', x, y); fire('pointermove', x - 40, y - 30);
+      fire('pointerup', x - 40, y - 30); fire('click', x - 40, y - 30);
+      return [dgItem('wings/wing').classList.contains('cd-dg-selected'), dgCalls];
+    """) == [True, []]

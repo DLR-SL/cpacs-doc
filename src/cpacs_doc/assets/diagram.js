@@ -655,6 +655,13 @@
       }
     }
 
+    function deselect() {
+      selectedKey = null;
+      selectedPath = null;
+      draw();
+      if (api.deselect) api.deselect();
+    }
+
     function choose(item, focusDetail) {
       if (!item.selectable) return;
       selectedKey = item.key;
@@ -722,16 +729,21 @@
       }
       for (var i = 0; i < chain.length - 1; i++) open[chain[i].key] = true;
       var wanted = path.join("/");
-      // The box the reader clicked keeps the mark when the viewer answers
-      // with the same path, even where another box shares it.
-      if (selectedPath !== wanted || !selectedKey) {
+      if (!path.length && selectedPath !== "") {
+        // The bare diagram marks nothing, as XSDDiagram does before a click;
+        // the root is marked only once the reader has chosen it.
+        selectedKey = null;
+        selectedPath = null;
+      } else if (selectedPath !== wanted || !selectedKey) {
+        // The box the reader clicked keeps the mark when the viewer answers
+        // with the same path, even where another box shares it.
         selectedKey = chain[chain.length - 1].key;
         selectedPath = wanted;
       }
-      cursorKey = selectedKey;
+      cursorKey = selectedKey || shape.root.key;
       render(null);
       if (place) settle(byKey[selectedKey]);
-      else reveal(byKey[selectedKey], false);
+      else if (selectedKey) reveal(byKey[selectedKey], false);
       return true;
     }
 
@@ -742,7 +754,12 @@
 
     canvas.addEventListener("click", function (event) {
       var itemNode = event.target.closest(".cd-dg-item");
-      if (!itemNode) return;
+      if (!itemNode) {
+        // The free canvas takes the selection away, as in XSDDiagram — unless
+        // the press was the start of a pan, which ends in a click too.
+        if (!panned && selectedKey !== null) deselect();
+        return;
+      }
       var box = byKey[itemNode.getAttribute("data-key")];
       if (!box) return;
       if (event.target.closest(".cd-dg-expander")) {
@@ -836,13 +853,16 @@
 
     // Dragging starts only on the canvas itself; on a box a press is a click.
     var drag = null;
+    var panned = false;   // whether the last press on the canvas moved it
     canvas.addEventListener("pointerdown", function (event) {
       if (event.button !== 0 || event.target.closest(".cd-dg-item")) return;
+      panned = false;
       drag = { x: event.clientX, y: event.clientY, viewX: view.x, viewY: view.y };
       if (canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
     });
     canvas.addEventListener("pointermove", function (event) {
       if (!drag) return;
+      if (Math.abs(event.clientX - drag.x) + Math.abs(event.clientY - drag.y) > 3) panned = true;
       view.x = drag.viewX + event.clientX - drag.x;
       view.y = drag.viewY + event.clientY - drag.y;
       applyView();

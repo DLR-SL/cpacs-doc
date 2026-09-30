@@ -813,3 +813,16 @@ def test_the_path_switch_is_remembered(viewer, base):
         " document.querySelectorAll('.cd-dg-on-trail').length];"
     ) == ["false", 0]
     page.evaluate("document.getElementById('cd-dg-path').click(); return true;")
+
+
+
+def test_a_click_on_empty_canvas_clears_the_selection_and_the_address(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/header/")
+    page.click(*on_canvas(page))
+    page.wait_for("return location.pathname === '/diagram/cpacs/';", "the bare address")
+    assert page.evaluate("return document.querySelectorAll('.cd-dg-selected').length;") == 0
+    assert overlay_open(page) is False
+    page = at(viewer, base, "/diagram/cpacs/")
+    assert page.evaluate("return document.querySelectorAll('.cd-dg-selected').length;") == 0
+    page.click(*centre(page, item("")))
+    assert selected(page) == ""

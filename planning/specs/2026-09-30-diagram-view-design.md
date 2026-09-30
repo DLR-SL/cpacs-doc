@@ -226,6 +226,10 @@ button work without code.
 - Click on `+` / `−`, or double-click on the box: expand or collapse, selection
   unchanged.
 - A compositor is not selectable; it has no path. Its gloss shows on hover.
+- A click on the free canvas clears the selection, as in XSDDiagram (amended
+  2026-09-30): the mark and the path go, the overlay closes, and the address
+  becomes the bare `/diagram/<root>/`. A click that ends a pan does not count.
+  The bare address marks nothing; the root is marked once it is clicked.
 
 ### 5.2 Zoom and pan
 

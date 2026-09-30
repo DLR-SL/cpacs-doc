@@ -1013,6 +1013,16 @@
     return {
       model: state.model,
       select: function (path, focusAfter) { select(path, focusAfter); },
+      // Nothing chosen: the bare diagram's address, and no documentation.
+      deselect: function () {
+        state.shownType = null;
+        state.shownSection = null;
+        state.path = [];
+        state.cursor = [];
+        closeOverlay();
+        window.history.pushState({ path: [] }, "", addressFor([]));
+        renderDetail();
+      },
       showType: function (typeName) {
         openOverlay();
         showType(typeName);
