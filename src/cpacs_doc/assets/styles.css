@@ -1314,3 +1314,22 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   .cd-app-diagram .cd-pane.cd-diagram { height: calc(100vh - 5rem); min-height: 18rem; }
   .cd-app-diagram.cd-detail-open .cd-pane-detail { max-width: calc(100vw - 2rem); width: auto; left: 1rem; right: 1rem; }
 }
+
+.cd-dg-toolbar {
+  position: absolute;
+  left: 0.6rem;
+  bottom: 0.6rem;
+  display: flex;
+  gap: 0.3rem;
+}
+.cd-dg-toolbar button {
+  font: inherit;
+  font-size: var(--step-0);
+  padding: 0.15rem 0.55rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  background: var(--page);
+  color: var(--ink);
+  cursor: pointer;
+}
+.cd-dg-toolbar button:hover { border-color: var(--ink); }

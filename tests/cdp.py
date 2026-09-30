@@ -53,6 +53,7 @@ KEYS = {
     "Enter": (13, "Enter"), "Escape": (27, "Escape"),
     "Backspace": (8, "Backspace"),
     "Tab": (9, "Tab"), " ": (32, "Space"), "/": (191, "Slash"),
+    "+": (107, "NumpadAdd"), "-": (109, "NumpadSubtract"), "0": (48, "Digit0"),
 }
 
 
@@ -299,6 +300,29 @@ class Browser:
             self.command("Input.dispatchMouseEvent", {
                 "type": kind, "x": x, "y": y, "button": "left", "clickCount": 1,
             })
+
+    def wheel(self, x: float, y: float, delta_y: float, *,
+              ctrl: bool = False, shift: bool = False) -> None:
+        # Modifier bits as the protocol counts them: Alt 1, Ctrl 2, Meta 4, Shift 8.
+        self.command("Input.dispatchMouseEvent", {
+            "type": "mouseWheel", "x": x, "y": y, "deltaX": 0, "deltaY": delta_y,
+            "modifiers": (2 if ctrl else 0) | (8 if shift else 0),
+        })
+
+    def drag(self, x0: float, y0: float, x1: float, y1: float, steps: int = 5) -> None:
+        self.command("Input.dispatchMouseEvent", {
+            "type": "mousePressed", "x": x0, "y": y0, "button": "left", "buttons": 1,
+            "clickCount": 1,
+        })
+        for i in range(1, steps + 1):
+            self.command("Input.dispatchMouseEvent", {
+                "type": "mouseMoved", "button": "left", "buttons": 1,
+                "x": x0 + (x1 - x0) * i / steps, "y": y0 + (y1 - y0) * i / steps,
+            })
+        self.command("Input.dispatchMouseEvent", {
+            "type": "mouseReleased", "x": x1, "y": y1, "button": "left", "buttons": 0,
+            "clickCount": 1,
+        })
 
     def wait_for(self, expression: str, what: str = "the page") -> None:
         deadline = time.monotonic() + self.timeout

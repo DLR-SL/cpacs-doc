@@ -265,3 +265,106 @@ def test_the_diagram_keeps_its_height_in_a_narrow_window(viewer, base):
         assert width
     finally:
         viewer.command("Emulation.clearDeviceMetricsOverride")
+
+
+# ---- zoom and pan ----
+
+TRANSFORM = """
+  var t = document.querySelector('.cd-dg-view').getAttribute('transform');
+  var m = /translate\\(([-\\d.e]+) ([-\\d.e]+)\\) scale\\(([-\\d.e]+)\\)/.exec(t);
+  return [parseFloat(m[1]), parseFloat(m[2]), parseFloat(m[3])];
+"""
+
+
+def transform(page):
+    return page.evaluate(TRANSFORM)
+
+
+def empty_spot(page):
+    """A point on the canvas that holds no box while the drawing sits at its
+    start: the lower right corner. Only for a closed overlay, which covers it."""
+    return page.evaluate(
+        "var r = document.getElementById('cd-diagram').getBoundingClientRect();"
+        " return [r.right - 60, r.bottom - 60];"
+    )
+
+
+def on_canvas(page):
+    """A point on the canvas the overlay never covers, clear of the toolbar:
+    near the left edge, above the bottom. The wheel acts wherever it lands."""
+    return page.evaluate(
+        "var r = document.getElementById('cd-diagram').getBoundingClientRect();"
+        " return [r.left + 12, r.bottom - 80];"
+    )
+
+
+def test_ctrl_wheel_zooms_around_the_pointer(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/")
+    ratio = page.evaluate("return window.devicePixelRatio;")
+    x, y = centre(page, item("header"))
+    page.wheel(x, y, -200, ctrl=True)
+    assert transform(page)[2] > 1
+    after = centre(page, item("header"))
+    assert abs(after[0] - x) < 1.5 and abs(after[1] - y) < 1.5
+    # The browser's own zoom stayed out of it (Review Focus 5).
+    assert page.evaluate("return window.devicePixelRatio;") == ratio
+
+
+def test_the_wheel_pans(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/")
+    before = transform(page)
+    page.wheel(*on_canvas(page), 100)
+    after = transform(page)
+    assert abs(after[1] - (before[1] - 100)) < 0.5 and after[0] == before[0]
+    page.wheel(*on_canvas(page), 50, shift=True)
+    assert abs(transform(page)[0] - (before[0] - 50)) < 0.5
+
+
+def test_dragging_the_canvas_pans(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/")
+    before = transform(page)
+    x, y = empty_spot(page)
+    page.drag(x, y, x - 80, y - 40)
+    after = transform(page)
+    assert abs(after[0] - (before[0] - 80)) < 1 and abs(after[1] - (before[1] - 40)) < 1
+
+
+def test_the_zoom_buttons_step_and_reset(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/")
+    page.click(*centre(page, "#cd-dg-zoom-in"))
+    assert abs(transform(page)[2] - 1.25) < 1e-6
+    page.click(*centre(page, "#cd-dg-zoom-out"))
+    page.click(*centre(page, "#cd-dg-zoom-out"))
+    assert abs(transform(page)[2] - 0.8) < 1e-6
+    page.click(*centre(page, "#cd-dg-zoom-reset"))
+    assert transform(page)[2] == 1
+
+
+def test_fit_brings_everything_into_view(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/wings/wing/sections/section/profile/")
+    page.click(*centre(page, "#cd-overlay-close"))
+    page.wheel(*on_canvas(page), 2000)
+    page.click(*centre(page, "#cd-dg-fit"))
+    assert page.evaluate("""
+      var pane = document.getElementById('cd-diagram').getBoundingClientRect();
+      var out = [];
+      document.querySelectorAll('.cd-dg-frame').forEach(function (f) {
+        var r = f.getBoundingClientRect();
+        if (r.left < pane.left || r.right > pane.right || r.top < pane.top || r.bottom > pane.bottom)
+          out.push(f.parentNode.getAttribute('data-key'));
+      });
+      return out;
+    """) == []
+
+
+def test_centre_puts_the_selection_beside_the_overlay(viewer, base):
+    page = at(viewer, base, "/diagram/cpacs/header/")
+    page.wheel(*on_canvas(page), 400)
+    page.click(*centre(page, "#cd-dg-centre"))
+    x, y = centre(page, item("header"))
+    middle = page.evaluate(
+        "var d = document.getElementById('cd-diagram').getBoundingClientRect();"
+        " var o = document.getElementById('cd-detail').getBoundingClientRect();"
+        " return [(d.left + o.left) / 2, (d.top + d.bottom) / 2];"
+    )
+    assert abs(x - middle[0]) < 3 and abs(y - middle[1]) < 3

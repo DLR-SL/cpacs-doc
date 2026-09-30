@@ -638,6 +638,99 @@
       if (box) toggle(box.item);
     });
 
+    /* ---- zoom and pan ---- */
+
+    // The point under (px, py) stays where it is.
+    function scaleAt(next, px, py) {
+      view.x = px - (px - view.x) * next / view.scale;
+      view.y = py - (py - view.y) * next / view.scale;
+      view.scale = next;
+      applyView();
+    }
+
+    function zoomAt(factor, px, py) {
+      scaleAt(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, view.scale * factor)), px, py);
+    }
+
+    // Around the middle of what the reader can see, which is left of the
+    // overlay while it is open.
+    function zoomBy(factor) {
+      zoomAt(factor, visibleWidth() / 2, canvas.clientHeight / 2);
+    }
+
+    // Exactly the scale asked for, not a product of factors that lands a
+    // rounding error beside it.
+    function setScale(scale) {
+      scaleAt(scale, visibleWidth() / 2, canvas.clientHeight / 2);
+    }
+
+    function fit() {
+      var width = visibleWidth();
+      var height = canvas.clientHeight;
+      var scale = Math.min(
+        (width - 2 * MARGIN) / current.width, (height - 2 * MARGIN) / current.height, 1
+      );
+      view.scale = Math.max(ZOOM_MIN, scale);
+      view.x = (width - current.width * view.scale) / 2;
+      view.y = (height - current.height * view.scale) / 2;
+      applyView();
+    }
+
+    // Not passive: an unhandled Ctrl+wheel is the browser zooming the whole
+    // page, which is the one thing this gesture must not do here.
+    canvas.addEventListener("wheel", function (event) {
+      var rect = canvas.getBoundingClientRect();
+      if (event.ctrlKey) {
+        zoomAt(Math.exp(-event.deltaY * 0.002), event.clientX - rect.left, event.clientY - rect.top);
+      } else if (event.shiftKey) {
+        view.x -= event.deltaY || event.deltaX;
+        applyView();
+      } else {
+        view.x -= event.deltaX;
+        view.y -= event.deltaY;
+        applyView();
+      }
+      event.preventDefault();
+    }, { passive: false });
+
+    // Dragging starts only on the canvas itself; on a box a press is a click.
+    var drag = null;
+    canvas.addEventListener("pointerdown", function (event) {
+      if (event.button !== 0 || event.target.closest(".cd-dg-item")) return;
+      drag = { x: event.clientX, y: event.clientY, viewX: view.x, viewY: view.y };
+      if (canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
+    });
+    canvas.addEventListener("pointermove", function (event) {
+      if (!drag) return;
+      view.x = drag.viewX + event.clientX - drag.x;
+      view.y = drag.viewY + event.clientY - drag.y;
+      applyView();
+    });
+    function endDrag() { drag = null; }
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+
+    var toolbar = document.createElement("div");
+    toolbar.className = "cd-dg-toolbar";
+    [
+      ["cd-dg-zoom-out", "\u2212", "Zoom out", function () { zoomBy(0.8); }],
+      ["cd-dg-zoom-in", "+", "Zoom in", function () { zoomBy(1.25); }],
+      ["cd-dg-zoom-reset", "100 %", "Actual size", function () { setScale(1); }],
+      ["cd-dg-fit", "Fit", "Fit the diagram into the window", fit],
+      ["cd-dg-centre", "Centre", "Centre the selection",
+        function () { reveal(byKey[selectedKey] || byKey[cursorKey], true); }]
+    ].forEach(function (spec) {
+      var button = document.createElement("button");
+      button.type = "button";
+      button.id = spec[0];
+      button.textContent = spec[1];
+      button.title = spec[2];
+      button.setAttribute("aria-label", spec[2]);
+      button.addEventListener("click", spec[3]);
+      toolbar.appendChild(button);
+    });
+    container.appendChild(toolbar);
+
     render(null);
 
     return {
