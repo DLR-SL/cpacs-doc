@@ -453,21 +453,40 @@ def test_down_past_the_last_sibling_stays_in_the_column(viewer, base):
     assert cursor(page) == "wings/wing"
 
 
-def test_left_closes_then_climbs(viewer, base):
+def expanded(page, path: str) -> str:
+    return page.evaluate(
+        "return document.querySelector('.cd-dg-item[data-path=\"%s\"]').getAttribute('aria-expanded');"
+        % path
+    )
+
+
+def test_left_climbs_and_leaves_the_branch_open(viewer, base):
     page = keyed(viewer, base)
     page.press("ArrowRight")
     page.press("ArrowRight")
     page.press("ArrowRight")
     assert cursor(page) == "header/alpha"
-    page.press("ArrowLeft")                  # alpha does not open: to its parent
+    page.press("ArrowLeft")
     assert cursor(page) == "header"
-    page.press("ArrowLeft")                  # header is open: close it
-    assert cursor(page) == "header"
-    assert page.evaluate(
-        "return document.querySelector('.cd-dg-item[data-path=\"header\"]').getAttribute('aria-expanded');"
-    ) == "false"
+    assert expanded(page, "header") == "true"
     page.press("ArrowLeft")
     assert cursor(page) == ""
+    assert expanded(page, "header") == "true"
+
+
+def test_shift_left_closes(viewer, base):
+    page = keyed(viewer, base)
+    page.press("ArrowRight")
+    page.press("ArrowRight")
+    page.press("ArrowRight")
+    assert cursor(page) == "header/alpha"
+    page.press("ArrowLeft", shift=True)      # alpha does not open: close its branch
+    assert cursor(page) == "header"
+    assert expanded(page, "header") == "false"
+    page.press("ArrowRight")
+    page.press("ArrowLeft", shift=True)      # header is open: close it in place
+    assert cursor(page) == "header"
+    assert expanded(page, "header") == "false"
 
 
 def test_space_selects_and_stays(viewer, base):

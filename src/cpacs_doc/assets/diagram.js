@@ -1119,9 +1119,17 @@
           if (item.expandable && !open[item.key]) toggle(item);
           else moveTo(firstChild(box));
           break;
+        // Left only climbs and leaves the branch open behind it, the way
+        // XSDDiagram does: a reader stepping back usually means to come again.
+        // Shift+Left closes — the box under the cursor if it is open, else
+        // the branch the cursor stands in, taking the cursor to its head.
         case "ArrowLeft":
-          if (item.expandable && open[item.key]) toggle(item);
-          else moveTo(parentElement(box));
+          if (!event.shiftKey) { moveTo(parentElement(box)); break; }
+          if (item.expandable && open[item.key]) { toggle(item); break; }
+          var head = parentElement(box);
+          if (!head) break;
+          moveTo(head);
+          if (open[head.item.key]) toggle(head.item);
           break;
         case "Home": moveTo(columnEnd(box, -1)); break;
         case "End": moveTo(columnEnd(box, 1)); break;

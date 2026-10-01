@@ -631,7 +631,10 @@
     // a hidden one there would take the rule from the legend.
     ["", "key", [
       [["↑", "↓"], "move"],
-      [["→", "←"], "open, close"],
+      // Unlike the tree, ← here only climbs and leaves the branch open.
+      [["→"], "open"],
+      [["←"], "up"],
+      [["Shift+←"], "close"],
       [["Space"], "details"],
       [["Enter"], "details, and go there"],
       [["+", "−", "0"], "zoom"],

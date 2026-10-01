@@ -287,13 +287,14 @@ class Browser:
             raise RuntimeError(detail.get("exception", {}).get("description", str(detail)))
         return result.get("result", {}).get("value")
 
-    def press(self, key: str) -> None:
+    def press(self, key: str, *, shift: bool = False) -> None:
         code, name = KEYS[key]
         common = {
             "key": key,
             "code": name,
             "windowsVirtualKeyCode": code,
             "nativeVirtualKeyCode": code,
+            "modifiers": 8 if shift else 0,
         }
         self.command("Input.dispatchKeyEvent", {"type": "rawKeyDown", **common})
         self.command("Input.dispatchKeyEvent", {"type": "keyUp", **common})
