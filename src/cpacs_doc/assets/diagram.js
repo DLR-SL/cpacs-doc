@@ -26,6 +26,7 @@
   var MARGIN = 24;         // between the drawing and the edge of the pane
   var ZOOM_MIN = 0.25;
   var ZOOM_MAX = 2;
+  var GLIDE_MS = 420;      // how long the view takes to glide to a new place
 
   function bound(value) {
     return value === undefined ? 1 : value;
@@ -439,6 +440,69 @@
       );
     }
 
+    /* ---- gliding ----
+     *
+     * A move the reader did not make by hand — Center, Fit, a selection made
+     * elsewhere, the cursor walking off screen — glides there rather than
+     * jumps, so the eye can follow where the drawing went. Drag, wheel and
+     * the zoom steps stay immediate and stop a glide under way. `view` is
+     * always what is on screen, so whatever acts in mid-glide reckons with
+     * what the reader sees.
+     */
+    var glide = null;   // { from, to, start, frame } while one runs
+    var lessMotion = window.matchMedia
+      ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+
+    function stopGlide() {
+      if (!glide) return;
+      cancelAnimationFrame(glide.frame);
+      glide = null;
+      canvas.classList.remove("cd-dg-moving");
+    }
+
+    // Where the view is heading: the end of a glide under way, else where it is.
+    function aim() {
+      return glide ? glide.to : view;
+    }
+
+    // A pane that is not laid out, or a reader who asked for less motion, is
+    // simply put there; so is the view's first place, which has no before.
+    function glideTo(to, instant) {
+      stopGlide();
+      var still = Math.abs(to.x - view.x) < 0.5 && Math.abs(to.y - view.y) < 0.5
+        && Math.abs(to.scale - view.scale) < 1e-4;
+      if (instant || still || !canvas.clientWidth || !window.requestAnimationFrame
+          || (lessMotion && lessMotion.matches)) {
+        view.x = to.x;
+        view.y = to.y;
+        view.scale = to.scale;
+        applyView();
+        return;
+      }
+      glide = { from: { x: view.x, y: view.y, scale: view.scale }, to: to, start: null, frame: 0 };
+      canvas.classList.add("cd-dg-moving");
+      glide.frame = requestAnimationFrame(glideStep);
+    }
+
+    // Eased in and out: it leaves gently and arrives gently.
+    function glideStep(now) {
+      if (glide.start === null) glide.start = now;
+      var t = Math.min(1, (now - glide.start) / GLIDE_MS);
+      var e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(2 - 2 * t, 3) / 2;
+      var from = glide.from;
+      var to = glide.to;
+      view.x = from.x + (to.x - from.x) * e;
+      view.y = from.y + (to.y - from.y) * e;
+      view.scale = from.scale + (to.scale - from.scale) * e;
+      if (t < 1) {
+        glide.frame = requestAnimationFrame(glideStep);
+      } else {
+        glide = null;
+        canvas.classList.remove("cd-dg-moving");
+      }
+      applyView();
+    }
+
     function level(box) {
       var count = 1;
       for (var p = box.parent; p; p = p.parent) if (p.item.kind === "element") count++;
@@ -616,6 +680,8 @@
     // Lays out again and draws. `anchorKey` names a box that must not move on
     // screen — the one just opened or closed.
     function render(anchorKey) {
+      // A glide aims at a place in the old layout; the anchor holds the new one.
+      stopGlide();
       var anchor = anchorKey && byKey[anchorKey] ? byKey[anchorKey] : null;
       var before = anchor
         ? { x: view.x + anchor.x * view.scale, y: view.y + anchor.y * view.scale }
@@ -679,19 +745,24 @@
 
     // Pans the box into the part of the pane the reader can see: always to
     // its middle with `always`, otherwise only when it is not wholly in view.
-    function reveal(box, always) {
+    // Both reckon from where the view is heading, so a second move in
+    // mid-glide does not take a box on its way into view for one out of it.
+    function reveal(box, always, instant) {
       if (!box) return;
       var width = visibleWidth();
       var height = visibleHeight();
-      var s = view.scale;
-      var left = view.x + box.x * s;
-      var top = view.y + box.y * s;
+      var at = aim();
+      var s = at.scale;
+      var left = at.x + box.x * s;
+      var top = at.y + box.y * s;
       var inside = left >= MARGIN && top >= MARGIN
         && left + box.w * s <= width - MARGIN && top + box.h * s <= height - MARGIN;
       if (inside && !always) return;
-      view.x = width / 2 - (box.x + box.w / 2) * s;
-      view.y = height / 2 - (box.y + box.h / 2) * s;
-      applyView();
+      glideTo({
+        scale: s,
+        x: width / 2 - (box.x + box.w / 2) * s,
+        y: height / 2 - (box.y + box.h / 2) * s
+      }, instant);
     }
 
     // Where reading starts: the chosen box in the upper left of what is
@@ -699,23 +770,30 @@
     // of it, and a centered box left half of the window empty above it.
     // The parent stands whole at the left edge where that keeps the box in
     // the left half, so the reader sees what it hangs from.
-    function settle(box) {
+    function settle(box, instant) {
       if (!box) return;
-      var s = view.scale;
+      var s = aim().scale;
       var width = visibleWidth();
       var left = Math.max(MARGIN, Math.round(width * 0.3));
       var parent = parentElement(box);
       if (parent && MARGIN + (box.x - parent.x) * s < width / 2) {
         left = MARGIN + (box.x - parent.x) * s;
       }
-      view.x = left - box.x * s;
-      view.y = Math.max(MARGIN, Math.round(visibleHeight() / 6)) - box.y * s;
-      applyView();
+      glideTo({
+        scale: s,
+        x: left - box.x * s,
+        y: Math.max(MARGIN, Math.round(visibleHeight() / 6)) - box.y * s
+      }, instant);
     }
 
     // `place` puts the box where reading starts; without it the view only
     // moves when the box is out of sight.
+    var placed = false;   // whether the view has had its first place
+
     function show(path, place) {
+      // What the reader was looking at stays where it was while the drawing
+      // grows around it; the view then glides on from there.
+      var anchorKey = selectedKey || cursorKey;
       var chain = shape.find(path);
       if (!chain) {
         // No box is selected any more; the old mark would contradict "Not found".
@@ -738,9 +816,11 @@
         selectedPath = wanted;
       }
       cursorKey = selectedKey || shape.root.key;
-      render(null);
-      if (place) settle(byKey[selectedKey]);
-      else if (selectedKey) reveal(byKey[selectedKey], false);
+      render(anchorKey);
+      var instant = !placed;
+      placed = true;
+      if (place) settle(byKey[selectedKey], instant);
+      else if (selectedKey) reveal(byKey[selectedKey], false, instant);
       return true;
     }
 
@@ -797,6 +877,7 @@
 
     // The point under (px, py) stays where it is.
     function scaleAt(next, px, py) {
+      stopGlide();
       view.x = px - (px - view.x) * next / view.scale;
       view.y = py - (py - view.y) * next / view.scale;
       view.scale = next;
@@ -825,15 +906,18 @@
       var scale = Math.min(
         (width - 2 * MARGIN) / current.width, (height - 2 * MARGIN) / current.height, 1
       );
-      view.scale = Math.max(ZOOM_MIN, scale);
-      view.x = (width - current.width * view.scale) / 2;
-      view.y = (height - current.height * view.scale) / 2;
-      applyView();
+      scale = Math.max(ZOOM_MIN, scale);
+      glideTo({
+        scale: scale,
+        x: (width - current.width * scale) / 2,
+        y: (height - current.height * scale) / 2
+      });
     }
 
     // Not passive: an unhandled Ctrl+wheel is the browser zooming the whole
     // page, which is the one thing this gesture must not do here.
     canvas.addEventListener("wheel", function (event) {
+      stopGlide();
       var rect = canvas.getBoundingClientRect();
       if (event.ctrlKey) {
         zoomAt(Math.exp(-event.deltaY * 0.002), event.clientX - rect.left, event.clientY - rect.top);
@@ -854,6 +938,7 @@
     canvas.addEventListener("pointerdown", function (event) {
       if (event.button !== 0 || event.target.closest(".cd-dg-item")) return;
       panned = false;
+      stopGlide();
       drag = { x: event.clientX, y: event.clientY, viewX: view.x, viewY: view.y };
       if (canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
     });

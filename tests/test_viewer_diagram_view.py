@@ -300,6 +300,13 @@ def empty_spot(page):
     )
 
 
+def settled(page):
+    """Center, Fit and the cursor glide to their place; what is measured is
+    where they arrive."""
+    page.wait_for("return !document.querySelector('.cd-dg-moving');", "the end of the glide")
+    return page
+
+
 def on_canvas(page):
     """A point on the canvas the overlay never covers, clear of the toolbar:
     near the left edge, above the bottom. The wheel acts wherever it lands."""
@@ -356,6 +363,7 @@ def test_fit_brings_everything_into_view(viewer, base):
     page.click(*center(page, "#cd-overlay-close"))
     page.wheel(*on_canvas(page), 2000)
     page.click(*center(page, "#cd-dg-fit"))
+    settled(page)
     assert page.evaluate("""
       var pane = document.getElementById('cd-diagram').getBoundingClientRect();
       var out = [];
@@ -372,6 +380,7 @@ def test_center_puts_the_selection_beside_the_overlay(viewer, base):
     page = at(viewer, base, "/diagram/cpacs/header/")
     page.wheel(*on_canvas(page), 400)
     page.click(*center(page, "#cd-dg-center"))
+    settled(page)
     x, y = center(page, item("header"))
     middle = page.evaluate(
         "var d = document.getElementById('cd-diagram').getBoundingClientRect();"
@@ -379,6 +388,73 @@ def test_center_puts_the_selection_beside_the_overlay(viewer, base):
         " return [(d.left + o.left) / 2, (d.top + d.bottom) / 2];"
     )
     assert abs(x - middle[0]) < 3 and abs(y - middle[1]) < 3
+
+
+def motion(page, value: str):
+    """The machine's own setting decides otherwise, and a workstation with
+    animations switched off is common enough. Without a value, the machine's
+    setting is back."""
+    features = [{"name": "prefers-reduced-motion", "value": value}] if value else []
+    page.command("Emulation.setEmulatedMedia", {"features": features})
+
+
+def test_center_glides_rather_than_jumps(viewer, base):
+    """A move the reader did not make by hand is one the eye can follow."""
+    motion(viewer, "no-preference")
+    try:
+        page = at(viewer, base, "/diagram/cpacs/header/")
+        page.wheel(*on_canvas(page), 400)
+        before = transform(page)
+        page.click(*center(page, "#cd-dg-center"))
+        assert page.evaluate("return !!document.querySelector('.cd-dg-moving');")
+        settled(page)
+        after = transform(page)
+        assert abs(after[1] - before[1]) > 100
+        # Seen part of the way, not only at either end.
+        page.wheel(*on_canvas(page), 400)
+        page.click(*center(page, "#cd-dg-center"))
+        page.wait_for("""
+          var t = /translate\\([-\\d.e]+ ([-\\d.e]+)\\)/.exec(
+            document.querySelector('.cd-dg-view').getAttribute('transform'));
+          var y = parseFloat(t[1]);
+          return y > %r + 5 && y < %r - 5;
+        """ % (after[1] - 400, after[1]), "a place between the two")
+        settled(page)
+    finally:
+        motion(viewer, "")
+
+
+def test_the_hand_stops_a_glide(viewer, base):
+    motion(viewer, "no-preference")
+    try:
+        page = at(viewer, base, "/diagram/cpacs/header/")
+        page.wheel(*on_canvas(page), 400)
+        page.click(*center(page, "#cd-dg-center"))
+        page.wheel(*on_canvas(page), 10)
+        assert page.evaluate("return !document.querySelector('.cd-dg-moving');")
+    finally:
+        motion(viewer, "")
+
+
+def test_less_motion_puts_the_view_there_at_once(viewer, base):
+    motion(viewer, "reduce")
+    try:
+        page = at(viewer, base, "/diagram/cpacs/header/")
+        page.wheel(*on_canvas(page), 400)
+        page.click(*center(page, "#cd-dg-center"))
+        assert page.evaluate("return !document.querySelector('.cd-dg-moving');")
+    finally:
+        motion(viewer, "")
+
+
+def test_the_first_place_is_taken_at_once(viewer, base):
+    """Opening a page at a path has no before to glide from."""
+    motion(viewer, "no-preference")
+    try:
+        page = at(viewer, base, "/diagram/cpacs/wings/wing/sections/")
+        assert page.evaluate("return !document.querySelector('.cd-dg-moving');")
+    finally:
+        motion(viewer, "")
 
 
 # ---- keyboard ----
@@ -537,6 +613,7 @@ def test_a_cursor_off_screen_pans_along(viewer, base):
     page.wheel(*on_canvas(page), -3000)     # the drawing far below the window
     page.evaluate("document.querySelector('.cd-dg-cursor').focus(); return true;")
     page.press("ArrowDown")
+    settled(page)
     assert page.evaluate("""
       var pane = document.getElementById('cd-diagram').getBoundingClientRect();
       var r = document.querySelector('.cd-dg-cursor .cd-dg-frame').getBoundingClientRect();
