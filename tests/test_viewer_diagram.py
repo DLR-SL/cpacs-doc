@@ -685,6 +685,16 @@ def test_the_export_is_named_after_the_selection(mounted):
     """) == ["cpacs", "cpacs-wings-wing"]
 
 
+def test_the_svg_has_a_transparent_ground(mounted):
+    """Nothing stands between the root and the drawing: no rectangle of the
+    viewer's colour behind it."""
+    assert mounted.evaluate("""
+      var doc = new DOMParser().parseFromString(dg.exportSvg(), 'image/svg+xml');
+      var root = doc.documentElement;
+      return [root.children.length, root.firstElementChild.getAttribute('class')];
+    """) == [1, "cd-dg-view"]
+
+
 def test_the_png_has_a_transparent_ground(mounted):
     """Only the ground is left out: the boxes keep their fill, so names stay
     readable on whatever the picture is placed on."""
