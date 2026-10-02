@@ -1405,6 +1405,9 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   cursor: pointer;
 }
 .cd-dg-toolbar button:hover { border-color: var(--ink); }
+/* A sign sits in the line a word would fill, so the buttons stay one height. */
+.cd-dg-toolbar .cd-dg-icon-button { padding-left: 0.4rem; padding-right: 0.4rem; }
+.cd-dg-icon { width: 1.05em; height: 1.05em; vertical-align: -0.17em; }
 /* Buttons that belong together are joined: the zoom (out, the scale, in),
    and the two image formats. The readout keeps a steady width as the number
    changes. */

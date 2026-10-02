@@ -968,6 +968,22 @@
       return button;
     }
 
+    // Fit and Center only move the view, as the zoom does, so they are drawn
+    // as signs like its − and +; what changes the drawing or leaves the page
+    // keeps its word. Fit is a frame around a smaller box, not the four
+    // outward corners, which say "full screen"; Center is a crosshair.
+    function iconButton(parent, id, shapes, title, action) {
+      var button = toolButton(parent, id, "", title, action);
+      button.className = "cd-dg-icon-button";
+      var icon = svg("svg", {
+        "class": "cd-dg-icon", viewBox: "0 0 16 16", "aria-hidden": "true",
+        fill: "none", stroke: "currentColor", "stroke-width": "1.5",
+        "stroke-linecap": "round", "stroke-linejoin": "round"
+      }, button);
+      shapes.forEach(function (shape) { svg(shape[0], shape[1], icon); });
+      return button;
+    }
+
     // Out, the scale as it stands, in: one control, read left to right. The
     // middle button says where the zoom is and takes it back to 100 %.
     var zoomGroup = document.createElement("div");
@@ -979,8 +995,15 @@
     readout = toolButton(zoomGroup, "cd-dg-zoom-reset", "100 %", "Back to 100 %",
       function () { setScale(1); });
     toolButton(zoomGroup, "cd-dg-zoom-in", "+", "Zoom in", function () { zoomBy(1.25); });
-    toolButton(toolbar, "cd-dg-fit", "Fit", "Fit the diagram into the window", fit);
-    toolButton(toolbar, "cd-dg-center", "Center", "Center the selection",
+    iconButton(toolbar, "cd-dg-fit", [
+      ["path", { d: "M1.5 5V1.5H5M11 1.5h3.5V5M14.5 11v3.5H11M5 14.5H1.5V11" }],
+      ["rect", { x: "5", y: "5.5", width: "6", height: "5", rx: "0.5" }]
+    ], "Fit the diagram into the window", fit);
+    iconButton(toolbar, "cd-dg-center", [
+      ["circle", { cx: "8", cy: "8", r: "4.5" }],
+      ["circle", { cx: "8", cy: "8", r: "1.2", fill: "currentColor", stroke: "none" }],
+      ["path", { d: "M8 0.75v2.5M8 12.75v2.5M0.75 8h2.5M12.75 8h2.5" }]
+    ], "Center the selection",
       function () { reveal(byKey[selectedKey] || byKey[cursorKey], true); });
     applyView();
     // A switch, not an action, so it says whether it is on. Kept apart from
