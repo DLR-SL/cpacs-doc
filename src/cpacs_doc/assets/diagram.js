@@ -364,6 +364,10 @@
     // Types and every bound for the reader who needs them; names and the
     // bounds that carry news for everyone else. The viewer remembers it.
     var expert = !!api.expert;
+    // The way to the selection and nothing beside it, for a slide; not
+    // remembered, because it means nothing without the selection it was for.
+    var pathOnly = false;
+    var pathButton = null;
 
     container.textContent = "";
     if (!shape.root) {
@@ -429,6 +433,37 @@
 
     function isOpen(item) {
       return item.kind === "group" || (item.expandable && !!open[item.key]);
+    }
+
+    // Keys are positions, so `key` lies at or under `top` when `top` is a
+    // prefix of it.
+    function within(key, top) {
+      return key === top || key.indexOf(top + ".") === 0;
+    }
+
+    // The element the selection stands in: the last element on the way down
+    // to it, found by walking the positions its key names. The root stands
+    // in nothing and is its own level.
+    function levelOf(key) {
+      var parts = key.split(".");
+      var item = shape.root;
+      var level = item.key;
+      for (var i = 1; i < parts.length - 1; i++) {
+        item = shape.children(item)[+parts[i]];
+        if (!item) break;
+        if (item.kind === "element") level = item.key;
+      }
+      return level;
+    }
+
+    // With the path alone, a box above the selection's level keeps only the
+    // child the way runs through. From that level down everything is drawn
+    // as ever: the selection among its siblings, and what is open under it,
+    // so the content of one element can be shown and nothing beside it.
+    function shownChildren(item) {
+      var list = shape.children(item);
+      if (!pathOnly || !selectedKey || within(item.key, levelOf(selectedKey))) return list;
+      return list.filter(function (child) { return within(selectedKey, child.key); });
     }
 
     var readout = null;   // the zoom button that shows the scale
@@ -646,6 +681,13 @@
       hoverLink = svg("path", { "class": "cd-dg-link cd-dg-hover-link", d: "" }, linkLayer);
       hoverKey = null;
       if (hadFocus) focus();
+      // Without a selection there is no path to keep: the switch goes off
+      // and waits. The layout already ignored it.
+      if (!selectedKey) pathOnly = false;
+      if (pathButton) {
+        pathButton.disabled = !selectedKey;
+        pathButton.setAttribute("aria-pressed", String(pathOnly));
+      }
     }
 
     // The route of the box under the pointer, as a lighter preview of what a
@@ -686,7 +728,7 @@
       var before = anchor
         ? { x: view.x + anchor.x * view.scale, y: view.y + anchor.y * view.scale }
         : null;
-      current = layout(shape.root, shape.children, isOpen, measure);
+      current = layout(shape.root, shownChildren, isOpen, measure);
       byKey = {};
       for (var i = 0; i < current.boxes.length; i++) byKey[current.boxes[i].item.key] = current.boxes[i];
       if (before && byKey[anchorKey]) {
@@ -718,10 +760,13 @@
       }
     }
 
+    // With the path alone, a change of selection changes what is drawn, so
+    // the drawing is laid out again around the box in question.
     function deselect() {
       selectedKey = null;
       selectedPath = null;
-      draw();
+      if (pathOnly) render(cursorKey);
+      else draw();
       if (api.deselect) api.deselect();
     }
 
@@ -730,7 +775,8 @@
       selectedKey = item.key;
       selectedPath = item.path.join("/");
       cursorKey = item.key;
-      draw();
+      if (pathOnly) render(item.key);
+      else draw();
       api.select(item.path, focusDetail);
     }
 
@@ -1026,6 +1072,22 @@
       render(selectedKey && byKey[selectedKey] ? selectedKey : cursorKey);
       if (api.rememberExpert) api.rememberExpert(expert);
     }
+
+    // The other switch of what is drawn, beside it. The chosen box stays
+    // where it was while everything else goes or comes back.
+    pathButton = document.createElement("button");
+    pathButton.type = "button";
+    pathButton.id = "cd-dg-path-only";
+    pathButton.className = "cd-dg-switch";
+    pathButton.textContent = "Path focus";
+    pathButton.title = "Show only the path down to the selected element and its siblings";
+    pathButton.setAttribute("aria-pressed", "false");
+    pathButton.disabled = true;
+    pathButton.addEventListener("click", function () {
+      pathOnly = !pathOnly && !!selectedKey;
+      render(selectedKey || cursorKey);
+    });
+    toolbar.appendChild(pathButton);
 
     /* ---- export ----
      *

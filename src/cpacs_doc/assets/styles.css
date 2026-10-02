@@ -64,6 +64,15 @@
   --group-tint: rgba(0, 0, 0, 0.035);
   --tip-bg: #23272c;
   --tip-ink: #f2f4f6;
+  /* What stands over the diagram — the documentation beside it. On paper a
+     shadow lifts it; on a dark ground a shadow is black on near black and
+     nothing lifts, so there the sheet itself is lighter, as a lit surface
+     nearer the eye would be, and a hairline catches the light along its edge.
+     The light page keeps its paper and its shadow. */
+  --raised: #fcfbf8;
+  --raised-rule: #e7e4e1;
+  --raised-edge: #e7e4e1;
+  --raised-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
 
   /* XML examples. Three hues carry the three things a reader looks for in an
      instance document — element, attribute, value — and everything else stays
@@ -105,7 +114,7 @@
    it outright. CSS cannot give one declaration block two conditions, and
    `light-dark()` would do it in one place at the price of failing outright
    where it is unknown — a documentation site cannot trade its whole palette
-   for tidiness. The duplication is sixteen lines and it is the interface, so
+   for tidiness. The duplication is two dozen lines and it is the interface, so
    the two blocks are kept adjacent and identical. */
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
@@ -132,6 +141,10 @@
     --group-tint: rgba(255, 255, 255, 0.045);
     --tip-bg: #f2f4f6;
     --tip-ink: #1a1d21;
+    --raised: #26282b;
+    --raised-rule: #3b3e43;
+    --raised-edge: rgba(255, 255, 255, 0.1);
+    --raised-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.5), 0 18px 48px rgba(0, 0, 0, 0.55);
     --code-tag: #7fc6d9;
     --code-attr: #c9a6e0;
     --code-value: #d9b371;
@@ -157,6 +170,10 @@
   --group-tint: rgba(255, 255, 255, 0.045);
   --tip-bg: #f2f4f6;
   --tip-ink: #1a1d21;
+  --raised: #26282b;
+  --raised-rule: #3b3e43;
+  --raised-edge: rgba(255, 255, 255, 0.1);
+  --raised-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.5), 0 18px 48px rgba(0, 0, 0, 0.55);
   --code-tag: #7fc6d9;
   --code-attr: #c9a6e0;
   --code-value: #d9b371;
@@ -1307,10 +1324,14 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   width: clamp(22rem, 40vw, 48rem);
   box-sizing: border-box;
   padding: 2.4rem 1.2rem 1rem;
-  background: var(--page);
-  border: 1px solid var(--rule);
+  /* Everything inside that paints the page — a sticky heading, a filled
+     row — paints the sheet instead, and its rules stay visible on it. */
+  --page: var(--raised);
+  --rule: var(--raised-rule);
+  background: var(--raised);
+  border: 1px solid var(--raised-edge);
   border-radius: 6px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--raised-shadow);
   overflow: auto;
   z-index: 20;
 }
@@ -1325,7 +1346,7 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   height: 1.8rem;
   border: 1px solid var(--rule-strong);
   border-radius: 50%;
-  background: var(--page);
+  background: var(--raised);
   color: var(--ink-soft);
   font: inherit;
   line-height: 1;
@@ -1421,6 +1442,10 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
 #cd-dg-zoom-reset { min-width: 4.2rem; font-variant-numeric: tabular-nums; }
 .cd-dg-toolbar #cd-dg-fit { margin-left: 0.4rem; }
 .cd-dg-toolbar .cd-dg-switch { margin-left: 0.6rem; }
+/* The two switches of what is drawn stand together. */
+.cd-dg-toolbar .cd-dg-switch + .cd-dg-switch { margin-left: 0; }
+/* Waiting for a selection: there, but not to be pressed. */
+.cd-dg-toolbar button:disabled { color: var(--ink-soft); border-color: var(--rule); cursor: default; }
 .cd-dg-toolbar .cd-dg-switch[aria-pressed="true"] {
   background: var(--ink);
   border-color: var(--ink);

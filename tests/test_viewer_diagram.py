@@ -554,6 +554,95 @@ def test_the_expert_toggle_switches_in_place_and_is_remembered(plain):
     assert result["selected"] is True
 
 
+# ---- the path alone ----
+
+PATH_ONLY = "document.getElementById('cd-dg-path-only')"
+
+
+def test_the_path_switch_waits_for_a_selection(plain):
+    """With nothing chosen there is no path to keep."""
+    assert plain.evaluate(f"""
+      var button = {PATH_ONLY};
+      var before = [button.disabled, button.getAttribute('aria-pressed')];
+      dg.show(['wings', 'wing'], false);
+      return [before, button.disabled];
+    """) == [[True, "false"], False]
+
+
+def test_the_path_switch_leaves_only_the_way_to_the_selection(plain):
+    """For a slide: the root and the steps down, with the compositors between
+    them, and at the end the element the selection stands in with all it
+    contains. Every sibling further up is gone, and the chosen box stays
+    where the reader was looking."""
+    result = plain.evaluate(f"""
+      dg.show(['wings', 'wing', 'span'], false);
+      var before = dgItem('wings/wing/span').querySelector('.cd-dg-frame').getBoundingClientRect();
+      {PATH_ONLY}.click();
+      var after = dgItem('wings/wing/span').querySelector('.cd-dg-frame').getBoundingClientRect();
+      return {{
+        pressed: {PATH_ONLY}.getAttribute('aria-pressed'),
+        names: Array.prototype.map.call(
+          document.querySelectorAll('#dg-host .cd-dg-element .cd-dg-name'),
+          function (t) {{ return t.textContent; }}),
+        groups: document.querySelectorAll('#dg-host .cd-dg-group').length,
+        moved: Math.abs(after.left - before.left) + Math.abs(after.top - before.top),
+        selected: dgItem('wings/wing/span').classList.contains('cd-dg-selected')
+      }};
+    """)
+    assert result["pressed"] == "true"
+    assert result["names"] == ["cpacs", "wings", "wing", "uID", "span", "sections"]
+    assert result["groups"] == 4
+    assert result["moved"] < 0.5
+    assert result["selected"] is True
+
+
+def test_the_selection_keeps_what_it_has_open(plain):
+    """The box being presented may be shown with its content: what is
+    expanded under it stays."""
+    assert plain.evaluate(f"""
+      dg.show(['wings', 'wing', 'sections', 'section'], false);
+      {PATH_ONLY}.click();
+      dgHit(dgItem('wings/wing/sections/section').querySelector('.cd-dg-expander'));
+      return Array.prototype.map.call(
+        document.querySelectorAll('#dg-host .cd-dg-element .cd-dg-name'),
+        function (t) {{ return t.textContent; }});
+    """) == ["cpacs", "wings", "wing", "sections", "section", "profile", "sections"]
+
+
+def test_choosing_another_box_follows_with_its_path(plain):
+    """Choosing a box higher up the path moves the level up with it: that
+    box among its siblings, and what stands open under it."""
+    assert plain.evaluate(f"""
+      dg.show(['wings', 'wing', 'sections', 'section'], false);
+      {PATH_ONLY}.click();
+      var deep = !!dgItem('wings/wing/uID');
+      dgHit(dgItem('wings/wing').querySelector('.cd-dg-frame'));
+      return [deep, Array.prototype.map.call(
+        document.querySelectorAll('#dg-host .cd-dg-element .cd-dg-name'),
+        function (t) {{ return t.textContent; }}), {PATH_ONLY}.getAttribute('aria-pressed')];
+    """) == [False, ["cpacs", "wings", "wing", "uID", "span", "sections", "section"], "true"]
+
+
+def test_clearing_the_selection_brings_everything_back(plain):
+    assert plain.evaluate(BACKGROUND + f"""
+      dg.show(['wings', 'wing'], false);
+      {PATH_ONLY}.click();
+      var x = r.right - 20, y = r.bottom - 20;
+      fire('pointerdown', x, y); fire('pointerup', x, y); fire('click', x, y);
+      return [!!dgItem('header'), {PATH_ONLY}.getAttribute('aria-pressed'), {PATH_ONLY}.disabled];
+    """) == [True, "false", True]
+
+
+def test_the_export_takes_the_path_alone(plain):
+    markup = plain.evaluate(f"""
+      dg.show(['wings', 'wing', 'span'], false);
+      {PATH_ONLY}.click();
+      return dg.exportSvg();
+    """)
+    assert ">span<" in markup and ">uID<" in markup
+    assert ">header<" not in markup and ">extras<" not in markup
+
+
 # ---- touch targets and symbols ----
 
 def test_the_expander_is_easy_to_hit(mounted):
