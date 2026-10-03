@@ -114,6 +114,10 @@ def default_media_path(schema_path: Path) -> Path | None:
     return candidate if candidate.exists() else None
 
 
+# The launcher of the executable tells a subcommand from a schema path by these.
+SUBCOMMANDS = ("report", "build", "serve")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="cpacs-doc", description=__doc__.split("\n")[0])
     parser.add_argument("--version", action="version", version=f"model {model_module.MODEL_VERSION}")
@@ -150,8 +154,11 @@ def main(argv: list[str] | None = None) -> int:
     common(serve_command, exits_on_errors=False)
     serve_command.add_argument("--host", default="127.0.0.1",
                                help="address to bind (default: 127.0.0.1)")
-    serve_command.add_argument("--port", type=int, default=8000,
-                               help="port to bind, 0 for any free port (default: 8000)")
+    serve_command.add_argument("--port", type=int,
+                               help="port to bind, 0 for any free port "
+                                    "(default: 8000, or any free one if that is in use)")
+    serve_command.add_argument("--open", action="store_true",
+                               help="open the viewer in the default browser")
     serve_command.add_argument("--media-root", type=Path,
                                help="directory the media catalogue paths are relative to "
                                     "(default: the catalogue's own directory)")
@@ -184,6 +191,7 @@ def main(argv: list[str] | None = None) -> int:
             limit=None if args.limit == 0 else args.limit,
             host=args.host,
             port=args.port,
+            open_browser=args.open,
         )
 
     report = Report()

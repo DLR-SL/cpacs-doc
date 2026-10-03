@@ -9,3 +9,5 @@ build_sandcastle/
 .venv/
 dist/
 *.egg-info/
+# Written by a local PyInstaller build (README, section 1).
+cpacs-doc.spec

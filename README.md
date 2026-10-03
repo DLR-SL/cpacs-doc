@@ -22,7 +22,8 @@ not. See [section 5](#5-how-this-was-built).
 
 Pick **one** of the three paths below. If you have no preference, take uv: it is
 what CI uses, and `uv.lock` pins the exact versions so every checkout resolves
-identically.
+identically. To only view a schema on Windows, the executable at the end of this
+section needs no installation at all.
 
 ### Path A — with uv (recommended)
 
@@ -126,6 +127,30 @@ Neither is pinned — `uv.lock` does not apply there, so you get whatever versio
 pip resolves at that moment. That is fine for using the tool, and it is the
 reason CI installs with `uv sync --locked` instead.
 
+### Without installing anything — the Windows executable
+
+For looking at a schema while working on it, without a Python environment:
+`cpacs-doc.exe` is one file with Python, `lxml` and the viewer inside. CI builds
+it on every run (the `cpacs-doc-windows` artifact of the `ci` workflow) and
+attaches it to every release.
+
+- **Double click** it and pick a schema, **drop a schema** on it, or choose it
+  under *Open with* for a `.xsd` file in the Explorer. Each of these runs
+  `serve --open`: the viewer opens in the browser and follows every change to
+  the schema. The console window shows the build report; closing it stops the
+  server.
+- **From a terminal** it takes every subcommand of this README:
+  `cpacs-doc.exe report schema.xsd`.
+
+The executable is not signed, so Windows SmartScreen warns on the first start:
+*More info → Run anyway*. To build it yourself, from the repository root:
+
+```
+uv run --group dist pyinstaller --onefile --name cpacs-doc --collect-data cpacs_doc packaging/cpacs-doc.py
+```
+
+It lands in `dist/`.
+
 ---
 
 ## 2. Run
@@ -217,8 +242,11 @@ cpacs-doc serve path/to/cpacs/schema/cpacs_schema.xsd
 Builds the model in memory, serves the viewer on <http://127.0.0.1:8000>, and
 rebuilds whenever the schema or the media catalogue changes — the build report
 goes to the terminal on every pass and the browser reloads by itself. Nothing is
-written to disk. `--host` and `--port` change the address; `--port 0` takes any
-free port. Stop it with Ctrl-C.
+written to disk. `--open` opens the viewer in the default browser. `--host` and
+`--port` change the address; `--port 0` takes any free port. Without `--port`, a
+port 8000 that is already in use — by a second `serve`, say — gives way to any
+free one, and the terminal names it; a port asked for by name is used or the
+command fails. Stop it with Ctrl-C.
 
 It reproduces the deployment target rather than merely serving files: one
 not-found document answers every path that is not a file, tree paths keep their

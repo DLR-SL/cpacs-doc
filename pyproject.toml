@@ -17,6 +17,8 @@ dependencies = ["lxml>=4.9"]
 # not a feature of the distribution, and `uv sync` installs it without a flag.
 [dependency-groups]
 dev = ["pytest>=7"]
+# The Windows executable (packaging/cpacs-doc.py); not installed by `uv sync`.
+dist = ["pyinstaller>=6"]
 
 [project.scripts]
 cpacs-doc = "cpacs_doc.cli:main"

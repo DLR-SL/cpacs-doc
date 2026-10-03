@@ -3,6 +3,8 @@ name: ci
 on:
   push:
     branches: [main]
+    # A version tag attaches the Windows executable to a release.
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
   # The schema job checks a repository this one does not control. A weekly run
@@ -145,6 +147,43 @@ jobs:
               });
             }
             core.info(`kept this run's ${name}, deleted ${superseded.length} older`);
+
+  exe:
+    # The viewer for people without a Python environment: one file, started by
+    # double click or by dropping a schema on it (src/cpacs_doc/launch.py).
+    runs-on: windows-latest
+    needs: test
+    permissions:
+      # To create the release on a tag; nothing else here writes.
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build
+        run: uv run --locked --group dist pyinstaller --onefile --name cpacs-doc --collect-data cpacs_doc packaging/cpacs-doc.py
+
+      - name: Smoke test
+        # The frozen program, not the package: what PyInstaller leaves out only
+        # shows here. A subcommand, so nothing opens a browser or a dialog.
+        run: dist/cpacs-doc.exe report tests/fixtures/minimal.xsd --no-media
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpacs-doc-windows
+          path: dist/cpacs-doc.exe
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: gh release create "$env:GITHUB_REF_NAME" dist/cpacs-doc.exe --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
 
   preview:
     # A preview of the generated documentation, not a release. It tracks

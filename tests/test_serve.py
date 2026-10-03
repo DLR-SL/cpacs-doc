@@ -263,3 +263,87 @@ def test_a_diagram_path_answers_with_the_router_under_status_404(base):
     assert status == 404
     assert headers["Content-Type"].startswith("text/html")
     assert b'id="cd-diagram"' in body
+
+
+def test_a_port_already_taken_is_refused_rather_than_shared(site):
+    """Windows lets a second socket bind a port another one holds unless the
+    server asks for exclusive use, and a second `serve` would then answer half
+    of the first one's requests."""
+    first = serve_module.create_server(site, "127.0.0.1", 0)
+    try:
+        with pytest.raises(OSError):
+            serve_module.create_server(site, "127.0.0.1", first.server_address[1])
+    finally:
+        first.server_close()
+
+
+def test_a_port_already_taken_falls_back_to_a_free_one_when_allowed(site):
+    first = serve_module.create_server(site, "127.0.0.1", 0)
+    try:
+        second = serve_module.create_server(
+            site, "127.0.0.1", first.server_address[1], fallback=True
+        )
+        try:
+            assert second.server_address[1] not in (0, first.server_address[1])
+        finally:
+            second.server_close()
+    finally:
+        first.server_close()
+
+
+@pytest.fixture
+def served(monkeypatch, tmp_path):
+    """Run `cpacs-doc serve` up to the point where it would block, and record
+    what it handed to the browser.
+
+    The browser is the one dependency stubbed: opening a real window on every
+    test run is a side effect no test should have.
+    """
+    from cpacs_doc import cli
+
+    opened = []
+    monkeypatch.setattr(serve_module.webbrowser, "open", opened.append)
+    monkeypatch.setattr(serve_module.Server, "serve_forever",
+                        lambda self, *a, **k: (_ for _ in ()).throw(KeyboardInterrupt))
+    schema = tmp_path / "minimal.xsd"
+    shutil.copyfile(FIXTURES / "minimal.xsd", schema)
+
+    def run(*options):
+        return cli.main(["serve", str(schema), "--no-media", *options]), opened
+
+    return run
+
+
+def test_open_hands_the_tree_address_to_the_browser(served):
+    code, opened = served("--open", "--port", "0")
+    assert code == 0
+    assert len(opened) == 1
+    assert opened[0].startswith("http://127.0.0.1:")
+    assert opened[0].endswith("/tree/cpacs/")
+
+
+def test_without_open_no_browser_is_started(served):
+    code, opened = served("--port", "0")
+    assert code == 0
+    assert opened == []
+
+
+def test_the_default_port_taken_is_not_a_failure(served, monkeypatch, site, capsys):
+    taken = serve_module.create_server(site, "127.0.0.1", 0)
+    monkeypatch.setattr(serve_module, "DEFAULT_PORT", taken.server_address[1])
+    try:
+        code, _ = served()
+    finally:
+        taken.server_close()
+    assert code == 0
+    assert f":{taken.server_address[1]}/" not in capsys.readouterr().out
+
+
+def test_a_named_port_taken_is_reported_without_a_traceback(served, site, capsys):
+    taken = serve_module.create_server(site, "127.0.0.1", 0)
+    try:
+        code, _ = served("--port", str(taken.server_address[1]))
+    finally:
+        taken.server_close()
+    assert code == 2
+    assert f"port {taken.server_address[1]} is in use" in capsys.readouterr().err

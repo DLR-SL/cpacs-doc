@@ -18,10 +18,12 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import socket
 import sys
 import threading
 import time
 import urllib.parse
+import webbrowser
 from functools import partial
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -81,6 +83,9 @@ LIVE_RELOAD = """<script>
 BODY_END = "</body>"
 
 WATCH_INTERVAL = 0.5
+
+# Taken when no port is named, and given up for any free one if it is in use.
+DEFAULT_PORT = 8000
 
 
 def with_live_reload(html: str) -> str:
@@ -379,6 +384,16 @@ class Server(ThreadingHTTPServer):
 
     EXPECTED = (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)
 
+    def server_bind(self) -> None:
+        # On Windows SO_REUSEADDR, which `HTTPServer` sets, lets a second
+        # socket bind a port that another one is listening on, and the two
+        # servers then share the requests. Exclusive use makes the second bind
+        # fail, as it does on every other platform.
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.allow_reuse_address = False
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
     def handle_error(self, request, client_address) -> None:
         kind = sys.exc_info()[0]
         if kind is not None and issubclass(kind, self.EXPECTED):
@@ -386,12 +401,23 @@ class Server(ThreadingHTTPServer):
         super().handle_error(request, client_address)
 
 
-def create_server(site: Site, host: str, port: int, *, quiet: bool = False) -> Server:
-    return Server((host, port), partial(Handler, site=site, quiet=quiet))
+def create_server(site: Site, host: str, port: int, *, quiet: bool = False,
+                  fallback: bool = False) -> Server:
+    """`fallback` takes any free port when `port` is taken, for the default
+    port only: a port someone asked for by name is one they mean."""
+    handler = partial(Handler, site=site, quiet=quiet)
+    try:
+        return Server((host, port), handler)
+    except OSError:
+        if not fallback:
+            raise
+        return Server((host, 0), handler)
 
 
 def serve(schema: Path, media_path: Path | None, *, media_expected: bool,
-          media_root: Path | None, limit: int | None, host: str, port: int) -> int:
+          media_root: Path | None, limit: int | None, host: str, port: int | None,
+          open_browser: bool = False) -> int:
+    """`port` None is the default port, with any free one as fallback."""
     site = Site(
         schema,
         media_path,
@@ -402,7 +428,12 @@ def serve(schema: Path, media_path: Path | None, *, media_expected: bool,
     if not site.rebuild():
         return 2
 
-    server = create_server(site, host, port)
+    try:
+        server = create_server(site, host, DEFAULT_PORT if port is None else port,
+                               fallback=port is None)
+    except OSError as error:
+        print(f"port {port} is in use or not available: {error}", file=sys.stderr)
+        return 2
     stop = threading.Event()
     watcher = threading.Thread(
         target=watch, args=(site, stop, WATCH_INTERVAL, stamps_of(site)), daemon=True
@@ -411,8 +442,11 @@ def serve(schema: Path, media_path: Path | None, *, media_expected: bool,
 
     address = f"http://{host}:{server.server_address[1]}"
     root = site.root_element()
-    print(f"\nserving {address}/" + (f"tree/{root}/" if root else ""))
+    start = f"{address}/" + (f"tree/{root}/" if root else "")
+    print(f"\nserving {start}")
     print(f"type index {address}/  |  Ctrl-C to stop")
+    if open_browser:
+        webbrowser.open(start)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
