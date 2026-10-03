@@ -1402,10 +1402,40 @@ body.cd-viewer { max-width: none; padding: 1.1rem 1.4rem; }
   grid-template-columns: 7.5rem minmax(0, 1fr);
   gap: 0 0.6rem;
 }
+/* The value keeps its own width. A grid item is stretched across its column,
+   and a type link — a button — centred its name in the 33rem that left. */
+.cd-app-diagram .cd-pane-detail td[data-label] + td[data-label] > * { justify-self: start; }
 .cd-app-diagram .cd-pane-detail td[data-label] + td[data-label]::before {
   content: attr(data-label);
   color: var(--ink-soft);
 }
+
+/* Nesting, where a row is a card. The table indents the name cell, and that
+   cell is now one line of the card: its padding was reset with every other
+   cell's while its guides stayed where the indent had been, and ran through
+   the names of a choice's branches. So here the card is indented — all of it,
+   at a step narrower than the table's, since the overlay has less width to
+   give and the deepest member in CPACS sits five groups down. As in the table,
+   the outermost group is not indented and draws no guide. The rule under a
+   card and the tint of a group start where the card does, so the eye sees
+   which cards belong to the group above them. */
+.cd-app-diagram .cd-pane-detail tr {
+  --indent: calc(max(var(--depth, 0) - 1, 0) * 1rem);
+  --guides: repeating-linear-gradient(to right, var(--guide) 0 1px, transparent 1px 1rem)
+    0.3rem 0 / max(0px, calc(var(--indent) - 0.3rem)) 100% no-repeat;
+  padding-left: var(--indent);
+  border-bottom: 0;
+  background:
+    linear-gradient(var(--rule), var(--rule)) right bottom / calc(100% - var(--indent)) 1px no-repeat,
+    var(--guides);
+}
+.cd-app-diagram .cd-pane-detail tr.cd-group {
+  background:
+    linear-gradient(var(--group-tint), var(--group-tint)) right top / calc(100% - var(--indent)) 100% no-repeat,
+    var(--guides);
+}
+.cd-app-diagram .cd-pane-detail td.cd-indent { background: none; }
+.cd-app-diagram .cd-pane-detail .cd-group td { padding-left: 0.45rem; }
 .cd-app-diagram .cd-pane-detail td[data-label] + td.cd-cell-empty { display: none; }
 
 .cd-dg-toolbar {

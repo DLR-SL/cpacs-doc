@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Compositors inside compositors, one level under the root: the diagram
+     opens its overlay for a chosen box, and the root is the bare drawing.
+     sequence > [always, choice > [either, sequence > [bothA, bothB]]], as in
+     content.xsd's choiceType. bothA has a type of the schema's own, so its
+     row carries a type link. -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            elementFormDefault="qualified">
+
+    <xsd:simpleType name="leafType">
+        <xsd:restriction base="xsd:string"/>
+    </xsd:simpleType>
+
+    <xsd:complexType name="nestedType">
+        <xsd:sequence>
+            <xsd:element name="always" type="xsd:string"/>
+            <xsd:choice>
+                <xsd:element name="either" type="xsd:string"/>
+                <xsd:sequence>
+                    <xsd:element name="bothA" type="leafType"/>
+                    <xsd:element name="bothB" type="xsd:string"/>
+                </xsd:sequence>
+            </xsd:choice>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:element name="cpacs">
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="holder" type="nestedType"/>
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+</xsd:schema>

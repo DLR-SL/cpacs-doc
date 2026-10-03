@@ -1590,7 +1590,7 @@
         var groupRow = element("tr", "cd-group cd-group-" + (member.compositor || ""));
         var groupCell = element("td");
         groupCell.setAttribute("colspan", "5");
-        indent(groupCell, depth);
+        indent(groupRow, groupCell, depth);
         var label = element("span", "cd-group-label");
         var mark = element("span", "cd-group-mark");
         mark.setAttribute("aria-hidden", "true");
@@ -1618,7 +1618,7 @@
       }
       var row = element("tr");
       var nameCell = element("td");
-      indent(nameCell, depth);
+      indent(row, nameCell, depth);
       if (member.kind === "any") {
         // No name and no type of its own, so the row says what it does allow.
         var term = element("span", "cd-facet", "any");
@@ -1657,10 +1657,12 @@
     }
   }
 
-  function indent(cell, depth) {
+  // The depth is held by the row and inherited by its cells: the table indents
+  // the name cell, while the overlay, where a row is a card, indents the card.
+  function indent(row, cell, depth) {
     if (!depth) return;
     cell.className = "cd-indent";
-    cell.style.setProperty("--depth", String(depth));
+    row.style.setProperty("--depth", String(depth));
   }
 
   function appendTable(panel, heading, rows, columns) {
