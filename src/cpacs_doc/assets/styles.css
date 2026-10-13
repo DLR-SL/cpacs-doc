@@ -285,6 +285,22 @@ td:first-child, th:first-child { padding-left: 0; }
 td:last-child, th:last-child { padding-right: 0; }
 td code { white-space: nowrap; }
 
+/* The title of a table reads as the title of a code block or a figure: under
+   it, flush left, small and soft. The browser's default — centred above the
+   head, in the size of the cells — set it apart from the captions it stands
+   between on the same page, e.g. on the base types, whose tables of example
+   values follow code blocks with a title under them. */
+caption {
+  caption-side: bottom;
+  text-align: left;
+  font-size: var(--step-0);
+  color: var(--ink-soft);
+  padding-top: 0.5rem;
+}
+/* With its title the table is a captioned block like a figure, and takes the
+   figure's distance to the text around it. */
+table:has(> caption) { margin: 1.6rem 0; }
+
 /* The table's own scroller. A reference table is as wide as its widest name
    and cannot be made to fit a reading measure: the child table needs up to
    1,143 px against a 928 px column, on 1,079 of the 1,206 type pages. Without

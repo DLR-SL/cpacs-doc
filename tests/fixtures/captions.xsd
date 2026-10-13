@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A type whose remarks hold a code block and a table, each with a title.
+     What is measured on it is that the two titles look alike. -->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:ddue="http://ddue.schemas.microsoft.com/authoring/2003/5"
+            xmlns:sd="http://schemas.xsddoc.codeplex.com/schemaDoc/2009/3"
+            elementFormDefault="qualified">
+
+    <xsd:complexType name="booleanBaseType">
+        <xsd:annotation>
+            <xsd:appinfo>
+                <sd:schemaDoc>
+                    <ddue:summary>
+                        <ddue:para>Boolean value</ddue:para>
+                    </ddue:summary>
+                    <ddue:remarks>
+                        <ddue:content>
+                            <ddue:code language="XML" title="Flag set to true">
+                                <![CDATA[
+<flag>true</flag>
+                                ]]>
+                            </ddue:code>
+                            <ddue:table>
+                                <ddue:title>Example values</ddue:title>
+                                <ddue:row>
+                                    <ddue:entry>Value</ddue:entry>
+                                    <ddue:entry>Validity</ddue:entry>
+                                </ddue:row>
+                                <ddue:row>
+                                    <ddue:entry>true</ddue:entry>
+                                    <ddue:entry>valid</ddue:entry>
+                                </ddue:row>
+                            </ddue:table>
+                        </ddue:content>
+                    </ddue:remarks>
+                </sd:schemaDoc>
+            </xsd:appinfo>
+        </xsd:annotation>
+        <xsd:simpleContent>
+            <xsd:extension base="xsd:boolean"/>
+        </xsd:simpleContent>
+    </xsd:complexType>
+
+    <xsd:element name="flag" type="booleanBaseType"/>
+</xsd:schema>
