@@ -115,11 +115,53 @@ def default_media_path(schema_path: Path) -> Path | None:
 
 
 # The launcher of the executable tells a subcommand from a schema path by these.
-SUBCOMMANDS = ("report", "build", "serve")
+SUBCOMMANDS = ("report", "build", "serve", "diff")
+
+
+def diff_main(argv: list[str]) -> int:
+    """`cpacs-doc diff OLD NEW`: two schemas, so it has its own arguments."""
+    parser = argparse.ArgumentParser(
+        prog="cpacs-doc diff",
+        description="compare two schemas and show the differences in the diagram")
+    parser.add_argument("old", type=Path, help="the old schema (XSD)")
+    parser.add_argument("new", type=Path, help="the new schema (XSD)")
+    parser.add_argument("-o", "--output", type=Path, default=Path("build/diff"),
+                        help="output directory (default: build/diff)")
+    parser.add_argument("--old-label", help="name of the old schema in the outputs")
+    parser.add_argument("--new-label", help="name of the new schema in the outputs")
+    parser.add_argument("--renames", type=Path,
+                        help="rename decisions (default: <new schema>.renames.toml next to it)")
+    parser.add_argument("--link", help="URL of the published diff.html, put into summary.md")
+    args = parser.parse_args(argv)
+    for path in (args.old, args.new):
+        if not path.exists():
+            print(f"no such file: {path}", file=sys.stderr)
+            return 2
+    sys.setrecursionlimit(RECURSION_LIMIT)
+    from .diff.run import diff
+
+    try:
+        result = diff(args.old, args.new, args.output, old_label=args.old_label,
+                      new_label=args.new_label, renames_path=args.renames, link=args.link)
+    except etree.XMLSyntaxError as err:
+        print(f"cannot parse: {err}", file=sys.stderr)
+        return 2
+    t, p, cc = result["types"], result["paths"], result["compat"]["counts"]
+    print(f"types +{len(t['added'])} -{len(t['removed'])} ~{len(t['changed'])} | "
+          f"paths +{p['add']} -{p['del']} | moves {p['moves']} | renames {p['renames']}")
+    print(f"compatibility: {cc['break']} breaking ({cc['migratable']} migratable), "
+          f"{cc['review']} to review, {cc['ok']} compatible")
+    print(f"diff: {args.output / 'diff.html'}, report.md, summary.md, diff.json")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="cpacs-doc", description=__doc__.split("\n")[0])
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["diff"]:
+        return diff_main(argv[1:])
+    parser = argparse.ArgumentParser(
+        prog="cpacs-doc", description=__doc__.split("\n")[0],
+        epilog="cpacs-doc diff OLD NEW compares two schemas; see cpacs-doc diff --help.")
     parser.add_argument("--version", action="version", version=f"model {model_module.MODEL_VERSION}")
     subcommands = parser.add_subparsers(dest="command", required=True)
 

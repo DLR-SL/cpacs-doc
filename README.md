@@ -265,6 +265,56 @@ remembers the choice. A click on the free canvas clears the selection and its
 coloured path. *PNG* and *SVG* save the drawing as it stands — everything that
 is expanded, whatever part of it is in view.
 
+### `diff` — what changed between two schemas
+
+```
+cpacs-doc diff old/cpacs_schema.xsd new/cpacs_schema.xsd -o build/diff
+```
+
+Builds the model of both schemas and writes four files: `diff.html`, one
+self-contained page that shows the changes on the diagram; `report.md`, the full
+list; `summary.md`, a short one for a pull request comment (`--link` puts the
+address of the published page into it); and `diff.json` with everything.
+`--old-label` and `--new-label` name the two sides, e.g. `develop@94f3788`.
+
+The page draws the diagram as the viewer does, with the changes on it: added
+nodes green with `+`, removed ones red and struck through, a changed type or
+bound amber with the old value struck, documentation-only changes with a blue
+edge, moved nodes teal with a link to their other place. A changed compositor is
+amber, a nested group that no longer exists red. *Before | After* puts the old
+and the new subtree side by side on aligned rows. The list on the left groups
+the changes by the type that holds them; a second click steps through all its
+places. A bar at the top shows what the changes mean for existing files
+(breaking, to review, compatible) and sets the filter; the details of the selected
+node stand beside the diagram. The arrow keys walk the diagram as in the viewer;
+Shift+Home goes to the root, Escape goes back step by step.
+
+Every change is classified from the view of an existing file: *breaking* when a
+file valid against the old schema can be invalid against the new one (removed,
+moved or renamed node, new required node or attribute, bound raised or lowered
+the wrong way, enumeration value removed, element order now enforced) — renames
+and moves are marked *migratable* —, *to review* when values may no longer fit
+or readers must expect something new, *compatible* otherwise. A new alternative
+in an existing choice is compatible.
+
+Removed and added nodes are paired as renames (siblings with a similar name, the
+same type or mostly the same children) and as moves (elsewhere in the tree, same
+name or a confirmed rename, same type or children); a paired node is compared
+with its old self. Removed types whose places now use added types are reported
+as renamed, merged or split. A suspected rename stays a guess until it is
+decided in `cpacs_schema.renames.toml` next to the new schema (or `--renames`):
+
+```toml
+[[rename]]
+old = "coG"
+new = "centerOfGravity"
+parentType = "weightAndBalanceOperationalCaseType"   # optional
+
+[[reject]]
+old = "configurations"
+new = "configuration"
+```
+
 ---
 
 ## 3. The media catalogue converter

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xsd:element name="cpacs" type="cpacsType">
+    <xsd:annotation><xsd:documentation>Root</xsd:documentation></xsd:annotation>
+  </xsd:element>
+  <xsd:complexType name="cpacsType">
+    <xsd:annotation><xsd:documentation>Root type</xsd:documentation></xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="caseA" type="caseType"><xsd:annotation><xsd:documentation>Case A</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="caseB" type="caseType"><xsd:annotation><xsd:documentation>Case B</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="fresh" type="pointType" minOccurs="0"><xsd:annotation><xsd:documentation>New node</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="container" type="containerType" minOccurs="0"><xsd:annotation><xsd:documentation>container</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="alpha" type="alphaBetaType"><xsd:annotation><xsd:documentation>alpha</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="beta" type="alphaBetaType"><xsd:annotation><xsd:documentation>beta</xsd:documentation></xsd:annotation></xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="caseType">
+    <xsd:annotation><xsd:documentation>A case</xsd:documentation></xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="centerOfGravity" type="pointType"><xsd:annotation><xsd:documentation>Centre of gravity</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="mass" type="xsd:double"><xsd:annotation><xsd:documentation>Mass</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="note" type="xsd:string"><xsd:annotation><xsd:documentation>New text</xsd:documentation></xsd:annotation></xsd:element>
+    </xsd:sequence>
+    <xsd:attribute name="uID" type="xsd:ID" use="required"><xsd:annotation><xsd:documentation>uID</xsd:documentation></xsd:annotation></xsd:attribute>
+    <xsd:attribute name="flag" type="xsd:boolean" use="optional"><xsd:annotation><xsd:documentation>flag</xsd:documentation></xsd:annotation></xsd:attribute>
+  </xsd:complexType>
+  <xsd:complexType name="pointType">
+    <xsd:annotation><xsd:documentation>Point</xsd:documentation></xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="x" type="xsd:double"><xsd:annotation><xsd:documentation>x</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:choice>
+        <xsd:element name="px" type="xsd:double"><xsd:annotation><xsd:documentation>px</xsd:documentation></xsd:annotation></xsd:element>
+        <xsd:element name="py" type="xsd:double"><xsd:annotation><xsd:documentation>py</xsd:documentation></xsd:annotation></xsd:element>
+        <xsd:element name="pz" type="xsd:double"><xsd:annotation><xsd:documentation>pz</xsd:documentation></xsd:annotation></xsd:element>
+      </xsd:choice>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="containerType">
+    <xsd:annotation><xsd:documentation>containerType</xsd:documentation></xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="fuel" type="fuelType"><xsd:annotation><xsd:documentation>fuel</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="label" type="xsd:string"><xsd:annotation><xsd:documentation>label</xsd:documentation></xsd:annotation></xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="fuelType">
+    <xsd:annotation><xsd:documentation>fuelType</xsd:documentation></xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="amount" type="xsd:double"><xsd:annotation><xsd:documentation>amount</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="tanks" type="storageType"><xsd:annotation><xsd:documentation>tanks</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="extra" type="xsd:string"><xsd:annotation><xsd:documentation>extra</xsd:documentation></xsd:annotation></xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="storageType">
+    <xsd:annotation><xsd:documentation>storageType</xsd:documentation></xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="uid" type="xsd:string"><xsd:annotation><xsd:documentation>uid</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="volume" type="xsd:double"><xsd:annotation><xsd:documentation>volume</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:choice>
+        <xsd:element name="ca" type="xsd:double"><xsd:annotation><xsd:documentation>ca</xsd:documentation></xsd:annotation></xsd:element>
+        <xsd:element name="cb" type="xsd:double"><xsd:annotation><xsd:documentation>cb</xsd:documentation></xsd:annotation></xsd:element>
+      </xsd:choice>
+    </xsd:sequence>
+  </xsd:complexType>
+  <xsd:complexType name="alphaBetaType">
+    <xsd:annotation><xsd:documentation>alphaBetaType</xsd:documentation></xsd:annotation>
+    <xsd:sequence>
+      <xsd:element name="a1" type="xsd:double"><xsd:annotation><xsd:documentation>a1</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="a2" type="xsd:double"><xsd:annotation><xsd:documentation>a2</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="b1" type="xsd:double"><xsd:annotation><xsd:documentation>b1</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="b2" type="xsd:double"><xsd:annotation><xsd:documentation>b2</xsd:documentation></xsd:annotation></xsd:element>
+    </xsd:sequence>
+  </xsd:complexType>
+</xsd:schema>

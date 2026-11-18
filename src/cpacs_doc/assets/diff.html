@@ -1,0 +1,1197 @@
+<style>
+/* Layout: a workbench that fills the window. Header with the verdict on existing files, then
+   three columns: changed types, the diagram on paper, the inspector. Only the columns scroll.
+   The diagram keeps cpacs-doc's language: dashes are optional, magenta is the selection.
+   Every colour is a custom property, so the dark palette reaches the drawing without script. */
+:root {
+  --page: #eceef0; --panel: #f6f7f8; --paper: #ffffff;
+  --ink: #24272b; --ink-soft: #5f656d; --line: #d9dde1; --line-strong: #a9b0b8;
+  --field: rgba(60,72,88,0.07); --link: #1d5fa8; --trail: #b0247e; --shadow: 0 6px 24px rgba(30,40,55,0.16);
+  --add: #1f7a3d; --add-fill: #e4f3e8; --del: #a3241c; --del-fill: #f9e6e4;
+  --mod: #8f5d00; --mod-fill: #fbf0da; --doc: #2f6db0; --doc-fill: #e6eef8;
+  --mov: #0d7377; --mov-fill: #e1f2f2;
+  --face-text: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --face-code: "Cascadia Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 6px; --ctl: 30px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #15171a; --panel: #1b1e22; --paper: #202328;
+  --ink: #dde1e5; --ink-soft: #9aa2ab; --line: #30353b; --line-strong: #59616b;
+  --field: rgba(160,175,190,0.10); --link: #7ab6f2; --trail: #e26bbd; --shadow: 0 6px 24px rgba(0,0,0,0.5);
+  --add: #6cc98b; --add-fill: #1f3527; --del: #ec8a82; --del-fill: #3d2523;
+  --mod: #e0b057; --mod-fill: #392f1c; --doc: #7fb0e8; --doc-fill: #1f2c3c; --mov: #5cc4c6; --mov-fill: #1a3535; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --page: #15171a; --panel: #1b1e22; --paper: #202328;
+  --ink: #dde1e5; --ink-soft: #9aa2ab; --line: #30353b; --line-strong: #59616b;
+  --field: rgba(160,175,190,0.10); --link: #7ab6f2; --trail: #e26bbd; --shadow: 0 6px 24px rgba(0,0,0,0.5);
+  --add: #6cc98b; --add-fill: #1f3527; --del: #ec8a82; --del-fill: #3d2523;
+  --mod: #e0b057; --mod-fill: #392f1c; --doc: #7fb0e8; --doc-fill: #1f2c3c; --mov: #5cc4c6; --mov-fill: #1a3535; color-scheme: dark }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--face-text); font-size: 14px; line-height: 1.45;
+  font-variant-numeric: tabular-nums; display: grid; grid-template-rows: auto minmax(0,1fr); grid-template-columns: minmax(0,1fr); overflow: hidden; }
+code, .mono { font-family: var(--face-code); font-size: 0.92em; }
+button, input, select { font: inherit; color: inherit; }
+.k-add { color: var(--add); } .k-del { color: var(--del); } .k-mod { color: var(--mod); } .k-doc { color: var(--doc); } .k-mov { color: var(--mov); }
+.note { color: var(--ink-soft); font-size: 13px; }
+
+/* ---- header ---- */
+.top { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 10px 32px; align-items: end;
+  padding: 14px max(20px, env(safe-area-inset-right, 0px)) 14px max(20px, env(safe-area-inset-left, 0px)); }
+.top h1 { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 600; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+.top h1 .arrow { color: var(--ink-soft); font-weight: 400; margin: 0 0.3em; }
+.top .sub { margin: 2px 0 0; color: var(--ink-soft); font-size: 13px; }
+.counts { display: flex; flex-wrap: wrap; gap: 4px 20px; margin-top: 8px; font-size: 13px; }
+.counts span { white-space: nowrap; }
+.counts .lbl { color: var(--ink-soft); margin-right: 6px; }
+.counts b { font-weight: 600; }
+.verdict { min-width: 300px; }
+.verdict .cap { font-size: 12px; color: var(--ink-soft); margin: 0 0 5px; }
+.vbar { display: flex; gap: 2px; height: 10px; border-radius: 5px; overflow: hidden; background: var(--line); }
+.vbar button { border: 0; padding: 0; cursor: pointer; min-width: 6px; }
+.vbar .break { background: var(--del); } .vbar .review { background: var(--mod); } .vbar .ok { background: var(--add); }
+.vbar button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+.vkeys { display: flex; gap: 4px 14px; flex-wrap: wrap; margin-top: 6px; }
+.vkeys button { border: 0; background: none; padding: 2px 0; cursor: pointer; font-size: 13px; color: var(--ink-soft); display: inline-flex; gap: 5px; align-items: baseline; border-bottom: 2px solid transparent; }
+.vkeys button b { font-size: 15px; font-weight: 650; }
+.vkeys button[aria-pressed="true"] { color: var(--ink); border-bottom-color: currentColor; }
+.vkeys button:hover { color: var(--ink); }
+.vkeys .break b { color: var(--del); } .vkeys .review b { color: var(--mod); } .vkeys .ok b { color: var(--add); }
+.vkeys small { font-size: 12px; }
+
+/* menus (Key, Options): a summary button and a floating panel */
+.menu { position: relative; }
+.menu > summary { list-style: none; }
+.menu > summary::-webkit-details-marker { display: none; }
+.menu > summary::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 8px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: translateY(-2px) rotate(45deg); opacity: 0.6; }
+.pop { position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; min-width: 240px; padding: 10px 12px; background: var(--paper);
+  border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); display: grid; gap: 8px; font-size: 13px; }
+.pop.left { right: auto; left: 0; }
+.pop label { display: flex; gap: 8px; align-items: center; cursor: pointer; white-space: nowrap; }
+.pop label:has(input:disabled) { opacity: 0.5; cursor: default; }
+.keylist { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 7px 10px; align-items: center; min-width: 290px; }
+.keylist .keys { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 8px; font-size: 12px; line-height: 1.9; max-width: 320px; }
+kbd { font: 11px var(--face-code); padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--panel); }
+.keylist .note { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 8px; font-size: 12px; }
+.sw { display: inline-block; width: 24px; height: 13px; border: 1.5px solid; border-radius: 3px; }
+.sw.add { border-color: var(--add); background: var(--add-fill); }
+.sw.del { border-color: var(--del); background: var(--del-fill); }
+.sw.mod { border-color: var(--mod); background: var(--mod-fill); }
+.sw.mov { border-color: var(--mov); background: var(--mov-fill); }
+.sw.doc { border-color: var(--line-strong); background: var(--paper); box-shadow: inset 4px 0 0 var(--doc); }
+.sw.opt { border-color: var(--ink-soft); border-style: dashed; }
+.sev-key { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; font: 700 10px var(--face-code); justify-self: center; }
+.sev-key.break { background: var(--del); color: var(--paper); } .sev-key.review { border: 1.4px solid var(--mod); color: var(--mod); }
+.keylist .sym { font-family: var(--face-code); font-size: 12px; text-align: center; color: var(--ink-soft); }
+
+/* controls: one height, one radius, one border */
+.btn, .seg, .search input, .menu > summary.btn { height: var(--ctl); border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }
+.btn { padding: 0 11px; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; white-space: nowrap; }
+.btn:hover { border-color: var(--line-strong); }
+.seg { display: inline-flex; padding: 2px; gap: 2px; background: var(--field); border-color: transparent; }
+.seg button { border: 0; background: none; color: var(--ink-soft); font-size: 13px; padding: 0 10px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+.seg button:hover { color: var(--ink); }
+.seg button.on { background: var(--paper); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.12); }
+.btn:focus-visible, .seg button:focus-visible, summary:focus-visible, .hot:focus-visible, .side-head:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
+
+/* ---- workbench ---- */
+.work { display: grid; grid-template-columns: 280px minmax(0,1fr) 340px; min-height: 0;
+  border-top: 1px solid var(--line); }
+.side, .insp { background: var(--panel); min-height: 0; overflow-y: auto; overflow-x: hidden; }
+.side { border-right: 1px solid var(--line); }
+.insp { border-left: 1px solid var(--line); }
+.side-head { position: sticky; top: 0; z-index: 2; display: flex; width: 100%; justify-content: space-between; align-items: baseline;
+  border: 0; background: var(--panel); padding: 12px 16px 8px; font-size: 13px; font-weight: 600; text-align: left; cursor: default; }
+.side-head .count { color: var(--ink-soft); font-weight: 400; }
+.side-head .chev { display: none; }
+.hot { display: block; width: 100%; padding: 8px 16px 9px; border: 0; border-left: 3px solid transparent; background: none; text-align: left; cursor: pointer; }
+.hot + .hot { border-top: 1px solid var(--line); }
+.hot:hover { background: var(--field); }
+.hot.on { background: var(--paper); border-left-color: var(--trail); }
+.hot .t { display: block; font-family: var(--face-code); font-size: 12.5px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+.hot .n { display: flex; flex-wrap: wrap; gap: 2px 8px; margin-top: 3px; font-family: var(--face-code); font-size: 12px; }
+.hot .n .brk { color: var(--del); font-weight: 700; }
+.hot .w { display: block; margin-top: 2px; font-size: 12px; color: var(--ink-soft); overflow-wrap: anywhere; }
+
+[hidden] { display: none !important; }
+.stage { position: relative; display: grid; grid-template-rows: auto auto minmax(0,1fr); grid-template-columns: minmax(0,1fr); min-width: 0; min-height: 0; background: var(--paper); }
+.crumbs { padding: 10px 16px 0; font-family: var(--face-code); font-size: 12.5px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.crumbs button { border: 0; background: none; color: var(--link); padding: 0; cursor: pointer; font: inherit; }
+.crumbs button:hover { text-decoration: underline; }
+.crumbs .here { color: var(--ink); font-weight: 600; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 16px 10px; border-bottom: 1px solid var(--line); }
+.tools .grow { flex: 1 1 160px; min-width: 0; }
+.zoom, .hotnav { display: inline-flex; align-items: center; gap: 2px; }
+.zoom { position: absolute; z-index: 5; right: 16px; bottom: 16px; padding: 3px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
+.zoom .btn { border-color: transparent; background: none; }
+.zoom .btn:hover { background: var(--field); }
+.zoom .btn, .hotnav .btn { width: var(--ctl); padding: 0; justify-content: center; font-size: 15px; }
+#zoomFit { width: auto; padding: 0 9px; font-size: 13px; }
+#zoomLevel { min-width: 3.4em; text-align: center; font-size: 12px; color: var(--ink-soft); }
+.hotnav { font-size: 12px; color: var(--ink-soft); gap: 6px; }
+.search { position: relative; }
+.search input { width: 100%; padding: 0 10px; font-size: 13px; }
+.search input:focus-visible { outline: 2px solid var(--link); outline-offset: 0; }
+.findlist { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0; min-width: 280px; max-height: 340px; overflow-y: auto;
+  background: var(--paper); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 4px; }
+.findlist button { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 8px; width: 100%; text-align: left; border: 0; border-radius: 4px; background: none; padding: 6px 8px; cursor: pointer; }
+.findlist button:hover, .findlist button.on { background: var(--field); }
+.findlist .fn { font-family: var(--face-code); font-size: 12.5px; }
+.findlist .fp { grid-column: 1 / -1; font-size: 11.5px; color: var(--ink-soft); overflow-wrap: anywhere; }
+
+.canvas { overflow: auto; min-height: 0; touch-action: pan-x pan-y; }
+.canvas.panning { cursor: grabbing; }
+
+/* ---- inspector ---- */
+.sheet-handle { display: none; }
+.detail { padding: 16px 18px 24px; font-size: 13.5px; }
+.detail .empty { color: var(--ink-soft); margin: 8px 0 0; max-width: 36ch; }
+.dhead { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
+.dhead b { font-size: 17px; font-weight: 600; font-family: var(--face-code); overflow-wrap: anywhere; letter-spacing: -0.01em; }
+.detail .path { margin-top: 4px; font-family: var(--face-code); font-size: 11.5px; color: var(--ink-soft); line-height: 1.5; }
+.detail .acts { margin-top: 12px; }
+.detail dl { margin: 6px 0 0; }
+.detail dt { margin-top: 14px; font-size: 12px; color: var(--ink-soft); }
+.detail dt:empty { display: none; }
+.detail dd { margin: 3px 0 0; overflow-wrap: anywhere; }
+.detail dd.mono { font-size: 12.5px; }
+.detail .attr, .detail .inside { font-family: var(--face-code); font-size: 12px; padding: 2px 0; }
+.reasons { margin: 6px 0 0; padding-left: 1.1em; }
+.reasons li + li { margin-top: 3px; }
+.pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 10px; white-space: nowrap; }
+.pill.add, .pill.ok { background: var(--add-fill); color: var(--add); } .pill.del, .pill.break { background: var(--del-fill); color: var(--del); }
+.pill.mod, .pill.review { background: var(--mod-fill); color: var(--mod); } .pill.doc { background: var(--doc-fill); color: var(--doc); }
+.pill.same { background: var(--field); color: var(--ink-soft); }
+.pill.mvd, .pill.moved { background: var(--mov-fill); color: var(--mov); }
+.linkbtn { border: 0; background: none; color: var(--link); padding: 0; cursor: pointer; text-decoration: underline; text-align: left; }
+ins { background: var(--add-fill); color: var(--add); text-decoration: none; border-radius: 2px; padding: 0 1px; }
+del { background: var(--del-fill); color: var(--del); border-radius: 2px; padding: 0 1px; }
+.decide { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.decide select { height: var(--ctl); border: 1px solid var(--line); border-radius: var(--r); background: var(--paper); }
+
+/* ---- diagram (cpacs-doc look) ---- */
+svg.dg { display: block; font-family: var(--face-text); }
+.dg .link { fill: none; stroke: var(--line-strong); stroke-width: 1; }
+.dg .link.add { stroke: var(--add); } .dg .link.del { stroke: var(--del); }
+.dg .frame { fill: var(--paper); stroke: var(--ink-soft); stroke-width: 1; }
+.dg .opt .frame { stroke-dasharray: 4 1; }
+.dg .add .frame { fill: var(--add-fill); stroke: var(--add); stroke-width: 1.6; }
+.dg .del .frame { fill: var(--del-fill); stroke: var(--del); stroke-width: 1.6; }
+.dg .mod .frame { fill: var(--mod-fill); stroke: var(--mod); stroke-width: 1.6; }
+.dg .docbar { fill: var(--doc); }
+.dg .mvd .frame { fill: var(--mov-fill); stroke: var(--mov); stroke-width: 1.6; }
+.dg .moved .frame { stroke: var(--mov); stroke-width: 2.2; }
+.dg .mvd .mark, .dg .moved .mark.mv { fill: var(--mov); }
+.dg .mvlabel { fill: var(--mov); font-size: 10px; font-style: italic; }
+.dg .badge.mvd { fill: var(--mov); }
+.dg .sev-break circle { fill: var(--del); } .dg .sev-break text { fill: var(--paper); }
+.dg .sev-review circle { fill: var(--paper); stroke: var(--mod); stroke-width: 1.4; } .dg .sev-review text { fill: var(--mod); }
+.dg .sev text { font-size: 10px; font-weight: 700; font-family: var(--face-code); }
+.dg .badge.brk { fill: var(--del); font-weight: 700; }
+.dg .name { fill: var(--ink); font-size: 13px; font-weight: 500; }
+.dg .del .name { text-decoration: line-through; fill: var(--del); }
+.dg .type { fill: var(--ink-soft); font-size: 11px; font-family: var(--face-code); }
+.dg .oldtype { fill: var(--del); text-decoration: line-through; font-size: 10px; font-family: var(--face-code); }
+.dg .card { fill: var(--ink-soft); font-size: 10px; font-family: var(--face-code); }
+.dg .card.chg { fill: var(--mod); font-weight: 600; }
+.dg .ren { fill: var(--ink-soft); font-size: 10px; font-style: italic; }
+.dg .mark { font-size: 12px; font-weight: 700; font-family: var(--face-code); }
+.dg .add .mark { fill: var(--add); } .dg .del .mark { fill: var(--del); } .dg .mod .mark { fill: var(--mod); }
+.dg .item { cursor: pointer; }
+.dg .item:focus { outline: none; }
+.dg .item:hover .frame { stroke-width: 2; }
+.dg .item:focus-visible .frame, .dg .sel .frame { stroke: var(--trail); stroke-width: 2.4; }
+.dg .exp rect { fill: var(--paper); stroke: var(--ink-soft); rx: 2px; }
+.dg .exp path { stroke: var(--ink); stroke-width: 1.2; fill: none; }
+.dg .exp { cursor: pointer; }
+.dg .badge { font-size: 10px; font-family: var(--face-code); font-variant-numeric: tabular-nums; }
+.dg .badge.add { fill: var(--add); } .dg .badge.del { fill: var(--del); } .dg .badge.mod { fill: var(--mod); } .dg .badge.same { fill: var(--ink-soft); }
+.dg .divider { stroke: var(--line); stroke-width: 1; }
+.dg .grp-frame { fill: var(--paper); stroke: var(--ink-soft); stroke-width: 1; }
+.dg .grp-line { fill: none; stroke: var(--ink-soft); stroke-width: 1.1; stroke-linecap: round; }
+.dg .grp-dot { fill: var(--ink-soft); }
+.dg .grp.chg .grp-frame { fill: var(--mod-fill); stroke: var(--mod); stroke-width: 1.6; }
+.dg .grp.chg .grp-line { stroke: var(--mod); } .dg .grp.chg .grp-dot { fill: var(--mod); }
+.dg .grp.gone .grp-frame { fill: var(--del-fill); stroke: var(--del); stroke-width: 1.6; }
+.dg .grp.gone .grp-line { stroke: var(--del); } .dg .grp.gone .grp-dot { fill: var(--del); }
+.dg .grp-old { fill: var(--mod); font-size: 10px; font-family: var(--face-code); text-decoration: line-through; }
+.dg .sidehead { fill: var(--ink-soft); font-size: 12px; font-weight: 600; }
+.dg .bridge { fill: none; stroke-width: 1.2; }
+.dg .bridge.same-node { stroke: var(--line-strong); stroke-opacity: 0.7; }
+.dg .bridge.ren { stroke: var(--mod); stroke-width: 1.6; }
+.dg .bridge.ren.guess { stroke-dasharray: 1 3; stroke-linecap: round; }
+
+@media (max-width: 1240px) { .work { grid-template-columns: 236px minmax(0,1fr) 300px; } .verdict { min-width: 260px; } }
+/* ---- narrower: the inspector goes under the diagram ---- */
+@media (max-width: 1000px) {
+  .work { grid-template-columns: 250px minmax(0,1fr); grid-template-rows: minmax(0,1fr) auto; grid-template-areas: "side stage" "side insp"; }
+  .side { grid-area: side; } .stage { grid-area: stage; }
+  .insp { grid-area: insp; max-height: 32vh; border-left: 0; border-top: 1px solid var(--line); }
+  .top { grid-template-columns: minmax(0,1fr) auto; }
+  .top .verdict { grid-column: 1; grid-row: 2; }
+  .top .keymenu { grid-column: 2; grid-row: 1 / span 2; align-self: start; }
+}
+/* ---- phone: the page scrolls, the list folds away, the inspector is a sheet at the bottom ---- */
+@media (max-width: 760px) {
+  html, body { height: auto; }
+  body { display: block; overflow: auto; padding-bottom: 64px; }
+  .top { grid-template-columns: minmax(0,1fr) auto; padding: 12px 16px; gap: 10px 12px; }
+  .top h1 { font-size: 17px; }
+  .verdict { min-width: 0; }
+  .work { display: block; }
+  .side { max-height: none; overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
+  .side-head { position: static; padding: 12px 16px; cursor: pointer; }
+  .side-head .chev { display: inline-block; width: 7px; height: 7px; border: solid var(--ink-soft); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); margin-left: 8px; }
+  .side-head[aria-expanded="true"] .chev { transform: rotate(-135deg); }
+  .side #hot { display: none; max-height: 50vh; overflow-y: auto; }
+  .side.open #hot { display: block; }
+  .crumbs { padding: 10px 16px 0; }
+  .tools { padding: 8px 16px 10px; }
+  .tools .grow { flex-basis: 100%; order: -1; }
+  .canvas { height: 68dvh; }
+  .insp { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; max-height: 72dvh; border: 1px solid var(--line); border-radius: 12px 12px 0 0;
+    box-shadow: var(--shadow); background: var(--paper); transform: translateY(calc(100% - 52px)); transition: transform 0.2s ease; overflow: hidden; display: grid; grid-template-rows: auto minmax(0,1fr); }
+  .insp.open { transform: none; }
+  .sheet-handle { display: flex; align-items: center; gap: 8px; width: 100%; height: 52px; padding: 0 16px; border: 0; background: none; cursor: pointer; text-align: left; font-weight: 600; }
+  .sheet-handle::before { content: ""; width: 32px; height: 4px; border-radius: 2px; background: var(--line-strong); position: absolute; top: 6px; left: calc(50% - 16px); }
+  .sheet-handle .nm { font-family: var(--face-code); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .detail { overflow-y: auto; padding-top: 0; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+</style>
+
+<header class="top">
+  <div>
+    <h1 id="title"></h1>
+    <p class="sub" id="sub"></p>
+    <div class="counts" id="counts"></div>
+  </div>
+  <div class="verdict" id="verdict"></div>
+  <details class="menu keymenu">
+    <summary class="btn">Key</summary>
+    <div class="pop keylist">
+      <i class="sw add"></i><span>added</span>
+      <i class="sw del"></i><span>removed (name struck through)</span>
+      <i class="sw mod"></i><span>type or cardinality changed</span>
+      <i class="sw doc"></i><span>documentation only</span>
+      <i class="sw mov"></i><span>moved (⇢ away, ⇠ here)</span>
+      <i class="sw opt"></i><span>optional, as in cpacs-doc</span>
+      <i class="sev-key break">!</i><span>breaks old files</span>
+      <i class="sev-key review">?</i><span>to review</span>
+      <span class="sym">↶ coG</span><span>confirmed rename</span>
+      <span class="sym">↶ coG?</span><span>suspected rename</span>
+      <span class="sym">@</span><span>attributes changed</span>
+      <span class="keys">In the diagram: <kbd>↑</kbd> <kbd>↓</kbd> siblings, <kbd>→</kbd> open or into, <kbd>←</kbd> up,
+        <kbd>Shift</kbd>+<kbd>←</kbd> close, <kbd>Home</kbd> <kbd>End</kbd> column, <kbd>Shift</kbd>+<kbd>Home</kbd> root,
+        <kbd>Space</kbd> open or close, <kbd>Enter</kbd> start the diagram there, <kbd>+</kbd> <kbd>−</kbd> <kbd>0</kbd> zoom,
+        <kbd>/</kbd> find, <kbd>Esc</kbd> back (close, then to the diagram).</span>
+      <span class="note">Suspected renames are guesses until they are confirmed in <code>cpacs_schema.renames.toml</code> next to the new schema.</span>
+    </div>
+  </details>
+</header>
+
+<div class="work">
+  <nav class="side" id="side" aria-label="Changed types">
+    <button type="button" class="side-head" id="sideHead" aria-expanded="false" aria-controls="hot"><span>Changed types <span class="count" id="hotCount"></span></span><i class="chev"></i></button>
+    <div id="hot"></div>
+  </nav>
+  <div class="stage">
+    <div class="crumbs" id="crumbs"></div>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="View">
+        <button type="button" id="mode-merged" class="on" aria-pressed="true">Merged</button>
+        <button type="button" id="mode-split" aria-pressed="false">Before | After</button>
+      </div>
+      <div class="seg" role="group" aria-label="Show" id="cxSeg">
+        <button type="button" data-min="0" class="on" aria-pressed="true">All</button>
+        <button type="button" data-min="2" aria-pressed="false">Breaking and to review</button>
+        <button type="button" data-min="3" aria-pressed="false">Breaking</button>
+      </div>
+      <details class="menu" id="optMenu">
+        <summary class="btn">Options</summary>
+        <div class="pop left">
+          <label><input type="checkbox" id="ctx" checked> Show unchanged siblings</label>
+          <label><input type="checkbox" id="hideDel"> Hide removed nodes</label>
+          <button class="btn" id="expandAll" type="button">Open all changes below</button>
+        </div>
+      </details>
+      <div class="search grow">
+        <input id="find" type="search" placeholder="Find a node (press /)" autocomplete="off" aria-label="Find a node">
+        <div id="findList" class="findlist" role="listbox" hidden></div>
+      </div>
+      <div id="hotNav" class="hotnav" hidden>
+        <button class="btn" type="button" id="hotPrev" aria-label="Previous place">‹</button>
+        <span id="hotPos"></span>
+        <button class="btn" type="button" id="hotNext" aria-label="Next place">›</button>
+      </div>
+      <div class="zoom" role="group" aria-label="Zoom">
+        <button class="btn" type="button" id="zoomOut" aria-label="Zoom out">−</button>
+        <span id="zoomLevel">100 %</span>
+        <button class="btn" type="button" id="zoomIn" aria-label="Zoom in">+</button>
+        <button class="btn" type="button" id="zoomFit" title="Fit the width">Fit</button>
+      </div>
+    </div>
+    <div class="canvas" id="canvas"></div>
+  </div>
+  <aside class="insp" id="insp" aria-label="Details">
+    <button type="button" class="sheet-handle" id="sheetHandle" aria-expanded="false"><span class="nm" id="sheetName">Details</span></button>
+    <div class="detail" id="detail"><p class="empty">Select a node to see what changed. The square beside a box opens it; a double click starts the diagram there.</p></div>
+  </aside>
+</div>
+
+<script>
+/*DATA*/
+</script>
+<script>
+(function () {
+  "use strict";
+  var D = window.DIFF, root = D.tree;
+
+  /* ---- model ---- */
+  var byId = [], seq = 0, POOL = D.pool || [];
+  (function prep(n, parent, path) {
+    ["d", "od", "at", "cr", "gc"].forEach(function (k) { if (typeof n[k] === "number") n[k] = POOL[n[k]]; });
+    n.id = seq++; byId[n.id] = n; n.parent = parent; n.path = path + "/" + n.n;
+    n.k.forEach(function (c) { prep(c, n, n.path); });
+  })(root, null, "");
+  function countAll(n) { return n.k.reduce(function (a, c) { return a + 1 + countAll(c); }, 0); }
+  function changed(n) { return n.s !== "same" || n.c > 0 || !!n.ren || !!n.mv; }
+  function tally(n) {
+    if (n._t) return n._t;
+    var t = { add: 0, del: 0, mod: 0 };
+    n.k.forEach(function (c) {
+      if (c.s === "add") t.add += 1 + countAll(c);
+      else if (c.s === "del") t.del += 1 + (c.ren ? 0 : countAll(c) + (c.h || 0));
+      else if (c.s === "mvd") t.mod++;
+      else { if (c.s === "mod" || c.s === "doc" || c.ren || c.mv) t.mod++; var s = tally(c); t.add += s.add; t.del += s.del; t.mod += s.mod; }
+    });
+    return (n._t = t);
+  }
+  function find(path) { for (var i = 0; i < byId.length; i++) if (byId[i].path === path) return byId[i]; return null; }
+  function partner(n) {
+    if (!n.ren || !n.parent) return null;
+    for (var i = 0; i < n.parent.k.length; i++) {
+      var c = n.parent.k[i];
+      if (c !== n && c.n === n.ren && c.ren === n.n && (n.s === "del") !== (c.s === "del")) return c;
+    }
+    return null;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  /* ---- header ---- */
+  var m = D.meta || {}, st = D.stats;
+  document.getElementById("title").innerHTML = esc(m.old || "old") + '<span class="arrow" aria-label="to">→</span>' + esc(m.new || "new");
+  document.getElementById("sub").textContent = "CPACS schema diff" + (m.generated ? ", generated " + m.generated : "");
+  function trio(label, a, d, c, title) {
+    return '<span title="' + title + '"><span class="lbl">' + label + '</span><b class="k-add">+' + a + '</b> <b class="k-del">−' + d + "</b>" +
+      (c !== undefined ? ' <b class="k-mod">~' + c + "</b>" : "") + "</span>";
+  }
+  document.getElementById("counts").innerHTML =
+    trio("Types", st.typesAdded, st.typesRemoved, st.typesChanged, "types added, removed, changed") +
+    trio("Paths", st.pathsAdded, st.pathsRemoved, st.pathsChanged, "places in the tree added, removed, changed") +
+    "<span><b>" + (st.renames || 0) + '</b> <span class="lbl">renames</span></span>' +
+    '<span><b class="k-mov">' + (st.moves || 0) + '</b> <span class="lbl">moves</span></span>' +
+    (st.pathsDoc ? "<span><b>" + st.pathsDoc + '</b> <span class="lbl">documentation only</span></span>' : "");
+  // the verdict on existing files: one bar, its parts set the filter
+  (function () {
+    var nb = st.breaking || 0, nr = st.review || 0, no = st.compatible || 0, sum = Math.max(1, nb + nr + no);
+    var parts = [["break", nb, 3, "breaking", st.migratable ? st.migratable + " migratable" : ""], ["review", nr, 2, "to review", ""], ["ok", no, 0, "compatible", ""]];
+    document.getElementById("verdict").innerHTML = '<p class="cap">What it means for existing files</p><div class="vbar">' +
+      parts.map(function (p) { return p[1] ? '<button type="button" class="' + p[0] + '" data-min="' + p[2] + '" style="flex:' + p[1] / sum + '" aria-label="' + p[1] + " " + p[3] + '"></button>' : ""; }).join("") +
+      '</div><div class="vkeys">' + parts.map(function (p) {
+        return '<button type="button" class="' + p[0] + '" data-min="' + p[2] + '" aria-pressed="false"><b>' + p[1] + "</b>" + p[3] + (p[4] ? " <small>(" + p[4] + ")</small>" : "") + "</button>";
+      }).join("") + "</div>";
+  })();
+
+  /* ---- state ---- */
+  var focus = root, expanded = new Set(), selected = null;
+  var showCtx = true, hideDel = false, mode = "merged", minCx = 0;
+  var RANK = { ok: 1, review: 2, break: 3 };
+  function passes(c) { return !minCx || (RANK[c.cxs] || 0) >= minCx; }
+  function brk(n) {
+    if (n._b !== undefined) return n._b;
+    return (n._b = (n.cx === "break" ? 1 : 0) + n.k.reduce(function (a, c) { return a + brk(c); }, 0));
+  }
+  function expandChanges(n, depth) {
+    if (depth < 0 || n.s === "add" || n.s === "del") return;
+    if (n.k.some(changed)) { expanded.add(n.id); n.k.forEach(function (c) { if (changed(c)) expandChanges(c, depth - 1); }); }
+  }
+  function setFocus(n, deep) {
+    focus = n; expanded.clear();
+    for (var p = n; p; p = p.parent) expanded.add(p.id);
+    expandChanges(n, deep === undefined ? 3 : deep);
+    render();
+  }
+  function setMode(next) {
+    mode = next;
+    ["merged", "split"].forEach(function (k) {
+      var b = document.getElementById("mode-" + k);
+      b.classList.toggle("on", k === mode); b.setAttribute("aria-pressed", k === mode ? "true" : "false");
+    });
+    document.getElementById("hideDel").disabled = mode === "split";
+    render();
+  }
+
+  /* ---- change list ---- */
+  var hotEl = document.getElementById("hot");
+  function shortPath(p) { var s = p.split("/"); return (s.length > 4 ? "…/" : "") + s.slice(-3).join("/"); }
+  // break long camelCase names between words, never inside one
+  function wordBreaks(s) { return esc(s).replace(/([a-z0-9])([A-Z])/g, "$1<wbr>$2"); }
+  function pathBreaks(s) { return esc(s).split("/").join("/<wbr>"); }
+  var phone = window.matchMedia("(max-width: 760px)");
+  document.getElementById("hotCount").textContent = D.hot.length;
+  D.hot.forEach(function (h) {
+    var b = document.createElement("button"); b.className = "hot"; b.type = "button";
+    var hn = find(h.paths[0]), nb = hn ? hn.k.filter(function (k) { return k.cx === "break"; }).length : 0;
+    b.innerHTML = '<span class="t">' + wordBreaks(h.t) + '</span><span class="n">' +
+      (h.a ? '<span class="k-add">+' + h.a + "</span>" : "") + (h.d ? '<span class="k-del">−' + h.d + "</span>" : "") +
+      (h.m ? '<span class="k-mod">~' + h.m + "</span>" : "") + (nb ? '<span class="brk">!' + nb + "</span>" : "") +
+      '</span><span class="w">' + (h.paths.length > 1 ? h.paths.length + " places, " : "") + pathBreaks(shortPath(h.paths[0])) + "</span>";
+    b.addEventListener("click", function () {
+      var again = b.classList.contains("on");
+      document.querySelectorAll(".hot.on").forEach(function (x) { x.classList.remove("on"); });
+      b.classList.add("on");
+      if (phone.matches) setSide(false);
+      openPlace(h, again ? hotIdx + 1 : 0);    // a second click goes on to the next place
+    });
+    hotEl.appendChild(b);
+  });
+  // on a phone the list folds away under its heading
+  var sideEl = document.getElementById("side"), sideHead = document.getElementById("sideHead");
+  function setSide(open) { sideEl.classList.toggle("open", open); sideHead.setAttribute("aria-expanded", open ? "true" : "false"); }
+  sideHead.addEventListener("click", function () { if (phone.matches) setSide(!sideEl.classList.contains("open")); });
+
+  document.getElementById("ctx").addEventListener("change", function (e) { showCtx = e.target.checked; render(); });
+  document.getElementById("hideDel").addEventListener("change", function (e) { hideDel = e.target.checked; render(); });
+  // the compatibility filter: the segment in the toolbar and the verdict in the header stay in step
+  function setFilter(v) {
+    minCx = v;
+    document.querySelectorAll("#cxSeg button").forEach(function (b) {
+      var on = +b.getAttribute("data-min") === v; b.classList.toggle("on", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    document.querySelectorAll(".vkeys button").forEach(function (b) {
+      b.setAttribute("aria-pressed", v && +b.getAttribute("data-min") === v ? "true" : "false");
+    });
+    render();
+  }
+  document.querySelectorAll("#cxSeg button, #verdict [data-min]").forEach(function (b) {
+    b.addEventListener("click", function () { var v = +b.getAttribute("data-min"); setFilter(minCx === v && b.closest("#verdict") ? 0 : v); });
+  });
+  // menus close on a click elsewhere (Escape: see the keyboard below)
+  document.addEventListener("click", function (e) {
+    document.querySelectorAll("details.menu[open]").forEach(function (d) { if (!d.contains(e.target)) d.open = false; });
+  });
+  document.getElementById("expandAll").addEventListener("click", function () { expandChanges(focus, 99); render(); });
+  document.getElementById("mode-merged").addEventListener("click", function () { setMode("merged"); });
+  document.getElementById("mode-split").addEventListener("click", function () { setMode("split"); });
+
+  /* ---- layout ----
+   * A side is "merged", "old" or "new". The old side leaves out added nodes and
+   * shows the old type and cardinality; the new side leaves out removed nodes.
+   * Positions are kept per side, because in Before | After a node is drawn twice. */
+  var mctx = document.createElement("canvas").getContext("2d");
+  var cs = getComputedStyle(document.documentElement);
+  function tw(text, font) { mctx.font = font; return mctx.measureText(text).width; }
+  var FN = "500 13px " + cs.getPropertyValue("--face-text"), FT = "11px " + cs.getPropertyValue("--face-code");
+  var GAPX = 48, GAPY = 12, H1 = 22, H2 = 36, CARD = 12, SPLIT_GAP = 100;
+
+  // a label under the box (rename, move) shares the line with the cardinality,
+  // unless the cardinality changed and needs the room: then it gets a line of its own
+  function hasUnder(n) { return !!(n.ren || n.mv || n.mvTo); }
+  function underRoom(n) { return hasUnder(n) ? (n.oo ? 24 : 12) : 0; }
+  // room on the right of the name for the marks (+ − ~ ⇢ ⇠ @)
+  function markRoom(n) {
+    var k = (n.s !== "same" && n.s !== "doc" ? 1 : 0) + (n.mv ? 1 : 0) + (n.at && n.at.some(function (a) { return a.s !== "doc"; }) ? 1 : 0);
+    return k ? 6 + 10 * k : 0;
+  }
+  function onSide(c, side) {
+    var gone = c.s === "del" || c.s === "mvd";
+    if (side === "old") return c.s !== "add" && !c.mv && !(c.ren && !gone);
+    if (side === "new") return !gone;
+    return !(hideDel && gone);
+  }
+  function visibleKids(n, side) {
+    if (!expanded.has(n.id)) return [];
+    return n.k.filter(function (c) { return onSide(c, side) && (showCtx && !minCx || changed(c)) && passes(c); });
+  }
+  function look(n, side) {
+    // what a node shows on a side: its type, cardinality, struck old type, status
+    if (side === "old") return { t: n.ot || n.t, o: n.oo || n.o, ot: null, oo: null, s: n.s === "add" ? "same" : n.s };
+    if (side === "new") return { t: n.t, o: n.o, ot: null, oo: null, s: n.s === "del" ? "same" : n.s };
+    return { t: n.t, o: n.o, ot: n.ot, oo: n.oo, s: n.s };
+  }
+  /* The merged diagram, laid out as cpacs-doc lays out its own (after
+   * XSDDiagram): a box stands at the top of its subtree, children start just past
+   * their parent, and between a box and its children stand the compositor boxes
+   * of its type (sequence, choice, all), nested as in the type. A compositor that
+   * is its parent's only child is centred on the parent, so the line runs straight. */
+  var GROUP_W = 36, GROUP_H = 18, COL = 22;
+  function groupItems(n, kids) {
+    // Build the group tree from the children's group paths ("0", "0.4", …).
+    var gc = n.gc || { "0": "sequence" }, gco = n.gco || {};
+    var groups = {};
+    function group(path) {
+      if (groups[path]) return groups[path];
+      var g = { v: true, id: n.id + ":" + path, comp: gc[path] || "sequence", old: gco[path], gone: path.indexOf("~o") >= 0, kids: [] };
+      groups[path] = g;
+      var cut = path.lastIndexOf(".");
+      if (cut > 0) group(path.slice(0, cut)).kids.push(g);
+      return g;
+    }
+    var tops = [];
+    kids.forEach(function (c) {
+      var path = c.gp || "0";
+      var g = group(path);
+      g.kids.push(c);
+      var t = path.split(".")[0];
+      if (tops.indexOf(t) < 0) tops.push(t);
+    });
+    return tops.map(function (t) { return groups[t]; });
+  }
+  function layoutSide(top, side, x0, y0, pos) {
+    var maxX = 0;
+    function itemsOf(item) {
+      if (item.v) return item.kids;
+      var kids = visibleKids(item, side);
+      return kids.length ? groupItems(item, kids) : [];
+    }
+    function place(item, x, y, parent) {
+      var p, w, h, own;
+      if (item.v) {
+        w = GROUP_W; h = GROUP_H; own = h + 8;
+        p = { v: true, n: item, x: x, y: y, w: w, h: h, side: side };
+      } else {
+        var L = look(item, side);
+        w = Math.ceil(Math.max(tw(item.n, FN) + markRoom(item), L.t ? tw(L.t, FT) : 0, L.ot ? tw(L.ot, "10px monospace") : 0) + 26);
+        h = (L.t ? H2 : H1) + (L.ot ? 12 : 0);
+        own = h + CARD + underRoom(item);
+        p = { n: item, x: x, y: y, w: w, h: h, L: L, side: side };
+      }
+      var list = itemsOf(item);
+      if (item.v && parent && parent.only) p.y = parent.y + (parent.h - h) / 2;
+      p.only = list.length === 1;
+      pos.push(p); pos[side + item.id] = p;
+      maxX = Math.max(maxX, x + w + 110);
+      var cy = y, cx = x + w + COL;
+      if (list.length) p.kids = list;
+      list.forEach(function (c) { cy += place(c, cx, cy, p); });
+      return Math.max(cy - y, own + GAPY);
+    }
+    var height = place(top, x0, y0, null);
+    return { width: maxX - x0, height: height };
+  }
+
+  // XSDDiagram's compositor box: a rectangle with bevelled corners, and the
+  // symbol of cpacs-doc inside (line with beads, switch, brackets).
+  function octagon(w, h) {
+    var b = Math.round(h * 0.3);
+    return "M" + b + " 0H" + (w - b) + "L" + w + " " + b + "V" + (h - b) + "L" + (w - b) + " " + h + "H" + b + "L0 " + (h - b) + "V" + b + "Z";
+  }
+  function drawGroup(svg, p) {
+    var g = el("g", { class: "grp" + (p.n.old ? " chg" : "") + (p.n.gone ? " gone" : ""), transform: "translate(" + p.x + "," + p.y + ")" }, svg);
+    el("path", { class: "grp-frame", d: octagon(p.w, p.h) }, g);
+    var u = 4.5, cx = p.w / 2, cy = p.h / 2, d, dots;
+    if (p.n.comp === "sequence") {
+      d = "M" + (cx - 3 * u) + " " + cy + "H" + (cx + 3 * u); dots = [[cx - 5, cy], [cx, cy], [cx + 5, cy]];
+    } else if (p.n.comp === "choice") {
+      d = "M" + (cx - 3 * u) + " " + cy + "H" + (cx - 2 * u) + "L" + (cx - u) + " " + (cy - u) +
+        "M" + (cx + u) + " " + (cy - u) + "H" + (cx + 2 * u) + "M" + (cx + u) + " " + cy + "H" + (cx + 3 * u) +
+        "M" + (cx + u) + " " + (cy + u) + "H" + (cx + 2 * u) + "M" + (cx + 2 * u) + " " + (cy - u) + "V" + (cy + u);
+      dots = [[cx, cy - u], [cx, cy], [cx, cy + u]];
+    } else {
+      d = "M" + (cx - u) + " " + (cy - u) + "H" + (cx - 2 * u) + "V" + (cy + u) + "H" + (cx - u) +
+        "M" + (cx - 3 * u) + " " + cy + "H" + (cx - 2 * u) + "M" + (cx + u) + " " + (cy - u) + "H" + (cx + 2 * u) +
+        "V" + (cy + u) + "H" + (cx + u) + "M" + (cx + 2 * u) + " " + cy + "H" + (cx + 3 * u);
+      dots = [[cx, cy - u], [cx, cy], [cx, cy + u]];
+    }
+    el("path", { class: "grp-line", d: d }, g);
+    dots.forEach(function (q) { el("circle", { class: "grp-dot", cx: q[0], cy: q[1], r: 1.5 }, g); });
+    var title = el("title", {}, g);
+    title.textContent = p.n.old ? "compositor " + p.n.old + " → " + p.n.comp : p.n.gone ? p.n.comp + " (removed group)" : p.n.comp;
+    if (p.n.old) { var t = el("text", { class: "grp-old", x: 0, y: p.h + 10 }, g); t.textContent = p.n.old + " →"; }
+  }
+
+  /* Before | After: both sides on one grid of rows, so a node and its
+   * counterpart (same node, or the partner of a rename) share a row. Parents sit
+   * at the top of their rows, as in a text diff; a node that exists on one side
+   * only leaves a gap on the other. */
+  function boxFor(n, side) {
+    var L = look(n, side);
+    return { w: Math.ceil(Math.max(tw(n.n, FN) + markRoom(n), L.t ? tw(L.t, FT) : 0) + 26), h: L.t ? H2 : H1, L: L };
+  }
+  function rowsOf(a, b) {
+    var ka = a && (expanded.has(a.id) || (b && expanded.has(b.id))) ? a.k.filter(function (c) { return onSide(c, "old") && (showCtx && !minCx || changed(c)) && passes(c); }) : [];
+    var kb = b && (expanded.has(b.id) || (a && expanded.has(a.id))) ? b.k.filter(function (c) { return onSide(c, "new") && (showCtx && !minCx || changed(c)) && passes(c); }) : [];
+    var rows = [], used = new Set();
+    var byName = {}; kb.forEach(function (c) { byName[c.n] = c; });
+    ka.forEach(function (c) {
+      var other = null;
+      if (a === b) other = c.s === "del" ? partner(c) : c;
+      else other = byName[c.n] || null;
+      if (other && kb.indexOf(other) < 0) other = null;
+      if (other) used.add(other);
+      rows.push([c, other]);
+    });
+    kb.forEach(function (c) {
+      if (used.has(c)) return;
+      // keep an unmatched added node next to where it sits in the new order
+      var at = rows.length;
+      for (var i = kb.indexOf(c) - 1; i >= 0; i--) {
+        var j = rows.findIndex(function (r) { return r[1] === kb[i]; });
+        if (j >= 0) { at = j + 1; break; }
+      }
+      if (at === rows.length && kb.indexOf(c) === 0) at = 0;
+      rows.splice(at, 0, [null, c]);
+    });
+    return rows;
+  }
+  function layoutSplit(top, y0, pos) {
+    var wOld = 0, wNew = 0;
+    function place(a, b, xa, xb, y) {
+      var own = 0, pa = null, pb = null;
+      if (a) { var A = boxFor(a, "old"); pa = { n: a, x: xa, y: y, w: A.w, h: A.h, L: A.L, side: "old", kids: [] }; own = Math.max(own, A.h); wOld = Math.max(wOld, xa + A.w + 110); }
+      if (b) { var B = boxFor(b, "new"); pb = { n: b, x: xb, y: y, w: B.w, h: B.h, L: B.L, side: "new", kids: [] }; own = Math.max(own, B.h); wNew = Math.max(wNew, xb + B.w + 110); }
+      own += CARD + Math.max(a ? underRoom(a) : 0, b ? underRoom(b) : 0);
+      var cy = y;
+      rowsOf(a, b).forEach(function (r) {
+        var h = place(r[0], r[1], pa ? pa.x + pa.w + GAPX : xa, pb ? pb.x + pb.w + GAPX : xb, cy);
+        if (r[0] && pa) pa.kids.push(r[0]);
+        if (r[1] && pb) pb.kids.push(r[1]);
+        cy += h;
+      });
+      [pa, pb].forEach(function (p) { if (p) { if (!p.kids.length) delete p.kids; pos.push(p); pos[p.side + p.n.id] = p; } });
+      return Math.max(cy - y, own + GAPY);
+    }
+    var h = place(top, top, 0, 0, y0);
+    return { wOld: wOld, wNew: wNew, height: h };
+  }
+
+  /* ---- drawing ---- */
+  var canvas = document.getElementById("canvas");
+  var NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  var drawn = []; // positions of the last render, for scrolling
+  var zoom = 1, lastTotal = null;
+  var ZOOM_MIN = 0.25, ZOOM_MAX = 2;
+
+  function render() {
+    var pos = [];
+    var head = 0, total;
+    if (mode === "split") {
+      head = 26;
+      var s = layoutSplit(focus, 16 + head, pos);
+      var offNew = 16 + s.wOld + SPLIT_GAP;
+      pos.forEach(function (q) { q.x += q.side === "old" ? 16 : offNew; });
+      total = { w: offNew + s.wNew + 24, h: s.height + 40 + head, split: 16 + s.wOld + SPLIT_GAP / 2 };
+    } else {
+      var r = layoutSide(focus, "merged", 16, 16, pos);
+      total = { w: r.width + 40, h: r.height + 24 };
+    }
+    drawn = pos;
+    var hadFocus = canvas.contains(document.activeElement);
+    if (mode === "split" ? kbSide === "merged" : kbSide !== "merged") kbSide = mode === "split" ? "new" : "merged";
+    canvas.innerHTML = "";
+    lastTotal = total;
+    var svg = el("svg", { class: "dg", width: total.w * zoom, height: total.h * zoom, viewBox: "0 0 " + total.w + " " + total.h,
+      role: "tree", "aria-label": "Diff diagram" }, canvas);
+    if (mode === "split") {
+      el("line", { class: "divider", x1: total.split, y1: 8, x2: total.split, y2: total.h - 8 }, svg);
+      var t1 = el("text", { class: "sidehead", x: 16, y: 20 }, svg); t1.textContent = "Before: " + (m.old || "old");
+      var t2 = el("text", { class: "sidehead", x: total.split + SPLIT_GAP / 2, y: 20 }, svg); t2.textContent = "After: " + (m.new || "new");
+      drawBridges(svg, pos);
+    }
+    pos.forEach(function (p) {
+      (p.kids || []).forEach(function (c) {
+        var q = pos[p.side + c.id];
+        var x1 = p.x + p.w + (p.v ? 0 : 7), y1 = p.y + p.h / 2, x2 = q.x, y2 = q.y + q.h / 2, xm = x1 + (p.v ? 8 : 6);
+        var s = q.v ? "" : q.L.s;
+        var cls = s === "add" || s === "del" ? s : "";
+        el("path", { class: "link " + cls, d: "M" + x1 + "," + y1 + "H" + xm + "V" + y2 + "H" + x2 }, svg);
+      });
+    });
+    pos.forEach(function (p) { if (p.v) drawGroup(svg, p); else drawNode(svg, p); });
+    // one box takes Tab into the diagram: the selected one, else the top
+    if (!canvas.querySelector('.item[tabindex="0"]')) { var first = canvas.querySelector(".item"); if (first) first.setAttribute("tabindex", "0"); }
+    if (hadFocus) { focusSelected(); if (!canvas.contains(document.activeElement)) { var t0 = canvas.querySelector('.item[tabindex="0"]'); if (t0) t0.focus({ preventScroll: true }); } }
+    renderCrumbs();
+  }
+
+  /* Before | After: a line from each changed or renamed node on the left to its
+   * counterpart on the right, so the eye finds it again after the tree moved. */
+  function drawBridges(svg, pos) {
+    pos.forEach(function (p) {
+      if (p.side !== "old") return;
+      var n = p.n, q = null, cls = "";
+      if (n.s === "del" && n.ren) { var other = partner(n); q = other && pos["new" + other.id]; cls = n.rc ? "ren" : "ren guess"; }
+      else if (n.s === "mod" || n.s === "doc") { q = pos["new" + n.id]; cls = "same-node"; }
+      if (!q) return;
+      var x1 = p.x + p.w + 14, y1 = p.y + p.h / 2, x2 = q.x - 2, y2 = q.y + q.h / 2;
+      var dx = Math.max(30, (x2 - x1) / 3);
+      el("path", { class: "bridge " + cls, d: "M" + x1 + "," + y1 + "C" + (x1 + dx) + "," + y1 + " " + (x2 - dx) + "," + y2 + " " + x2 + "," + y2 }, svg);
+    });
+  }
+
+  function drawNode(svg, p) {
+    var n = p.n, L = p.L;
+    var g = el("g", { class: "item " + L.s + (n.mv && p.side !== "old" ? " moved" : "") + (/^0\./.test(L.o) ? " opt" : "") + (selected === n ? " sel" : ""),
+      tabindex: selected === n && p.side === kbSide ? 0 : -1, role: "treeitem", "aria-selected": selected === n ? "true" : "false", transform: "translate(" + p.x + "," + p.y + ")" }, svg);
+    el("rect", { class: "frame", width: p.w, height: p.h, rx: 1.5 }, g);
+    if (L.s === "doc") el("rect", { class: "docbar", width: 4, height: p.h }, g);
+    if ((n.cx === "break" || n.cx === "review") && !(p.side === "old" && n.s !== "del" && n.s !== "mvd")) {
+      var sv = el("g", { class: "sev sev-" + n.cx, transform: "translate(0,0)" }, g);
+      el("circle", { cx: 0, cy: 0, r: 6.5 }, sv);
+      var st0 = el("text", { x: 0, y: 3.5, "text-anchor": "middle" }, sv); st0.textContent = n.cx === "break" ? "!" : "?";
+    }
+    var mk = { add: "+", del: "−", mod: "~", mvd: "⇢" }[L.s];
+    if (n.mv && p.side !== "old") mk = (mk ? mk + " " : "") + "⇠";
+    if (n.at && n.at.some(function (a) { return a.s !== "doc"; })) mk = "@ " + (mk || "");
+    if (mk) { var t0 = el("text", { class: "mark" + (n.mv ? " mv" : ""), x: p.w - 4, y: 13, "text-anchor": "end" }, g); t0.textContent = mk; }
+    var t = el("text", { class: "name", x: 9, y: 15 }, g); t.textContent = n.n;
+    var yy = 15;
+    if (L.ot) { yy += 12; var o = el("text", { class: "oldtype", x: 9, y: yy }, g); o.textContent = L.ot; }
+    if (L.t) { yy += 13; var ty = el("text", { class: "type", x: 9, y: yy }, g); ty.textContent = L.t; }
+    var card = el("text", { class: "card" + (L.oo || (p.side !== "merged" && n.oo) ? " chg" : ""), x: p.w, y: p.h + 10, "text-anchor": "end" }, g);
+    card.textContent = L.oo ? L.oo + " → " + L.o : L.o;
+    var under = [];
+    if (n.ren && (p.side === "merged" || (p.side === "new" && n.s !== "del") || (p.side === "old" && n.s === "del")))
+      under.push(["ren", (n.s === "del" ? "→ " : "↶ ") + n.ren + (n.rc ? "" : "?")]);
+    if (n.mvTo) under.push(["mvlabel", "moved to …/" + n.mvTo.split("/").slice(-2, -1)[0]]);
+    if (n.mv && p.side !== "old") under.push(["mvlabel", "from …/" + n.mv.split("/").slice(-2, -1)[0]]);
+    if (under.length) {
+      var r = el("text", { x: 0, y: p.h + (L.oo || (p.side !== "merged" && n.oo) ? 22 : 10) }, g);
+      under.forEach(function (u, i) { var ts = el("tspan", { class: u[0] }, r); ts.textContent = (i ? "  " : "") + u[1]; });
+    }
+    var kids = n.k.filter(function (c) { return onSide(c, p.side); });
+    if (kids.length) {
+      var open = expanded.has(n.id);
+      var ex = el("g", { class: "exp", transform: "translate(" + (p.w + 2) + "," + (p.h / 2 - 5) + ")" }, g);
+      el("rect", { width: 10, height: 10 }, ex);
+      el("path", { d: open ? "M2.5,5H7.5" : "M2.5,5H7.5M5,2.5V7.5" }, ex);
+      ex.addEventListener("click", function (e) { e.stopPropagation(); toggle(n); });
+      if (!open) {
+        var bx = p.w + 16, by = p.h / 2 + 4;
+        if (n.s !== "add" && n.s !== "del" && n.s !== "mvd") {
+          var tl = tally(n);
+          [["add", "+", p.side !== "old"], ["del", "−", p.side !== "new" && !(p.side === "merged" && hideDel)], ["mod", "~", true]].forEach(function (k) {
+            if (k[2] && tl[k[0]]) { var b = el("text", { class: "badge " + k[0], x: bx, y: by }, g); b.textContent = k[1] + tl[k[0]]; bx += tw(b.textContent, "10px monospace") + 8; }
+          });
+          var nb = brk(n) - (n.cx === "break" ? 1 : 0);
+          if (nb) { var bb = el("text", { class: "badge brk", x: bx, y: by }, g); bb.textContent = "!" + nb; }
+        } else { var b2 = el("text", { class: "badge " + n.s, x: bx, y: by }, g); var cnt = countAll(n); b2.textContent = cnt + (cnt === 1 ? " node" : " nodes"); }
+      }
+    } else if (n.h) {
+      var hb = el("text", { class: "badge same", x: p.w + 6, y: p.h / 2 + 4 }, g); hb.textContent = "… " + n.h;
+    }
+    g.__n = n; g.__side = p.side;
+    g.addEventListener("click", function () { kbSide = p.side; selectNode(n); if (phone.matches) setSheet(true); });
+    g.addEventListener("dblclick", function () { if (n.k.length) setFocus(n, 3); });
+  }
+  function selectNode(n) {
+    selected = n;
+    document.querySelectorAll(".dg .item").forEach(function (x) {
+      var on = x.__n === n; x.classList.toggle("sel", on); x.setAttribute("tabindex", on && x.__side === kbSide ? "0" : "-1");
+    });
+    showDetail(n);
+  }
+
+  /* ---- keyboard, as in cpacs-doc's diagram: the arrows walk the drawn tree, the details follow ----
+   * Down/Up: next/previous sibling, past the last one the nearest box of the same column.
+   * Right: open a closed box, else go to its first child. Left: go to the parent (and up the
+   * crumbs at the top); Shift+Left closes the box, or the branch the box stands in.
+   * Home/End: top/bottom of the column. Space opens or closes, Enter starts the diagram there. */
+  var kbSide = "merged";
+  function boxes() { return drawn.filter(function (p) { return !p.v && p.side === kbSide; }); }
+  function depth(n) { return n.path.split("/").length; }
+  function boxOf(n) { var b = boxes(); for (var i = 0; i < b.length; i++) if (b[i].n === n) return b[i]; return null; }
+  function byY(a, b) { return a.y - b.y; }
+  function vertical(box, step) {
+    var sibs = boxes().filter(function (b) { return b.n.parent === box.n.parent; }).sort(byY);
+    var i = sibs.indexOf(box);
+    if (sibs[i + step]) return sibs[i + step];
+    var best = null, d = depth(box.n);
+    boxes().forEach(function (b) {
+      if (b === box || depth(b.n) !== d) return;
+      var ahead = step > 0 ? b.y > box.y : b.y < box.y;
+      if (ahead && (!best || Math.abs(b.y - box.y) < Math.abs(best.y - box.y))) best = b;
+    });
+    return best;
+  }
+  function columnEnd(box, step) {
+    var d = depth(box.n), col = boxes().filter(function (b) { return depth(b.n) === d; }).sort(byY);
+    return step < 0 ? col[0] : col[col.length - 1];
+  }
+  function moveTo(n) {
+    if (!n) return;
+    selectNode(n); focusSelected(); reveal(n);
+  }
+  function focusSelected() {
+    var g = null;
+    document.querySelectorAll(".dg .item").forEach(function (x) { if (x.__n === selected && x.__side === kbSide) g = x; });
+    if (g) g.focus({ preventScroll: true });
+  }
+  // scroll only as far as needed to show the box with some room around it
+  function reveal(n) {
+    var b = boxOf(n); if (!b) return;
+    var pad = 40, x1 = b.x * zoom, y1 = b.y * zoom, x2 = (b.x + b.w) * zoom, y2 = (b.y + b.h) * zoom;
+    var L = canvas.scrollLeft, T = canvas.scrollTop, W = canvas.clientWidth, H = canvas.clientHeight;
+    if (x1 - pad < L) canvas.scrollLeft = x1 - pad; else if (x2 + pad > L + W) canvas.scrollLeft = Math.min(x1 - pad, x2 + pad - W);
+    if (y1 - pad < T) canvas.scrollTop = y1 - pad; else if (y2 + pad > T + H) canvas.scrollTop = y2 + pad - H;
+  }
+  canvas.addEventListener("keydown", function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    var g = e.target.closest && e.target.closest(".item");
+    if (!g) return;
+    kbSide = g.__side;
+    var n = g.__n, box = boxOf(n); if (!box) return;
+    if (selected !== n) selectNode(n);   // the box Tab landed on becomes the selection
+    var open = expanded.has(n.id), hasKids = n.k.some(function (c) { return onSide(c, kbSide); });
+    switch (e.key) {
+      case "ArrowDown": moveTo((vertical(box, 1) || {}).n); break;
+      case "ArrowUp": moveTo((vertical(box, -1) || {}).n); break;
+      case "ArrowRight":
+        if (hasKids && !open) toggle(n);
+        else { var kids = boxes().filter(function (b) { return b.n.parent === n; }).sort(byY); if (kids[0]) moveTo(kids[0].n); }
+        break;
+      case "ArrowLeft":
+        var up = n.parent;
+        if (e.shiftKey) {
+          if (hasKids && open) { toggle(n); break; }
+          if (!up || !boxOf(up)) break;
+          moveTo(up); if (expanded.has(up.id)) toggle(up);
+          break;
+        }
+        if (!up) break;
+        if (!boxOf(up)) { selected = up; setFocus(up.parent || up, 1); }   // past the top: climb the crumbs
+        moveTo(up);
+        break;
+      case "Home":
+        if (e.shiftKey) { selected = root; setFocus(root, 3); moveTo(root); canvas.scrollTo(0, 0); }   // Shift+Home: the root
+        else moveTo(columnEnd(box, -1).n);
+        break;
+      case "End": moveTo(columnEnd(box, 1).n); break;
+      case " ": if (hasKids) toggle(n); break;
+      case "Enter": if (n.k.length) setFocus(n, 3); break;
+      case "+": case "=": setZoom(zoom * 1.25); break;
+      case "-": setZoom(zoom / 1.25); break;
+      case "0": setZoom(1); break;
+      default: return;
+    }
+    e.preventDefault();
+  });
+  function toggle(n) {
+    var other = mode === "split" ? partner(n) : null;
+    var open = !expanded.has(n.id);
+    [n, other].forEach(function (x) { if (x) { if (open) expanded.add(x.id); else expanded.delete(x.id); } });
+    render();
+  }
+
+  function renderCrumbs() {
+    var c = document.getElementById("crumbs"); c.innerHTML = "";
+    var chain = []; for (var p = focus.parent; p; p = p.parent) chain.unshift(p);
+    chain.forEach(function (p) {
+      var b = document.createElement("button"); b.type = "button"; b.textContent = p.n;
+      b.addEventListener("click", function () { setFocus(p, 2); });
+      c.appendChild(b); c.appendChild(document.createTextNode(" / "));
+    });
+    var s = document.createElement("span"); s.className = "here"; s.textContent = focus.n; c.appendChild(s);
+  }
+
+  /* ---- detail panel (a sheet at the bottom on a phone) ---- */
+  var insp = document.getElementById("insp"), sheetHandle = document.getElementById("sheetHandle");
+  function setSheet(open) { insp.classList.toggle("open", open); sheetHandle.setAttribute("aria-expanded", open ? "true" : "false"); }
+  sheetHandle.addEventListener("click", function () { setSheet(!insp.classList.contains("open")); });
+  var LABEL = { add: "added", del: "removed", mod: "changed", doc: "documentation changed", same: "unchanged", mvd: "moved away" };
+  function wordDiff(a, b) {
+    var x = a.split(/(\s+)/), y = b.split(/(\s+)/), n = x.length, mm = y.length;
+    if (n * mm > 250000) return "<del>" + esc(a) + "</del> <ins>" + esc(b) + "</ins>";
+    var L = []; for (var i = 0; i <= n; i++) L.push(new Int16Array(mm + 1));
+    for (i = n - 1; i >= 0; i--) for (var j = mm - 1; j >= 0; j--) L[i][j] = x[i] === y[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    var ops = []; i = 0; j = 0;
+    while (i < n && j < mm) {
+      if (x[i] === y[j]) { ops.push(["=", x[i]]); i++; j++; }
+      else if (L[i + 1][j] >= L[i][j + 1]) ops.push(["-", x[i++]]);
+      else ops.push(["+", y[j++]]);
+    }
+    while (i < n) ops.push(["-", x[i++]]);
+    while (j < mm) ops.push(["+", y[j++]]);
+    // runs of changed words read as "old words → new words": gather each run's removed and
+    // added words (and the spaces between them) and write the removed part first
+    var out = "", dels = "", inss = "";
+    function flush() {
+      if (dels) out += "<del>" + esc(dels.trim()) + "</del>";
+      if (dels && inss) out += " ";
+      if (inss) out += "<ins>" + esc(inss.trim()) + "</ins>";
+      dels = inss = "";
+    }
+    ops.forEach(function (op, k) {
+      if (op[0] === "-") dels += op[1];
+      else if (op[0] === "+") inss += op[1];
+      else if (/^\s+$/.test(op[1]) && (dels || inss) && ops[k + 1] && ops[k + 1][0] !== "=") { if (dels) dels += op[1]; if (inss) inss += op[1]; }
+      else { flush(); out += esc(op[1]); }
+    });
+    flush();
+    return out;
+  }
+  function showDetail(n) {
+    remember(n);
+    var h = '<div class="dhead"><b>' + wordBreaks(n.n) + '</b> <span class="pill ' + n.s + '">' + LABEL[n.s] + "</span>";
+    if (n.mv) h += ' <span class="pill moved">moved here</span>';
+    h += '</div><div class="path">' + pathBreaks(n.path) + "</div>";
+    if (n.k.length && n.s !== "add" && n.s !== "del" && (n.c || n.mv || n.ren)) h += '<div class="acts"><button class="btn" type="button" id="splitHere">Before | After from here</button></div>';
+    h += "<dl>";
+    if (n.ren) {
+      h += "<dt>" + (n.s === "del" ? "now" : "previously") + "</dt><dd><span class=\"mono\">" + esc(n.ren) + "</span> " +
+        (n.rc ? "(confirmed)" : "(suspected: " + esc(n.why || "heuristic") + ")") + "</dd>";
+    }
+    if (n.mv) h += '<dt>moved from</dt><dd><button type="button" class="linkbtn mono" data-go="' + esc(n.mv) + '">' + esc(n.mv) + "</button>" + (n.mvn ? " (named " + esc(n.mvn) + ")" : "") + "</dd>";
+    if (n.mvTo) h += '<dt>moved to</dt><dd><button type="button" class="linkbtn mono" data-go="' + esc(n.mvTo) + '">' + esc(n.mvTo) + "</button></dd>";
+    if (n.cr && n.cr.length) {
+      var CXL = { break: "breaks old files", review: "to review", ok: "compatible" };
+      h += '<dt>Compatibility</dt><dd><span class="pill ' + n.cx + '">' + CXL[n.cx] + "</span>" +
+        (n.mg ? ' <span class="pill moved">migratable</span>' : "") +
+        '<ul class="reasons">' + n.cr.map(function (r) { return "<li>" + wordBreaks(r) + "</li>"; }).join("") + "</ul></dd>";
+    }
+    if (n.at && n.at.length) {
+      var AS = { add: "+", del: "−", mod: "~", doc: "doc" };
+      h += '<dt>Attributes</dt><dd>' + n.at.map(function (a) {
+        var bits = [];
+        if (a.ot !== undefined) bits.push("<del>" + esc(a.ot) + "</del> → " + esc(a.t)); else bits.push(esc(a.t || ""));
+        bits.push(a.ou !== undefined ? "<del>" + esc(a.ou) + "</del> → " + esc(a.u) : esc(a.u));
+        if (a.od !== undefined) bits.push("default was " + esc(a.od === null ? "none" : a.od));
+        if (a.of !== undefined) bits.push("fixed was " + esc(a.of === null ? "none" : a.of));
+        return '<div class="attr"><span class="k-' + a.s + '">' + AS[a.s] + "</span> @" + esc(a.n) + "  " + bits.filter(Boolean).join(", ") + "</div>";
+      }).join("") + "</dd>";
+    }
+    h += "<dt>Type</dt><dd class=\"mono\">" + (n.ot ? "<del>" + wordBreaks(n.ot) + "</del> → " : "") + wordBreaks(n.t || "–") + "</dd>";
+    var tn = n.ot && D.typeNotes && D.typeNotes[n.ot + ">" + n.t];
+    if (tn) h += "<dt></dt><dd class=\"note\">" + wordBreaks(tn) + "</dd>";
+    h += "<dt>Cardinality</dt><dd class=\"mono\">" + (n.oo ? "<del>" + esc(n.oo) + "</del> → " : "") + esc(n.o) + "</dd>";
+    var tc = D.typeChanges[n.t];
+    if (tc && tc.length) h += "<dt>Inside the type</dt><dd>" + tc.map(function (s) { return '<div class="inside">' + esc(s) + "</div>"; }).join("") + "</dd>";
+    if (n.k.length && n.s !== "add" && n.s !== "del") { var t = tally(n); h += '<dt>Below</dt><dd><span class="k-add">+' + t.add + '</span> <span class="k-del">−' + t.del + '</span> <span class="k-mod">~' + t.mod + "</span></dd>"; }
+    if (n.od !== undefined) h += "<dt>Documentation</dt><dd>" + wordDiff(n.od || "", n.d || "") + "</dd>";
+    else if (n.d) h += "<dt>Documentation</dt><dd>" + esc(n.d) + "</dd>";
+    if (SERVED) h += decisionControls(n);
+    h += "</dl>";
+    var box = document.getElementById("detail");
+    box.innerHTML = h;
+    box.scrollTop = 0; insp.scrollTop = 0;
+    document.getElementById("sheetName").textContent = n.n + " (" + LABEL[n.s] + ")";
+    wireDecisions(box);
+    var sh = document.getElementById("splitHere");
+    if (sh) sh.addEventListener("click", function () { selected = n; focus = n; setFocus(n, 3); setMode("split"); });
+    box.querySelectorAll("[data-go]").forEach(function (b) {
+      b.addEventListener("click", function () { goTo(b.getAttribute("data-go")); });
+    });
+  }
+  function goTo(path) {
+    var t = find(path);
+    if (!t) return;
+    selected = t; setFocus(t.parent || t, 1); showDetail(t); scrollTo(t);
+  }
+  function scrollTo(n) {
+    requestAnimationFrame(function () {
+      var p = null;
+      for (var i = 0; i < drawn.length; i++) if (drawn[i].n === n) { p = drawn[i]; break; }
+      if (p) canvas.scrollTo({ left: Math.max(0, (p.x - 120) * zoom), top: Math.max(0, (p.y - 140) * zoom) });
+    });
+  }
+
+  /* ---- decisions, when the page is served by a server that records them (cpacs-schema-diff serve) ---- */
+  var SERVED = false;
+  if (/^https?:$/.test(location.protocol)) {
+    fetch("api/info", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (info) { if (info && info.serve) { SERVED = true; if (selected) showDetail(selected); } })
+      .catch(function () {});
+  }
+  function decide(action, oldName, newName, parentType, button) {
+    var box = button.closest(".decide");
+    box.innerHTML = '<span class="note">Saving and comparing again …</span>';
+    fetch("api/rename", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: action, old: oldName, new: newName, parentType: parentType || null }) })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); location.reload(); })
+      .catch(function (e) { box.innerHTML = '<span class="k-del">Could not save (' + esc(e.message) + "). Is serve still running?</span>"; });
+  }
+  function decisionControls(n) {
+    // returns HTML for the rename decision of node n, or ""
+    var parentType = n.parent ? n.parent.t : null, oldName, newName;
+    if (n.ren) { oldName = n.s === "del" ? n.n : n.ren; newName = n.s === "del" ? n.ren : n.n; }
+    var h = "";
+    if (n.ren && !n.rc) {
+      h = '<button class="btn" data-act="confirm">Confirm rename</button> <button class="btn" data-act="confirm" data-pt="1">only below ' +
+        esc(parentType || "this parent") + '</button> <button class="btn" data-act="reject">Not a rename</button>';
+    } else if (n.ren && n.rc) {
+      h = '<button class="btn" data-act="forget">Undo the confirmation</button>';
+    } else if (n.s === "del" && n.parent) {
+      var cands = n.parent.k.filter(function (c) { return c.s === "add" && !c.ren; });
+      if (!cands.length) return "";
+      h = '<label>renamed to <select class="decide-to">' + cands.map(function (c) { return "<option>" + esc(c.n) + "</option>"; }).join("") +
+        '</select></label> <button class="btn" data-act="confirm" data-pick="1">Confirm</button>';
+      oldName = n.n;
+    } else return "";
+    return '<dt>Decision</dt><dd class="decide" data-old="' + esc(oldName) + '" data-new="' + esc(newName || "") + '" data-ptype="' + esc(parentType || "") + '">' + h + "</dd>";
+  }
+  function wireDecisions(box) {
+    box.querySelectorAll(".decide [data-act]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var d = b.closest(".decide"), nn = d.getAttribute("data-new");
+        if (b.hasAttribute("data-pick")) nn = d.querySelector(".decide-to").value;
+        decide(b.getAttribute("data-act"), d.getAttribute("data-old"), nn, b.hasAttribute("data-pt") ? d.getAttribute("data-ptype") : null, b);
+      });
+    });
+  }
+
+  /* ---- zoom and pan ---- */
+  function setZoom(z, ax, ay) {
+    z = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+    if (!lastTotal || Math.abs(z - zoom) < 1e-3) return;
+    // keep the point under (ax, ay) of the canvas where it is
+    var r = canvas.getBoundingClientRect();
+    ax = ax === undefined ? r.width / 2 : ax; ay = ay === undefined ? r.height / 2 : ay;
+    var dx = (canvas.scrollLeft + ax) / zoom, dy = (canvas.scrollTop + ay) / zoom;
+    zoom = z;
+    var svg = canvas.querySelector("svg");
+    svg.setAttribute("width", lastTotal.w * zoom); svg.setAttribute("height", lastTotal.h * zoom);
+    canvas.scrollLeft = dx * zoom - ax; canvas.scrollTop = dy * zoom - ay;
+    document.getElementById("zoomLevel").textContent = Math.round(zoom * 100) + " %";
+  }
+  document.getElementById("zoomIn").addEventListener("click", function () { setZoom(zoom * 1.25); });
+  document.getElementById("zoomOut").addEventListener("click", function () { setZoom(zoom / 1.25); });
+  document.getElementById("zoomFit").addEventListener("click", function () {
+    if (lastTotal) setZoom(Math.min(1, (canvas.clientWidth - 8) / lastTotal.w), 0, 0);
+  });
+  canvas.addEventListener("wheel", function (e) {
+    if (!e.ctrlKey && !e.metaKey) return;          // plain wheel scrolls; Ctrl/⌘ + wheel zooms
+    e.preventDefault();
+    var r = canvas.getBoundingClientRect();
+    setZoom(zoom * Math.exp(-e.deltaY * 0.002), e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+  // a mouse drags the drawing; touch scrolls natively and pinches to zoom
+  var drag = null;
+  canvas.addEventListener("pointerdown", function (e) {
+    if (e.pointerType !== "mouse" || e.button !== 0 || e.target.closest(".item, .exp")) return;
+    drag = { x: e.clientX, y: e.clientY, l: canvas.scrollLeft, t: canvas.scrollTop };
+    canvas.classList.add("panning"); canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    canvas.scrollLeft = drag.l - (e.clientX - drag.x); canvas.scrollTop = drag.t - (e.clientY - drag.y);
+  });
+  function endDrag() { drag = null; canvas.classList.remove("panning"); }
+  canvas.addEventListener("pointerup", endDrag); canvas.addEventListener("pointercancel", endDrag);
+  var pinch = null;
+  function spread(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
+  canvas.addEventListener("touchstart", function (e) {
+    if (e.touches.length === 2) pinch = { d: spread(e.touches), z: zoom };
+  }, { passive: true });
+  canvas.addEventListener("touchmove", function (e) {
+    if (!pinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    var r = canvas.getBoundingClientRect();
+    setZoom(pinch.z * spread(e.touches) / pinch.d,
+      (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left, (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top);
+  }, { passive: false });
+  canvas.addEventListener("touchend", function (e) { if (e.touches.length < 2) pinch = null; });
+
+  /* ---- search ---- */
+  var findInput = document.getElementById("find"), findList = document.getElementById("findList"), findHits = [], findAt = -1;
+  function runFind() {
+    var q = findInput.value.trim().toLowerCase();
+    findHits = []; findAt = -1;
+    if (q.length < 2) { findList.hidden = true; return; }
+    for (var i = 0; i < byId.length; i++) {
+      var n = byId[i], name = n.n.toLowerCase();
+      var hitName = name.indexOf(q) >= 0, hitPath = !hitName && q.indexOf("/") >= 0 && n.path.toLowerCase().indexOf(q) >= 0;
+      if (!hitName && !hitPath) continue;
+      var score = (name === q ? 0 : name.indexOf(q) === 0 ? 1 : 2) + (changed(n) ? 0 : 3);
+      findHits.push({ n: n, s: score });
+    }
+    findHits.sort(function (a, b) { return a.s - b.s || a.n.path.length - b.n.path.length; });
+    var more = findHits.length - 40;
+    findHits = findHits.slice(0, 40);
+    findList.innerHTML = findHits.length ? "" : '<div class="note" style="padding:6px 8px">Nothing found</div>';
+    findHits.forEach(function (h, i) {
+      var b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "option");
+      b.innerHTML = '<span class="fn">' + esc(h.n.n) + '</span><span class="pill ' + h.n.s + '">' + (LABEL[h.n.s] || h.n.s) + '</span><span class="fp">' + esc(h.n.path) + "</span>";
+      b.addEventListener("mousedown", function (e) { e.preventDefault(); chooseHit(i); });
+      findList.appendChild(b);
+    });
+    if (more > 0) findList.insertAdjacentHTML("beforeend", '<div class="note" style="padding:6px 8px">' + more + " more; type more of the name</div>");
+    findList.hidden = false;
+  }
+  function chooseHit(i) {
+    var h = findHits[i]; if (!h) return;
+    findList.hidden = true; findInput.blur();
+    goTo(h.n.path);
+  }
+  findInput.addEventListener("input", runFind);
+  findInput.addEventListener("focus", runFind);
+  findInput.addEventListener("blur", function () { setTimeout(function () { findList.hidden = true; }, 100); });
+  findInput.addEventListener("keydown", function (e) {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      findAt = Math.max(0, Math.min(findHits.length - 1, findAt + (e.key === "ArrowDown" ? 1 : -1)));
+      Array.prototype.forEach.call(findList.querySelectorAll("button"), function (b, i) { b.classList.toggle("on", i === findAt); });
+    } else if (e.key === "Enter") { e.preventDefault(); chooseHit(findAt < 0 ? 0 : findAt); }
+  });
+  document.addEventListener("keydown", function (e) {
+    var typing = /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
+    if (e.key === "/" && !typing) { e.preventDefault(); findInput.focus(); return; }
+    /* Escape (and Backspace outside a text field) does the most local thing there is, as in
+     * cpacs-doc: close an open menu, else give the search up, else close the sheet on a phone,
+     * else go back from wherever the focus is to the selected box in the diagram. */
+    if (e.key !== "Escape" && !(e.key === "Backspace" && !typing)) return;
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    var menu = document.querySelector("details.menu[open]");
+    if (menu) { menu.open = false; menu.querySelector("summary").focus(); }
+    else if (document.activeElement === findInput || !findList.hidden) { findList.hidden = true; findInput.blur(); backToDiagram(); }
+    else if (phone.matches && insp.classList.contains("open")) { setSheet(false); backToDiagram(); }
+    else backToDiagram();
+    e.preventDefault();
+  });
+  function backToDiagram() {
+    focusSelected();
+    if (!canvas.contains(document.activeElement)) { var t = canvas.querySelector('.item[tabindex="0"]'); if (t) t.focus({ preventScroll: true }); }
+  }
+
+  /* ---- stepping through the places of a type ---- */
+  var hotCur = null, hotIdx = 0;
+  function showPlace() {
+    var nav = document.getElementById("hotNav");
+    if (!hotCur || hotCur.paths.length < 2) { nav.hidden = true; return; }
+    nav.hidden = false;
+    document.getElementById("hotPos").textContent = "place " + (hotIdx + 1) + " of " + hotCur.paths.length;
+  }
+  function openPlace(h, i) {
+    hotCur = h; hotIdx = (i + h.paths.length) % h.paths.length;
+    var n = find(h.paths[hotIdx]);
+    if (!n) return;
+    selected = n; setFocus(mode === "split" ? n : (n.parent && n.parent.parent ? n.parent : n), 2);
+    showDetail(n); scrollTo(n); showPlace();
+  }
+  document.getElementById("hotPrev").addEventListener("click", function () { if (hotCur) openPlace(hotCur, hotIdx - 1); });
+  document.getElementById("hotNext").addEventListener("click", function () { if (hotCur) openPlace(hotCur, hotIdx + 1); });
+
+  /* ---- links to a node: #node-cpacs--vehicles--aircraft (a plain name, so it also survives in shared links) ---- */
+  function linkFor(n) { return "#node-" + n.path.slice(1).split("/").join("--"); }
+  function remember(n) {
+    try { history.replaceState(null, "", linkFor(n)); } catch (e) { /* not allowed here; the link is a convenience */ }
+  }
+
+  /* ---- start: the place with the most changes ---- */
+  var first = D.hot.length ? find(D.hot[0].paths[0]) : null;
+  var startSplit = location.hash === "#split";
+  var want = /^#node-(.+)$/.exec(location.hash);
+  var named = want ? find("/" + decodeURIComponent(want[1]).split("--").join("/").replace(/\./g, "/")) : null;
+  if (named) first = named;
+  if (first) { selected = first; setFocus(startSplit ? first : (first.parent || first), 2); showDetail(first); scrollTo(first); }
+  else setFocus(root, 3);
+  if (startSplit) setMode("split");
+})();
+</script>
