@@ -938,8 +938,8 @@ svg.dg { display: block; font-family: var(--face-text); }
     flush();
     return out;
   }
-  function showDetail(n) {
-    remember(n);
+  function showDetail(n, quiet) {
+    if (!quiet) remember(n);   // quiet: the start view leaves the address as it was opened
     var h = '<div class="dhead"><b>' + wordBreaks(n.n) + '</b> <span class="pill ' + n.s + '">' + LABEL[n.s] + "</span>";
     if (n.mv) h += ' <span class="pill moved">moved here</span>';
     h += '</div><div class="path">' + pathBreaks(n.path) + "</div>";
@@ -1184,14 +1184,13 @@ svg.dg { display: block; font-family: var(--face-text); }
     try { history.replaceState(null, "", linkFor(n)); } catch (e) { /* not allowed here; the link is a convenience */ }
   }
 
-  /* ---- start: the place with the most changes ---- */
-  var first = D.hot.length ? find(D.hot[0].paths[0]) : null;
+  /* ---- start: the root, as an overview (its details sum up the changes below it); a #node-…
+   * link opens at that node instead. The list of changed types is the way into the changes. ---- */
   var startSplit = location.hash === "#split";
   var want = /^#node-(.+)$/.exec(location.hash);
   var named = want ? find("/" + decodeURIComponent(want[1]).split("--").join("/").replace(/\./g, "/")) : null;
-  if (named) first = named;
-  if (first) { selected = first; setFocus(startSplit ? first : (first.parent || first), 2); showDetail(first); scrollTo(first); }
-  else setFocus(root, 3);
+  if (named) { selected = named; setFocus(named.parent || named, 2); showDetail(named); scrollTo(named); }
+  else { selected = root; setFocus(root, 3); showDetail(root, true); }
   if (startSplit) setMode("split");
 })();
 </script>
