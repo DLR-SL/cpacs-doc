@@ -17,7 +17,7 @@
   <xsd:complexType name="caseType">
     <xsd:annotation><xsd:documentation>A case</xsd:documentation></xsd:annotation>
     <xsd:sequence>
-      <xsd:element name="centerOfGravity" type="pointType"><xsd:annotation><xsd:documentation>Centre of gravity</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="referencePoint" type="pointType"><xsd:annotation><xsd:documentation>Reference point</xsd:documentation></xsd:annotation></xsd:element>
       <xsd:element name="mass" type="xsd:double"><xsd:annotation><xsd:documentation>Mass</xsd:documentation></xsd:annotation></xsd:element>
       <xsd:element name="note" type="xsd:string"><xsd:annotation><xsd:documentation>New text</xsd:documentation></xsd:annotation></xsd:element>
     </xsd:sequence>
@@ -46,7 +46,7 @@
     <xsd:annotation><xsd:documentation>fuelType</xsd:documentation></xsd:annotation>
     <xsd:sequence>
       <xsd:element name="amount" type="xsd:double"><xsd:annotation><xsd:documentation>amount</xsd:documentation></xsd:annotation></xsd:element>
-      <xsd:element name="tanks" type="storageType"><xsd:annotation><xsd:documentation>tanks</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="reservoirs" type="storageType"><xsd:annotation><xsd:documentation>reservoirs</xsd:documentation></xsd:annotation></xsd:element>
       <xsd:element name="extra" type="xsd:string"><xsd:annotation><xsd:documentation>extra</xsd:documentation></xsd:annotation></xsd:element>
     </xsd:sequence>
   </xsd:complexType>

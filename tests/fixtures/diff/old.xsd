@@ -17,7 +17,7 @@
   <xsd:complexType name="caseType">
     <xsd:annotation><xsd:documentation>A case</xsd:documentation></xsd:annotation>
     <xsd:sequence>
-      <xsd:element name="coG" type="pointType"><xsd:annotation><xsd:documentation>Centre of gravity</xsd:documentation></xsd:annotation></xsd:element>
+      <xsd:element name="refPoint" type="pointType"><xsd:annotation><xsd:documentation>Reference point</xsd:documentation></xsd:annotation></xsd:element>
       <xsd:element name="mass" type="xsd:string"><xsd:annotation><xsd:documentation>Mass</xsd:documentation></xsd:annotation></xsd:element>
       <xsd:element name="note" type="xsd:string"><xsd:annotation><xsd:documentation>Old text</xsd:documentation></xsd:annotation></xsd:element>
     </xsd:sequence>

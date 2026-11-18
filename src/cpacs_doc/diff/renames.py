@@ -6,13 +6,13 @@ read from the repository if it exists; decisions made here are written to
 ``renames/<variant>.toml`` in this project, to be copied upstream.
 
     [[rename]]                      # confirmed
-    old = "coG"
-    new = "centerOfGravity"
+    old = "refPoint"
+    new = "referencePoint"
     parentType = "…"                # optional: only below this type
 
     [[reject]]                      # not a rename, never pair these again
-    old = "configurations"
-    new = "configuration"
+    old = "settings"
+    new = "setting"
 """
 from __future__ import annotations
 

@@ -306,13 +306,13 @@ decided in `cpacs_schema.renames.toml` next to the new schema (or `--renames`):
 
 ```toml
 [[rename]]
-old = "coG"
-new = "centerOfGravity"
-parentType = "weightAndBalanceOperationalCaseType"   # optional
+old = "airportCompatability"
+new = "airportCompatibility"
+parentType = "<type of the parent>"   # optional: only below this type
 
 [[reject]]
-old = "configurations"
-new = "configuration"
+old = "settings"
+new = "setting"
 ```
 
 ---

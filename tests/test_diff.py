@@ -26,8 +26,8 @@ def test_types(pair):
     assert d["removed"] == ["alphaType", "betaType", "holderType", "legacyType"]
     assert d["added"] == ["alphaBetaType", "containerType"]
     whats = {(c["what"], c.get("member")) for c in d["changed"]["caseType"]}
-    assert ("added", "el:centerOfGravity") in whats
-    assert ("removed", "el:coG") in whats
+    assert ("added", "el:referencePoint") in whats
+    assert ("removed", "el:refPoint") in whats
     assert ("type", "el:mass") in whats
     assert ("documentation", "el:note") in whats
 
@@ -44,23 +44,23 @@ def test_tree_status(pair):
 
 def test_rename_guess_and_confirmation(pair):
     t = treediff.merge(*pair)
-    cog = node(t, "/caseA/centerOfGravity")
-    assert cog["ren"] == "coG" and "rc" not in cog
+    ref = node(t, "/caseA/referencePoint")
+    assert ref["ren"] == "refPoint" and "rc" not in ref
     d = renames.Decisions()
-    d.set_confirm("coG", "centerOfGravity")
+    d.set_confirm("refPoint", "referencePoint")
     t = treediff.merge(*pair, d)
-    assert node(t, "/caseA/centerOfGravity")["rc"] is True
+    assert node(t, "/caseA/referencePoint")["rc"] is True
     d = renames.Decisions()
-    d.set_reject("coG", "centerOfGravity")
+    d.set_reject("refPoint", "referencePoint")
     t = treediff.merge(*pair, d)
-    assert "ren" not in node(t, "/caseA/centerOfGravity")
+    assert "ren" not in node(t, "/caseA/referencePoint")
 
 
 def test_decisions_round_trip(tmp_path):
     d = renames.Decisions()
-    d.set_confirm("coG", "centerOfGravity")
+    d.set_confirm("refPoint", "referencePoint")
     d.set_confirm("a", "b", "someType")
-    d.set_reject("configurations", "configuration")
+    d.set_reject("settings", "setting")
     f = tmp_path / "x.renames.toml"
     renames.save(d, f)
     back = renames.load([f.read_text(encoding="utf-8")])
@@ -69,30 +69,30 @@ def test_decisions_round_trip(tmp_path):
 
 def test_move_is_paired_and_diffed_inside(pair):
     d = renames.Decisions()
-    d.set_confirm("storage", "tanks")
+    d.set_confirm("storage", "reservoirs")
     t = treediff.merge(*pair, d)
     stub = node(t, "/holder/fuel")
     assert stub["s"] == "mvd" and stub["mvTo"] == "/cpacs/container/fuel" and stub["k"] == []
     moved = node(t, "/container/fuel")
     assert moved["mv"] == "/cpacs/holder/fuel" and moved["s"] == "same"
     assert node(t, "/container/fuel/extra")["s"] == "add"
-    tanks = node(t, "/container/fuel/tanks")
-    assert tanks["ren"] == "storage" and tanks["rc"] is True and tanks["s"] == "doc"
+    reservoirs = node(t, "/container/fuel/reservoirs")
+    assert reservoirs["ren"] == "storage" and reservoirs["rc"] is True and reservoirs["s"] == "doc"
     assert node(t, "/container/label")["s"] == "add"
     assert treediff.path_stats(t)["moves"] == 1
 
 
 def test_renamed_node_holds_the_diff_and_leaves_a_stub(pair):
     t = treediff.merge(*pair)
-    old = node(t, "/caseA/coG")
+    old = node(t, "/caseA/refPoint")
     assert old["s"] == "del" and old["k"] == [] and old["h"] == 3
-    assert node(t, "/caseA/centerOfGravity")["s"] == "same"
+    assert node(t, "/caseA/referencePoint")["s"] == "same"
 
 
 def test_compatibility_classes(pair):
     from cpacs_doc.diff import compat
     d = renames.Decisions()
-    d.set_confirm("storage", "tanks")
+    d.set_confirm("storage", "reservoirs")
     t = treediff.merge(*pair, d)
     counts = compat.annotate(t, typediff.diff_types(*pair))
     assert node(t, "/legacy")["cx"] == "break"
@@ -103,7 +103,7 @@ def test_compatibility_classes(pair):
     assert node(t, "/container")["cx"] == "ok" and "cx" not in node(t, "/container/label")
     moved = node(t, "/container/fuel")
     assert moved["cx"] == "break" and moved["mg"] is True
-    assert node(t, "/caseA/centerOfGravity")["mg"] is True
+    assert node(t, "/caseA/referencePoint")["mg"] is True
     assert node(t, "/caseA/note")["cx"] == "ok"
     assert t["cxs"] == "break"
     assert counts["migratable"] >= 3
@@ -146,15 +146,15 @@ def test_choices_in_compatibility(pair):
     from cpacs_doc.diff import compat
     t = treediff.merge(*pair)
     compat.annotate(t, typediff.diff_types(*pair))
-    pz = node(t, "/caseA/centerOfGravity/pz")
+    pz = node(t, "/caseA/referencePoint/pz")
     assert pz["s"] == "add" and pz["cx"] == "ok" and "existing choice" in pz["cr"][0]
-    ca = node(t, "/container/fuel/tanks/ca")
+    ca = node(t, "/container/fuel/reservoirs/ca")
     assert ca["s"] == "add" and ca["cx"] == "break" and "new required choice" in ca["cr"][0]
 
 
 def test_renames_subset_parser_matches_tomllib():
     d = renames.Decisions()
-    d.set_confirm("coG", "centerOfGravity")
+    d.set_confirm("refPoint", "referencePoint")
     d.set_confirm("a", "b", "someType")
     d.set_reject('q"uote', "x")
     text = renames.dump(d)
@@ -168,7 +168,7 @@ def test_cli_writes_the_four_files(tmp_path, capsys):
     new = tmp_path / "new" / "cpacs_schema.xsd"
     new.write_text((FIX / "new.xsd").read_text())
     (tmp_path / "new" / "cpacs_schema.renames.toml").write_text(
-        '[[rename]]\nold = "coG"\nnew = "centerOfGravity"\n')
+        '[[rename]]\nold = "refPoint"\nnew = "referencePoint"\n')
     out = tmp_path / "out"
     assert cli.main(["diff", str(FIX / "old.xsd"), str(new), "-o", str(out), "--link", "https://example.org/d"]) == 0
     assert {p.name for p in out.iterdir()} == {"diff.html", "report.md", "summary.md", "diff.json"}
@@ -176,7 +176,7 @@ def test_cli_writes_the_four_files(tmp_path, capsys):
     assert html.startswith("<!doctype html>") and "window.DIFF=" in html and "/*DATA*/" not in html
     summary = (out / "summary.md").read_text(encoding="utf-8")
     assert "[Open the diagram](https://example.org/d)" in summary and "types merged" in summary
-    assert "`coG` → `centerOfGravity`\n" in (out / "report.md").read_text(encoding="utf-8")
+    assert "`refPoint` → `referencePoint`\n" in (out / "report.md").read_text(encoding="utf-8")
     assert "breaking" in capsys.readouterr().out
 
 
